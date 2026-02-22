@@ -281,6 +281,8 @@ Before a SKU can be listed it must survive:
 
 ## API Endpoints
 
+Interactive API docs are available via Swagger UI at **`http://localhost:8080/swagger-ui.html`** when the application is running. Raw OpenAPI spec at `/v3/api-docs`.
+
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/api/skus` | Create a new SKU |
