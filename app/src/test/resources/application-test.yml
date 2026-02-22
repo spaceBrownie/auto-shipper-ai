@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://127.0.0.1:5432/autoshipper_test
-    username: autoshipper
-    password: autoshipper
+    url: ${TEST_DB_URL:jdbc:postgresql://127.0.0.1:5432/autoshipper_test}
+    username: ${TEST_DB_USERNAME:autoshipper}
+    password: ${TEST_DB_PASSWORD:autoshipper}
   jpa:
     hibernate:
       ddl-auto: validate

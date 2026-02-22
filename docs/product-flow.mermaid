@@ -1,0 +1,126 @@
+---
+title: Commerce Engine — Product & Data Flow
+---
+flowchart TD
+    subgraph DISCOVERY["🔍 Discovery & Validation"]
+        D1([Demand Signal Ingestion])
+        D2{Willingness\nto Pay Validated?}
+        D3([Pre-sell / Waitlist / Survey])
+        D1 --> D2
+        D2 -- No --> KILL0([❌ Terminate Idea])
+        D2 -- Yes --> D3
+        D3 --> CG
+    end
+
+    subgraph CG["🔒 Cost Gate — catalog module"]
+        CG1([Build Cost Envelope])
+        CG2([Fetch Live Rates\nUPS · FedEx · USPS\nStripe · Shopify])
+        CG3{All Components\nVerified?}
+        CG4([Run Stress Test\n2× ship · +15% CAC\n+10% supplier · 5% refund\n2% chargeback])
+        CG5{Gross ≥ 50%\nNet ≥ 30%?}
+        CG1 --> CG2 --> CG3
+        CG3 -- No --> KILL1([❌ Terminate SKU\nUnverified Costs])
+        CG3 -- Yes --> CG4 --> CG5
+        CG5 -- Fail --> KILL2([❌ Terminate SKU\nMargin Below Floor])
+        CG5 -- Pass --> LAUNCH
+    end
+
+    subgraph LAUNCH["🚀 Launch — catalog + pricing modules"]
+        L1([Construct LaunchReadySku\nStressTestedMargin ✓\nCostEnvelope.Verified ✓])
+        L2([Set Initial Price\nWTP ceiling → backward induction])
+        L3([Activate on Platform\nShopify · Amazon · etc.])
+        L1 --> L2 --> L3
+    end
+
+    subgraph VENDOR["🏭 Vendor — vendor module"]
+        V1([Vendor Registry])
+        V2([SLA Confirmation])
+        V3([Reliability Scoring])
+        V4{SLA Breach\n> Tolerance?}
+        V1 --> V2 --> V3 --> V4
+        V4 -- Yes --> PAUSE1([⏸ Auto-Pause SKU\nVendorSlaBreached event])
+        V4 -- No --> V3
+    end
+
+    subgraph FULFILLMENT["📦 Fulfillment — fulfillment module"]
+        F1([Order Received])
+        F2([Inventory Sync Check])
+        F3{Stock\nAvailable?}
+        F4([Route to Vendor\nDrop-ship · POD · 3PL])
+        F5([Real-time Tracking])
+        F6([Delay Alert\nif SLA at risk])
+        F7{SLA\nBreached?}
+        F8([Auto-Refund Trigger])
+        F1 --> F2 --> F3
+        F3 -- No --> F8
+        F3 -- Yes --> F4 --> F5 --> F6 --> F7
+        F7 -- Yes --> F8
+        F7 -- No --> F5
+    end
+
+    subgraph PRICING["💲 Pricing Engine — pricing module"]
+        P1([PricingSignal Listener\nShipping · CAC · Vendor · Platform])
+        P2([Recalculate Margin])
+        P3{Decision}
+        P4([Adjust Price])
+        P5([⏸ Pause SKU])
+        P6([❌ Terminate SKU])
+        P1 --> P2 --> P3
+        P3 -- Adjusted --> P4
+        P3 -- PauseRequired --> P5
+        P3 -- TerminateRequired --> P6
+    end
+
+    subgraph CAPITAL["🏦 Capital Protection — capital module"]
+        CA1([10–15% Rolling Reserve])
+        CA2([90-Day Margin Monitor])
+        CA3([SKU-Level P&L Dashboard])
+        CA4{Kill Rule\nTriggered?}
+        CA5([Reallocate Capital\nto Higher-Return SKUs])
+        CA2 --> CA4
+        CA4 -- Yes --> KILL3([❌ Auto-Terminate SKU])
+        CA4 -- No --> CA5
+    end
+
+    subgraph PORTFOLIO["📊 Portfolio Engine — portfolio module"]
+        PO1([Experiment Tracker\nMonthly test budget])
+        PO2([Scale Winners])
+        PO3([Kill Losers\n30-day window])
+        PO4([Branded Vertical\nConversion])
+        PO5([Subscription / Digital Layer])
+        PO1 --> PO2 & PO3
+        PO2 --> PO4 --> PO5
+    end
+
+    subgraph FEEDBACK["🔄 Data & Feedback Loop — shared / analytics"]
+        FB1([Conversion Rates])
+        FB2([CAC Trends])
+        FB3([Refund Drivers])
+        FB4([Vendor Metrics])
+        FB5([Margin Signals])
+        FB6([Self-Correction Engine])
+        FB1 & FB2 & FB3 & FB4 & FB5 --> FB6
+        FB6 --> PRICING & CAPITAL & PORTFOLIO
+    end
+
+    %% Cross-module connections
+    D3 --> VENDOR
+    LAUNCH --> FULFILLMENT
+    LAUNCH --> PRICING
+    LAUNCH --> CAPITAL
+    FULFILLMENT --> FEEDBACK
+    VENDOR --> FEEDBACK
+    PRICING --> FEEDBACK
+    CAPITAL --> PORTFOLIO
+    PORTFOLIO --> DISCOVERY
+
+    %% Styling
+    classDef kill fill:#ffcccc,stroke:#cc0000,color:#000
+    classDef pause fill:#fff0cc,stroke:#cc8800,color:#000
+    classDef pass fill:#ccffcc,stroke:#007700,color:#000
+    classDef module fill:#e8f0fe,stroke:#4a6fa5,color:#000
+    classDef event fill:#f0e8fe,stroke:#6a4fa5,color:#000
+
+    class KILL0,KILL1,KILL2,KILL3 kill
+    class PAUSE1,P5 pause
+    class L1,L2,L3 pass
