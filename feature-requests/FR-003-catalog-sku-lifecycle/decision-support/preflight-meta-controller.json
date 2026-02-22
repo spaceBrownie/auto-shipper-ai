@@ -1,0 +1,288 @@
+{
+  "state": {
+    "phase": 4,
+    "task_count": 15,
+    "base_duration": 1.0,
+    "parallelizable_fraction": 0.95,
+    "coupling": 0.2933,
+    "novelty": 0.4,
+    "confidence": 0.52,
+    "blast_radius": 0.4,
+    "failure_impact": 0.5,
+    "deadline_pressure": 0.46,
+    "compute_budget": 0.7
+  },
+  "weights": {
+    "lambda_time": 0.2088,
+    "lambda_compute": 0.11,
+    "lambda_risk": 0.358,
+    "lambda_merge": 0.1228
+  },
+  "execution": {
+    "parallel_allowed": true,
+    "candidate_count": 6,
+    "candidates": [
+      {
+        "agents": 1,
+        "mode": "single_orchestrator",
+        "metrics": {
+          "quality": 0.6428,
+          "time_norm": 1.2189,
+          "compute_norm": 0.1386,
+          "risk_norm": 0.2134,
+          "merge_norm": 0.0,
+          "rework_risk": 0.3133,
+          "workload_pressure": 0.2188
+        },
+        "base_reward": 0.2966,
+        "parallel_throughput_bonus": 0.0,
+        "score": 0.2966
+      },
+      {
+        "agents": 2,
+        "mode": "orchestrator_plus_parallel_agents",
+        "metrics": {
+          "quality": 0.6887,
+          "time_norm": 0.9078,
+          "compute_norm": 0.2772,
+          "risk_norm": 0.2374,
+          "merge_norm": 0.0716,
+          "rework_risk": 0.3309,
+          "workload_pressure": 0.2188
+        },
+        "base_reward": 0.3837,
+        "parallel_throughput_bonus": 0.0114,
+        "score": 0.3863
+      },
+      {
+        "agents": 3,
+        "mode": "orchestrator_plus_parallel_agents",
+        "metrics": {
+          "quality": 0.7111,
+          "time_norm": 0.8761,
+          "compute_norm": 0.4158,
+          "risk_norm": 0.2614,
+          "merge_norm": 0.1432,
+          "rework_risk": 0.3485,
+          "workload_pressure": 0.2188
+        },
+        "base_reward": 0.3889,
+        "parallel_throughput_bonus": 0.0181,
+        "score": 0.3894
+      },
+      {
+        "agents": 4,
+        "mode": "orchestrator_plus_parallel_agents",
+        "metrics": {
+          "quality": 0.7239,
+          "time_norm": 0.9032,
+          "compute_norm": 0.5544,
+          "risk_norm": 0.2855,
+          "merge_norm": 0.2148,
+          "rework_risk": 0.3661,
+          "workload_pressure": 0.2188
+        },
+        "base_reward": 0.3722,
+        "parallel_throughput_bonus": 0.0229,
+        "score": 0.3686
+      },
+      {
+        "agents": 5,
+        "mode": "orchestrator_plus_parallel_agents",
+        "metrics": {
+          "quality": 0.7315,
+          "time_norm": 0.9491,
+          "compute_norm": 0.693,
+          "risk_norm": 0.3095,
+          "merge_norm": 0.2864,
+          "rework_risk": 0.3837,
+          "workload_pressure": 0.2188
+        },
+        "base_reward": 0.3463,
+        "parallel_throughput_bonus": 0.0265,
+        "score": 0.3376
+      },
+      {
+        "agents": 6,
+        "mode": "orchestrator_plus_parallel_agents",
+        "metrics": {
+          "quality": 0.7357,
+          "time_norm": 1.0019,
+          "compute_norm": 0.8316,
+          "risk_norm": 0.3335,
+          "merge_norm": 0.358,
+          "rework_risk": 0.4013,
+          "workload_pressure": 0.2188
+        },
+        "base_reward": 0.3156,
+        "parallel_throughput_bonus": 0.0295,
+        "score": 0.3012
+      }
+    ],
+    "recommended_mode": "orchestrator_plus_parallel_agents",
+    "recommended_agents": 3,
+    "score_margin_vs_single": 0.0928
+  },
+  "planning": {
+    "recommended_mode": "decompose_then_execute",
+    "recommended_depth": 3,
+    "value_success": 1.89,
+    "utility_curve": [
+      {
+        "depth": 0.0,
+        "success_prob": 0.4676,
+        "planning_overhead": 0.0,
+        "utility": 0.8838,
+        "voc": 0.0
+      },
+      {
+        "depth": 1.0,
+        "success_prob": 0.6108,
+        "planning_overhead": 0.1152,
+        "utility": 1.1303,
+        "voc": 0.2465
+      },
+      {
+        "depth": 2.0,
+        "success_prob": 0.6719,
+        "planning_overhead": 0.2304,
+        "utility": 1.2218,
+        "voc": 0.0916
+      },
+      {
+        "depth": 3.0,
+        "success_prob": 0.6981,
+        "planning_overhead": 0.3456,
+        "utility": 1.2472,
+        "voc": 0.0254
+      },
+      {
+        "depth": 4.0,
+        "success_prob": 0.7093,
+        "planning_overhead": 0.4608,
+        "utility": 1.2443,
+        "voc": -0.0029
+      },
+      {
+        "depth": 5.0,
+        "success_prob": 0.684,
+        "planning_overhead": 0.576,
+        "utility": 1.1726,
+        "voc": -0.0717
+      },
+      {
+        "depth": 6.0,
+        "success_prob": 0.6561,
+        "planning_overhead": 0.6912,
+        "utility": 1.0957,
+        "voc": -0.0769
+      }
+    ]
+  },
+  "cognition": {
+    "recommended_mode": "deliberative",
+    "instinct_score": -0.397,
+    "threshold_pass": false,
+    "thresholds": {
+      "confidence_min": 0.78,
+      "novelty_max": 0.32,
+      "blast_radius_max": 0.25
+    }
+  },
+  "chunking": {
+    "recommended_chunk_size": 5,
+    "recommended_chunk_count": 3,
+    "objective_curve": [
+      {
+        "chunk_size": 1.0,
+        "chunk_count": 15.0,
+        "objective": 19.1432
+      },
+      {
+        "chunk_size": 2.0,
+        "chunk_count": 8.0,
+        "objective": 9.7146
+      },
+      {
+        "chunk_size": 3.0,
+        "chunk_count": 5.0,
+        "objective": 6.7008
+      },
+      {
+        "chunk_size": 4.0,
+        "chunk_count": 4.0,
+        "objective": 5.2952
+      },
+      {
+        "chunk_size": 5.0,
+        "chunk_count": 3.0,
+        "objective": 4.5369
+      },
+      {
+        "chunk_size": 6.0,
+        "chunk_count": 3.0,
+        "objective": 4.1056
+      },
+      {
+        "chunk_size": 7.0,
+        "chunk_count": 3.0,
+        "objective": 3.8636
+      },
+      {
+        "chunk_size": 8.0,
+        "chunk_count": 2.0,
+        "objective": 3.7418
+      },
+      {
+        "chunk_size": 9.0,
+        "chunk_count": 2.0,
+        "objective": 3.7016
+      },
+      {
+        "chunk_size": 10.0,
+        "chunk_count": 2.0,
+        "objective": 3.7197
+      },
+      {
+        "chunk_size": 11.0,
+        "chunk_count": 2.0,
+        "objective": 3.7812
+      },
+      {
+        "chunk_size": 12.0,
+        "chunk_count": 2.0,
+        "objective": 3.876
+      }
+    ]
+  },
+  "reward_shaping": {
+    "parallel_reward_beta": 0.06,
+    "quality_floor": 0.68,
+    "rework_ceiling": 0.45,
+    "parallel_bonus_applied": true,
+    "base_reward_selected": 0.3889,
+    "shaped_reward_selected": 0.4489,
+    "base_reward_single": 0.2966,
+    "shaped_reward_single": 0.2966,
+    "parallel_preference_enabled": true,
+    "best_parallel_agents": 3,
+    "best_parallel_shaped_reward": 0.4489
+  },
+  "recommendations": [
+    "Use orchestrator + 2 parallel agents for execution.",
+    "Decompose first (depth=3) before execution.",
+    "Use deliberative mode: uncertainty or blast radius is high.",
+    "Batch into chunks of 5 task(s) across 3 chunk(s).",
+    "Parallel reward bonus can be applied without violating quality/rework guardrails."
+  ],
+  "state_inference": {
+    "source": "/Users/dennyjoy/git/auto-shipper-ai/feature-requests/FR-003-catalog-sku-lifecycle/implementation-plan.md",
+    "inferred_fields": {
+      "task_count": 15,
+      "parallelizable_fraction": 0.95,
+      "confidence": 0.52,
+      "coupling": 0.2933,
+      "deadline_pressure": 0.46
+    }
+  }
+}

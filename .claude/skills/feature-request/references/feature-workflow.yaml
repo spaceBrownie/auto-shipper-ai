@@ -1,0 +1,422 @@
+# Feature Request Workflow Configuration
+# Defines the 4-phase workflow for managing feature requests in Spring Boot projects
+
+# Global Configuration
+global:
+  feature_directory: "feature-requests"
+  fr_number_pattern: "^FR-\\d{3}$"
+  fr_directory_pattern: "^FR-\\d{3}-[a-z0-9-]+$"
+  max_feature_name_length: 50
+  feature_name_pattern: "^[a-z0-9-]+$"
+  required_summary_count: 1  # Exactly 1 summary.md required at end
+  decision_support:
+    strategy_script: ".claude/skills/feature-request/scripts/meta_controller.py"
+    evaluator_script: ".claude/skills/feature-request/scripts/evaluate_meta_controller.py"
+    scenarios_file: ".claude/skills/feature-request/references/meta-controller-scenarios.json"
+    enabled_phase: 4
+    description: "Run strategy recommendation in phase 4 after permission validation and before spawning sub-agents."
+
+# Phase 1: Discovery (Read-Only Exploration)
+phases:
+  phase_1_discovery:
+    name: "Discovery"
+    description: "Read-only exploration of codebase to understand requirements and constraints"
+
+    permissions:
+      # Read permissions - what files can be read
+      read:
+        - "**/*.java"
+        - "**/*.md"
+        - "**/*.yaml"
+        - "**/*.yml"
+        - "**/*.properties"
+        - "**/*.xml"
+        - "pom.xml"
+        - "AGENTS.md"
+        - "README.md"
+        - ".claude/**/*"
+
+      # Write permissions - NONE in discovery phase
+      write: []
+
+      # Bash commands - read-only operations only
+      bash:
+        allowed_commands:
+          - "ls"
+          - "cat"
+          - "grep"
+          - "find"
+          - "git log"
+          - "git status"
+          - "git diff"
+          - "git show"
+          - "pwd"
+          - "tree"
+          - "head"
+          - "tail"
+          - "wc"
+
+        forbidden_commands:
+          - "mkdir"
+          - "touch"
+          - "rm"
+          - "mv"
+          - "cp"
+          - "git add"
+          - "git commit"
+          - "git push"
+          - "git reset"
+          - "git rebase"
+          - "mvn"
+          - "gradle"
+
+    deliverables:
+      - name: "feature-name"
+        type: "string"
+        description: "Kebab-case feature name (e.g., 'jwt-refresh-tokens')"
+        pattern: "^[a-z0-9-]+$"
+        max_length: 50
+        required: true
+
+    next_phase: "phase_2_specification"
+    requires_manual_approval: true
+
+  # Phase 2: Specification (Write spec.md only)
+  phase_2_specification:
+    name: "Specification"
+    description: "Document feature requirements in spec.md"
+
+    permissions:
+      # Read permissions - can read anything
+      read:
+        - "**/*"
+
+      # Write permissions - ONLY to spec.md in the feature directory
+      write:
+        - "feature-requests/FR-*/spec.md"
+
+      # Bash commands - can create directory and view files
+      bash:
+        allowed_commands:
+          - "ls"
+          - "cat"
+          - "grep"
+          - "find"
+          - "git log"
+          - "git status"
+          - "pwd"
+          - "tree"
+          - "mkdir"  # Only to create FR directory
+
+        forbidden_commands:
+          - "rm"
+          - "git add"
+          - "git commit"
+          - "git push"
+          - "mvn"
+          - "gradle"
+
+    deliverables:
+      - name: "spec.md"
+        type: "file"
+        description: "Feature specification document"
+        path_pattern: "feature-requests/FR-\\d{3}-[a-z0-9-]+/spec.md"
+        required: true
+        required_sections:
+          - "Problem Statement"
+          - "Business Requirements"
+          - "Success Criteria"
+          - "Non-Functional Requirements"
+          - "Dependencies"
+        forbidden_sections:
+          - "Implementation Details"
+          - "Technical Design"
+          - "Code Changes"
+
+    next_phase: "phase_3_planning"
+    requires_manual_approval: true
+
+  # Phase 3: Implementation Planning (Write implementation-plan.md only)
+  phase_3_planning:
+    name: "Implementation Planning"
+    description: "Design technical solution and create task breakdown"
+
+    permissions:
+      # Read permissions - can read anything including spec.md
+      read:
+        - "**/*"
+
+      # Write permissions - ONLY to implementation-plan.md
+      write:
+        - "feature-requests/FR-*/implementation-plan.md"
+
+      # Bash commands - read-only
+      bash:
+        allowed_commands:
+          - "ls"
+          - "cat"
+          - "grep"
+          - "find"
+          - "git log"
+          - "git status"
+          - "pwd"
+          - "tree"
+
+        forbidden_commands:
+          - "mkdir"
+          - "touch"
+          - "rm"
+          - "git add"
+          - "git commit"
+          - "mvn"
+          - "gradle"
+
+    deliverables:
+      - name: "implementation-plan.md"
+        type: "file"
+        description: "Technical implementation plan with task breakdown"
+        path_pattern: "feature-requests/FR-\\d{3}-[a-z0-9-]+/implementation-plan.md"
+        required: true
+        required_sections:
+          - "Technical Design"
+          - "Architecture Decisions"
+          - "Layer-by-Layer Implementation"
+          - "Task Breakdown"
+          - "Testing Strategy"
+          - "Rollout Plan"
+        required_elements:
+          - "GitHub-style checkboxes (- [ ] Task)"
+          - "Layer groupings (handler, domain, proxy, security, config, common)"
+
+    next_phase: "phase_4_implementation"
+    requires_manual_approval: true
+
+  # Phase 4: Implementation (Write code and update plan)
+  phase_4_implementation:
+    name: "Implementation"
+    description: "Execute implementation plan using layer-specific sub-agents"
+    decision_support:
+      required_preflight:
+        - "python3 .claude/skills/feature-request/scripts/meta_controller.py --phase 4 --json --out {feature_dir}/decision-support/preflight-meta-controller.json"
+      required_artifacts:
+        - "decision-support/preflight-meta-controller.json"
+      required_json_keys:
+        - "state"
+        - "execution"
+        - "planning"
+        - "cognition"
+        - "chunking"
+        - "reward_shaping"
+        - "recommendations"
+      recommended_postflight:
+        - "python3 .claude/skills/feature-request/scripts/evaluate_meta_controller.py --fail-on-mismatch"
+        - "python3 -m unittest discover -s .claude/skills/feature-request/tests -p 'test_*.py'"
+
+    permissions:
+      # Read permissions - can read anything
+      read:
+        - "**/*"
+
+      # Write permissions - can modify code and plan files
+      write:
+        - "src/**/*.java"
+        - "src/**/*.kt"
+        - "src/**/AGENTS.md"
+        - "src/**/*.properties"
+        - "src/**/*.yaml"
+        - "src/**/*.yml"
+        - "src/**/*.xml"
+        - "src/**/*.sql"
+        - "feature-requests/FR-*/implementation-plan.md"  # Can update checkboxes
+        - "feature-requests/FR-*/summary.md"  # Create at end
+        - "pom.xml"  # If dependencies needed
+        - "*.gradle.kts"
+        - "**/*.gradle.kts"
+        - "settings.gradle.kts"
+        - "gradle.properties"
+        - "Dockerfile"
+        - ".github/**/*.yml"
+        - ".github/**/*.yaml"
+        - ".github/**/*.md"
+        - "k8s/**/*.yaml"
+        - "k8s/**/*.yml"
+        - "docs/**/*.md"
+
+      # Bash commands - full development workflow
+      bash:
+        allowed_commands:
+          - "ls"
+          - "cat"
+          - "grep"
+          - "find"
+          - "git log"
+          - "git status"
+          - "git diff"
+          - "git add"
+          - "git commit"
+          - "pwd"
+          - "tree"
+          - "mvn"
+          - "/Users/dennyjoy/git/springboot-wendys/.tools/apache-maven-3.9.12/bin/mvn"
+          - "gradle"
+          - "./gradlew"
+          - "python3"
+          - "python"
+          - "env"
+          - "mkdir"
+          - "touch"
+          - "chmod"
+
+        forbidden_commands:
+          - "rm -rf"
+          - "git push --force"
+          - "git reset --hard"
+
+    deliverables:
+      - name: "implementation-plan.md"
+        type: "file"
+        description: "Updated plan with all checkboxes checked"
+        path_pattern: "feature-requests/FR-\\d{3}-[a-z0-9-]+/implementation-plan.md"
+        required: true
+        validation:
+          - "All checkboxes must be checked (- [x] Task)"
+
+      - name: "summary.md"
+        type: "file"
+        description: "Implementation summary document"
+        path_pattern: "feature-requests/FR-\\d{3}-[a-z0-9-]+/summary.md"
+        required: true
+        count: 1  # Exactly one summary file
+        required_sections:
+          - "Feature Summary"
+          - "Changes Made"
+          - "Files Modified"
+          - "Testing Completed"
+          - "Deployment Notes"
+
+      - name: "code-changes"
+        type: "validation"
+        description: "Code changes must be committed"
+        validation:
+          - "At least one file in src/ modified"
+          - "Tests pass (mvn test or gradle test)"
+
+    sub_agents:
+      enabled: true
+      orchestrator: "feature-orchestrator"
+      layer_agents:
+        - name: "handler-agent"
+          layer: "handler"
+          path_pattern: "src/main/java/**/handler/**/*.java"
+          description: "REST endpoints and controllers"
+
+        - name: "domain-agent"
+          layer: "domain"
+          path_pattern: "src/main/java/**/domain/**/*.java"
+          description: "Business logic and domain models"
+
+        - name: "proxy-agent"
+          layer: "proxy"
+          path_pattern: "src/main/java/**/proxy/**/*.java"
+          description: "External service clients"
+
+        - name: "security-agent"
+          layer: "security"
+          path_pattern: "src/main/java/**/security/**/*.java"
+          description: "Authentication and authorization"
+
+        - name: "config-agent"
+          layer: "config"
+          path_pattern: "src/main/java/**/config/**/*.java"
+          description: "Spring configuration and beans"
+
+        - name: "common-agent"
+          layer: "common"
+          path_pattern: "src/main/java/**/common/**/*.java"
+          description: "Shared DTOs, exceptions, utilities"
+
+    next_phase: null  # Final phase
+    requires_manual_approval: false  # Workflow complete
+
+# Validation Rules
+validation:
+  feature_name:
+    pattern: "^[a-z0-9-]+$"
+    min_length: 3
+    max_length: 50
+    forbidden_chars: ["_", " ", ".", "/", "\\"]
+    examples:
+      valid:
+        - "jwt-refresh-tokens"
+        - "rate-limiting"
+        - "health-check-endpoint"
+      invalid:
+        - "JWT_Tokens"  # No uppercase or underscores
+        - "rate limiting"  # No spaces
+        - "feature.name"  # No dots
+
+  fr_number:
+    pattern: "^FR-\\d{3}$"
+    auto_increment: true
+    start_number: 1
+    examples:
+      - "FR-001"
+      - "FR-042"
+      - "FR-999"
+
+  deliverable_immutability:
+    phase_2:
+      - file: "spec.md"
+        immutable_after_phase: 2
+        reason: "Specification should not change after approval"
+
+    phase_3:
+      - file: "implementation-plan.md"
+        mutable_in_phase: 4
+        reason: "Plan can be updated with checkbox status during implementation"
+
+# Transition Rules
+transitions:
+  phase_1_to_phase_2:
+    requires:
+      - "Valid feature name generated"
+      - "Manual user approval"
+    creates:
+      - "FR-{NNN}-{feature-name} directory"
+
+  phase_2_to_phase_3:
+    requires:
+      - "spec.md exists and validated"
+      - "Manual user approval"
+    validation:
+      - "spec.md has all required sections"
+      - "spec.md does not contain implementation details"
+
+  phase_3_to_phase_4:
+    requires:
+      - "implementation-plan.md exists and validated"
+      - "Manual user approval"
+    validation:
+      - "implementation-plan.md has all required sections"
+      - "At least one task checkbox exists"
+      - "Tasks grouped by architectural layer"
+
+  phase_4_complete:
+    requires:
+      - "All checkboxes in implementation-plan.md are checked"
+      - "summary.md created"
+      - "Tests pass"
+    validation:
+      - "Exactly 1 summary.md exists"
+      - "At least one code file modified in src/"
+
+# Error Messages
+error_messages:
+  invalid_feature_name: "Feature name must be lowercase, alphanumeric with hyphens only (e.g., 'jwt-refresh-tokens')"
+  permission_denied_read: "Phase {phase} does not allow reading: {path}"
+  permission_denied_write: "Phase {phase} does not allow writing: {path}"
+  permission_denied_bash: "Phase {phase} does not allow bash command: {command}"
+  missing_deliverable: "Phase {phase} requires deliverable: {deliverable}"
+  invalid_transition: "Cannot transition from {from_phase} to {to_phase} - requirements not met"
+  immutable_file: "File {file} is immutable after phase {phase}"
+  missing_approval: "Manual approval required before proceeding to {next_phase}"

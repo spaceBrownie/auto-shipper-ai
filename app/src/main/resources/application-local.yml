@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/autoshipper_local
+    username: autoshipper
+    password: autoshipper
+  jpa:
+    show-sql: true
+  flyway:
+    enabled: true
+
+logging:
+  level:
+    com.autoshipper: DEBUG

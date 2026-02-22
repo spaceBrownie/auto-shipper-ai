@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:5432/autoshipper_test
+    username: autoshipper
+    password: autoshipper
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+  flyway:
+    enabled: true
+
+logging:
+  level:
+    com.autoshipper: DEBUG

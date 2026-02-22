@@ -1,0 +1,67 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Spring Boot
+*.pid
+spring.pid
+
+# Logs
+logs/
+*.log
+
+# Compiled output
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Node / Frontend
+node_modules/
+dist/
+frontend/dist/
+frontend/.vite/
+frontend/node_modules/
+
+# Python (meta_controller scripts)
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+pyvenv/
+
+# Test reports (keep source, not generated HTML)
+app/build/reports/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Docker / Colima
+.colima/
+
+# Claude Code internals (don't commit session state)
+.claude/projects/
