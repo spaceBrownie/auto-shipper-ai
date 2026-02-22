@@ -343,8 +343,8 @@ Implementation is tracked in `feature-requests/FR-NNN-name/` with a `spec.md`, `
 | FR-001 | Shared domain primitives | ✅ Complete |
 | FR-002 | Project bootstrap | ✅ Complete |
 | FR-003 | Catalog SKU lifecycle | ✅ Complete |
-| FR-004 | Catalog cost gate | Planned |
-| FR-005 | Catalog stress test | Planned |
+| FR-004 | Catalog cost gate | ✅ Complete |
+| FR-005 | Catalog stress test | ✅ Complete |
 | FR-006 | Pricing engine | Planned |
 | FR-007 | Vendor governance | Planned |
 | FR-008 | Fulfillment orchestration | Planned |
