@@ -43,29 +43,29 @@ catalog/src/main/kotlin/com/autoshipper/catalog/
 ## Task Breakdown
 
 ### Domain Layer
-- [ ] Implement `StressTestedMargin` `@JvmInline value class` with 30% floor enforcement in `init`
-- [ ] Implement `LaunchReadySku` data class requiring `CostEnvelope.Verified` + `StressTestedMargin`
-- [ ] Implement `StressTestResult` record (all stressed components, gross margin, net margin, passed, multipliers used)
-- [ ] Define `StressTestFailedException`
-- [ ] Define `StressTestConfig` `@ConfigurationProperties` class (shippingMultiplier, cacIncrease, supplierIncrease, refundRate, chargebackRate, grossMarginFloor, netMarginFloor)
+- [x] Implement `StressTestedMargin` `@JvmInline value class` with 30% floor enforcement in `init`
+- [x] Implement `LaunchReadySku` data class requiring `CostEnvelope.Verified` + `StressTestedMargin`
+- [x] Implement `StressTestResult` record (all stressed components, gross margin, net margin, passed, multipliers used)
+- [x] Define `StressTestFailedException`
+- [x] Define `StressTestConfig` `@ConfigurationProperties` class (shippingMultiplier, cacIncrease, supplierIncrease, refundRate, chargebackRate, grossMarginFloor, netMarginFloor)
 
 ### Domain Service
-- [ ] Implement `StressTestService.run(skuId)` applying all 5 multipliers to verified envelope
-- [ ] Calculate stressed gross margin: `(price - stressedCost) / price`
-- [ ] Calculate stressed net margin: after all stress variables applied
-- [ ] On pass: construct `StressTestedMargin`, construct `LaunchReadySku`, transition SKU to `Listed`
-- [ ] On pass: publish `SkuLaunched` event
-- [ ] On fail: transition SKU to `Terminated(MARGIN_BELOW_THRESHOLD)`
-- [ ] On fail: publish `SkuTerminated` event
-- [ ] Persist `StressTestResult` to `sku_stress_test_results` table
+- [x] Implement `StressTestService.run(skuId)` applying all 5 multipliers to verified envelope
+- [x] Calculate stressed gross margin: `(price - stressedCost) / price`
+- [x] Calculate stressed net margin: after all stress variables applied
+- [x] On pass: construct `StressTestedMargin`, construct `LaunchReadySku`, transition SKU to `Listed`
+- [x] On pass: publish `SkuLaunched` event
+- [x] On fail: transition SKU to `Terminated(MARGIN_BELOW_THRESHOLD)`
+- [x] On fail: publish `SkuTerminated` event
+- [x] Persist `StressTestResult` to `sku_stress_test_results` table
 
 ### Handler Layer
-- [ ] Implement `StressTestController` with `POST /api/skus/{id}/stress-test`
-- [ ] Return `StressTestResponse` with passed boolean, gross margin, net margin, stressed cost breakdown
+- [x] Implement `StressTestController` with `POST /api/skus/{id}/stress-test`
+- [x] Return `StressTestResponse` with passed boolean, gross margin, net margin, stressed cost breakdown
 
 ### Persistence (Common Layer)
-- [ ] Write `V4__stress_test_results.sql` migration
-- [ ] Implement `StressTestResultRepository`
+- [x] Write `V4__stress_test_results.sql` migration
+- [x] Implement `StressTestResultRepository`
 
 ## Testing Strategy
 
