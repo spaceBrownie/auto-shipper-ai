@@ -8,6 +8,7 @@ import com.autoshipper.catalog.persistence.StressTestResultRepository
 import com.autoshipper.shared.identity.SkuId
 import com.autoshipper.shared.money.Currency
 import com.autoshipper.shared.money.Money
+import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -21,7 +22,7 @@ class StressTestController(
     @PostMapping("/{id}/stress-test")
     fun runStressTest(
         @PathVariable id: String,
-        @RequestBody request: StressTestRequest
+        @Valid @RequestBody request: StressTestRequest
     ): ResponseEntity<Any> {
         val skuId = SkuId.of(id)
         val estimatedPrice = Money.of(request.estimatedPriceAmount, Currency.valueOf(request.currency.uppercase()))

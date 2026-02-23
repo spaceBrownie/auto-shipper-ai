@@ -30,6 +30,9 @@ class StressTestService(
     private val log = LoggerFactory.getLogger(StressTestService::class.java)
 
     fun run(skuId: SkuId, estimatedPrice: Money): LaunchReadySku {
+        require(estimatedPrice.normalizedAmount > BigDecimal.ZERO) {
+            "Estimated price must be positive for stress test (got ${estimatedPrice.normalizedAmount})"
+        }
         log.info("Running stress test for SKU $skuId with estimated price $estimatedPrice")
 
         val envelopeEntity = costEnvelopeRepository.findBySkuId(skuId.value)
@@ -83,11 +86,16 @@ class StressTestService(
         // Clamp to 0 for Percentage construction; negative margin is always a fail
         val grossMarginBd = rawGrossMarginBd.max(BigDecimal.ZERO)
         val grossMargin = Percentage.of(grossMarginBd)
+
+        // In Phase 1, net margin equals gross margin — all cost components (CAC, refunds,
+        // chargebacks, shipping) are already captured in stressedTotal. A distinct operating-cost
+        // layer will be introduced when the capital module tracks overhead allocations per SKU.
+        val rawNetMarginBd = rawGrossMarginBd
         val netMargin = grossMargin
 
         val testedAt = Instant.now()
         val grossPassed = rawGrossMarginBd >= config.grossMarginFloorPercent
-        val netPassed = rawGrossMarginBd >= config.netMarginFloorPercent
+        val netPassed = rawNetMarginBd >= config.netMarginFloorPercent
         val passed = grossPassed && netPassed
 
         val entity = StressTestResultEntity(

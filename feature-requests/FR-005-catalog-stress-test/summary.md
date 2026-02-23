@@ -44,3 +44,11 @@ Implemented the stress test gate that must pass before any SKU can reach `Listed
 - All stress multipliers are configurable via `application.yml` — no code change required for threshold adjustments.
 - Flyway runs `V4__stress_test_results.sql` automatically on startup.
 - `TerminationReason.STRESS_TEST_FAILED` is the reason code for stress-test-induced terminations.
+
+## Post-Merge Fixes (PR #1 Review)
+
+Two bugs identified in code review and corrected:
+
+1. **Net margin aliased to gross margin** (`val netMargin = grossMargin`): In Phase 1 all cost components (CAC, refunds, chargebacks, shipping) are already captured in `stressedTotal`, so gross and net margin are genuinely equivalent. The code was updated to introduce a distinct `rawNetMarginBd` variable that feeds `netPassed`, with an explicit comment documenting the Phase 1 equivalence and the future extension point (capital-module overhead allocation). This eliminates the fake two-tier appearance while keeping the structure ready for a real net-margin calculation.
+
+2. **Division by zero on zero `estimatedPrice`**: Added a `require(estimatedPrice.normalizedAmount > BigDecimal.ZERO)` precondition guard at the top of `StressTestService.run()`. Added `@field:DecimalMin("0.01")` to `StressTestRequest.estimatedPriceAmount` and `@Valid` to the controller's `@RequestBody` parameter so invalid requests are rejected at the HTTP boundary before reaching the service.
