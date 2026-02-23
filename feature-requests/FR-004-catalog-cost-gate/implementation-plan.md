@@ -55,41 +55,41 @@ catalog/src/main/kotlin/com/autoshipper/catalog/
 ## Task Breakdown
 
 ### Domain Layer
-- [ ] Implement `CostEnvelope` sealed class with `Unverified` and `Verified` variants
-- [ ] Add `fullyBurdened: Money` computed property to `Verified`
-- [ ] Add `PackageDimensions` value class (length, width, height, weight in standard units)
-- [ ] Add `Address` data class for origin/destination
-- [ ] Define `CostEnvelopeExpiredException` for stale envelope detection
+- [x] Implement `CostEnvelope` sealed class with `Unverified` and `Verified` variants
+- [x] Add `fullyBurdened: Money` computed property to `Verified`
+- [x] Add `PackageDimensions` value class (length, width, height, weight in standard units)
+- [x] Add `Address` data class for origin/destination
+- [x] Define `CostEnvelopeExpiredException` for stale envelope detection
 
 ### Proxy Layer
-- [ ] Define `CarrierRateProvider` interface
-- [ ] Implement `UpsRateAdapter` with Spring `RestClient` and UPS API auth
-- [ ] Implement `FedExRateAdapter` with Spring `RestClient` and FedEx API auth
-- [ ] Implement `UspsRateAdapter` with Spring `RestClient` and USPS API auth
-- [ ] Implement `StripeProcessingFeeProvider` fetching live rate
-- [ ] Implement `ShopifyPlatformFeeProvider` fetching current plan fee
-- [ ] Add Resilience4j circuit breaker + retry (3 attempts, exponential backoff) on all adapters
-- [ ] Implement `DimWeightCalculator` (length × width × height / divisor, compare to actual weight)
+- [x] Define `CarrierRateProvider` interface
+- [x] Implement `UpsRateAdapter` with Spring `RestClient` and UPS API auth
+- [x] Implement `FedExRateAdapter` with Spring `RestClient` and FedEx API auth
+- [x] Implement `UspsRateAdapter` with Spring `RestClient` and USPS API auth
+- [x] Implement `StripeProcessingFeeProvider` fetching live rate
+- [x] Implement `ShopifyPlatformFeeProvider` fetching current plan fee
+- [x] Add Resilience4j circuit breaker + retry (3 attempts, exponential backoff) on all adapters
+- [x] Implement `DimWeightCalculator` (length × width × height / divisor, compare to actual weight) — implemented as `billableWeight()` method on `PackageDimensions`
 
 ### Domain Service
-- [ ] Implement `CostGateService.verify()` orchestrating all 13 components
-- [ ] Publish `CostEnvelopeVerified` domain event on successful verification
-- [ ] Persist `CostEnvelope.Verified` to `sku_cost_envelopes` table
-- [ ] Transition SKU state from `CostGating` → `StressTesting` on success
+- [x] Implement `CostGateService.verify()` orchestrating all 13 components
+- [x] Publish `CostEnvelopeVerified` domain event on successful verification
+- [x] Persist `CostEnvelope.Verified` to `sku_cost_envelopes` table
+- [x] Transition SKU state from `CostGating` → `StressTesting` on success
 
 ### Handler Layer
-- [ ] Implement `CostGateController` with `POST /api/skus/{id}/verify-costs`
-- [ ] Add `VerifyCostsRequest` DTO (vendor quote, package dims, CAC, jurisdiction)
-- [ ] Return `CostEnvelopeResponse` with all components and `fullyBurdened` total
+- [x] Implement `CostGateController` with `POST /api/skus/{id}/verify-costs`
+- [x] Add `VerifyCostsRequest` DTO (vendor quote, package dims, CAC, jurisdiction)
+- [x] Return `CostEnvelopeResponse` with all components and `fullyBurdened` total
 
 ### Config Layer
-- [ ] Create `ExternalApiConfig` with `RestClient` beans for UPS, FedEx, USPS, Stripe, Shopify
-- [ ] Configure Resilience4j circuit breakers in `application.yml`
-- [ ] Add all API credentials as environment variable references
+- [x] Create `ExternalApiConfig` with `RestClient` beans for UPS, FedEx, USPS, Stripe, Shopify
+- [x] Configure Resilience4j circuit breakers in `application.yml`
+- [x] Add all API credentials as environment variable references
 
 ### Persistence (Common Layer)
-- [ ] Write `V3__cost_envelopes.sql` migration
-- [ ] Implement `CostEnvelopeRepository`
+- [x] Write `V3__cost_envelopes.sql` migration
+- [x] Implement `CostEnvelopeRepository`
 
 ## Testing Strategy
 

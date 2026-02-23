@@ -47,3 +47,92 @@ logging:
   level:
     com.autoshipper: INFO
     org.springframework: WARN
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      ups-rate:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+      fedex-rate:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+      usps-rate:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+      stripe-fee:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+      shopify-fee:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+  retry:
+    instances:
+      ups-rate:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+      fedex-rate:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+      usps-rate:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+      stripe-fee:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+      shopify-fee:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+
+ups:
+  api:
+    base-url: ${UPS_API_BASE_URL:https://onlinetools.ups.com}
+    client-id: ${UPS_CLIENT_ID:}
+    client-secret: ${UPS_CLIENT_SECRET:}
+
+fedex:
+  api:
+    base-url: ${FEDEX_API_BASE_URL:https://apis.fedex.com}
+    client-id: ${FEDEX_CLIENT_ID:}
+    client-secret: ${FEDEX_CLIENT_SECRET:}
+
+usps:
+  api:
+    base-url: ${USPS_API_BASE_URL:https://api.usps.com}
+    oauth-token: ${USPS_OAUTH_TOKEN:}
+
+stripe:
+  api:
+    base-url: ${STRIPE_API_BASE_URL:https://api.stripe.com}
+    secret-key: ${STRIPE_SECRET_KEY:}
+
+shopify:
+  api:
+    base-url: ${SHOPIFY_API_BASE_URL:https://mystore.myshopify.com}
+    access-token: ${SHOPIFY_ACCESS_TOKEN:}
+  platform:
+    estimated-order-value: ${SHOPIFY_ESTIMATED_ORDER_VALUE:100.00}
+
+stress-test:
+  shipping-multiplier: 2.0
+  cac-increase-percent: 15
+  supplier-increase-percent: 10
+  refund-rate-percent: 5
+  chargeback-rate-percent: 2
+  gross-margin-floor-percent: 50
+  net-margin-floor-percent: 30
