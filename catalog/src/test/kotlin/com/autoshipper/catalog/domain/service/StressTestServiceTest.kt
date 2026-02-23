@@ -6,7 +6,6 @@ import com.autoshipper.catalog.persistence.CostEnvelopeRepository
 import com.autoshipper.catalog.persistence.SkuRepository
 import com.autoshipper.catalog.persistence.StressTestResultEntity
 import com.autoshipper.catalog.persistence.StressTestResultRepository
-import com.autoshipper.shared.events.SkuTerminated
 import com.autoshipper.shared.identity.SkuId
 import com.autoshipper.shared.money.Currency
 import com.autoshipper.shared.money.Money
@@ -18,7 +17,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.*
-import org.springframework.context.ApplicationEventPublisher
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
@@ -31,7 +29,6 @@ class StressTestServiceTest {
     @Mock lateinit var skuRepository: SkuRepository
     @Mock lateinit var costEnvelopeRepository: CostEnvelopeRepository
     @Mock lateinit var stressTestResultRepository: StressTestResultRepository
-    @Mock lateinit var eventPublisher: ApplicationEventPublisher
 
     private val config = StressTestConfig(
         shippingMultiplier = BigDecimal("2.0"),
@@ -54,8 +51,7 @@ class StressTestServiceTest {
             skuRepository = skuRepository,
             costEnvelopeRepository = costEnvelopeRepository,
             stressTestResultRepository = stressTestResultRepository,
-            config = config,
-            eventPublisher = eventPublisher
+            config = config
         )
     }
 
@@ -136,7 +132,8 @@ class StressTestServiceTest {
         }
 
         verify(stressTestResultRepository).save(any())
-        verify(eventPublisher).publishEvent(any<SkuTerminated>())
+        // SkuService.transition() is responsible for publishing SkuTerminated — verify it was called
+        verify(skuService).transition(skuId, SkuState.Terminated(TerminationReason.STRESS_TEST_FAILED))
     }
 
     @Test

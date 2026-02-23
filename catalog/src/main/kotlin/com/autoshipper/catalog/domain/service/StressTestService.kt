@@ -5,13 +5,11 @@ import com.autoshipper.catalog.persistence.CostEnvelopeRepository
 import com.autoshipper.catalog.persistence.SkuRepository
 import com.autoshipper.catalog.persistence.StressTestResultEntity
 import com.autoshipper.catalog.persistence.StressTestResultRepository
-import com.autoshipper.shared.events.SkuTerminated
 import com.autoshipper.shared.identity.SkuId
 import com.autoshipper.shared.money.Currency
 import com.autoshipper.shared.money.Money
 import com.autoshipper.shared.money.Percentage
 import org.slf4j.LoggerFactory
-import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
@@ -24,8 +22,7 @@ class StressTestService(
     private val skuRepository: SkuRepository,
     private val costEnvelopeRepository: CostEnvelopeRepository,
     private val stressTestResultRepository: StressTestResultRepository,
-    private val config: StressTestConfig,
-    private val eventPublisher: ApplicationEventPublisher
+    private val config: StressTestConfig
 ) {
     private val log = LoggerFactory.getLogger(StressTestService::class.java)
 
@@ -128,10 +125,8 @@ class StressTestService(
             log.info("Stress test passed for SKU $skuId. Gross margin: $grossMargin, Net margin: $netMargin")
             LaunchReadySku(sku = sku, envelope = envelope, stressTestedMargin = stressTestedMargin)
         } else {
+            // SkuService.transition() already publishes SkuTerminated for Terminated states.
             skuService.transition(skuId, SkuState.Terminated(TerminationReason.STRESS_TEST_FAILED))
-            eventPublisher.publishEvent(
-                SkuTerminated(skuId = skuId, reason = TerminationReason.STRESS_TEST_FAILED.name)
-            )
             log.warn("Stress test failed for SKU $skuId. Gross margin: $grossMargin, Net margin: $netMargin")
             throw StressTestFailedException(skuId, grossMargin, netMargin)
         }
