@@ -1,8 +1,8 @@
 plugins {
+    kotlin("jvm")
     kotlin("plugin.spring")
     kotlin("plugin.jpa")
     id("org.springframework.boot")
-    // io.spring.dependency-management and kotlin("jvm") applied by root subprojects block
 }
 
 dependencies {
@@ -32,6 +32,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.test {
