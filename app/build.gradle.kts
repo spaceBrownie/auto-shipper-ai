@@ -1,3 +1,5 @@
+import org.springframework.boot.gradle.tasks.run.BootRun
+
 plugins {
     kotlin("jvm")
     kotlin("plugin.spring")
@@ -37,4 +39,12 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+tasks.named<BootRun>("bootRun") {
+    if (System.getenv("SPRING_PROFILES_ACTIVE").isNullOrBlank() &&
+        System.getProperty("spring.profiles.active").isNullOrBlank()
+    ) {
+        systemProperty("spring.profiles.active", "local")
+    }
 }

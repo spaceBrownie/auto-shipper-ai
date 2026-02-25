@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/autoshipper}
+    username: ${DB_USERNAME:autoshipper}
+    password: ${DB_PASSWORD:autoshipper}
   jpa:
     show-sql: true
   flyway:
