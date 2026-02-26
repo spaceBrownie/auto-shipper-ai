@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: autoshipper-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: autoshipper
+      POSTGRES_PASSWORD: autoshipper
+      POSTGRES_DB: autoshipper
+    ports:
+      - "5432:5432"
+    volumes:
+      - autoshipper_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  autoshipper_postgres_data:
