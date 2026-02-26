@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 plugins {
@@ -32,6 +33,7 @@ subprojects {
 
         tasks.withType<KotlinJvmCompile>().configureEach {
             compilerOptions {
+                jvmTarget.set(JvmTarget.JVM_21)
                 // Kotlin 2.3 warning compatibility mode for constructor-parameter annotations
                 freeCompilerArgs.add("-Xannotation-default-target=param-property")
             }
