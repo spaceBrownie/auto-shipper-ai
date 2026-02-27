@@ -1,3 +1,6 @@
+> **Path update (FR-013):** All source paths below use the post-refactor `modules/` prefix,
+> e.g. `modules/fulfillment/src/...` instead of `fulfillment/src/...`.
+
 # FR-008: Fulfillment Orchestration — Implementation Plan
 
 ## Technical Design

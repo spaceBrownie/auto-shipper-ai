@@ -1,3 +1,6 @@
+> **Path update (FR-013):** All source paths below use the post-refactor `modules/` prefix,
+> e.g. `modules/capital/src/...` instead of `capital/src/...`.
+
 # FR-009: Capital Protection — Implementation Plan
 
 ## Technical Design

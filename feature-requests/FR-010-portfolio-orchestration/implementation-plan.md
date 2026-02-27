@@ -1,3 +1,6 @@
+> **Path update (FR-013):** All source paths below use the post-refactor `modules/` prefix,
+> e.g. `modules/portfolio/src/...` instead of `portfolio/src/...`.
+
 # FR-010: Portfolio Orchestration — Implementation Plan
 
 ## Technical Design

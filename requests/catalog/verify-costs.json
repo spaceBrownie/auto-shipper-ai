@@ -1,0 +1,57 @@
+{
+  "vendorQuote": {
+    "amount": 8.00,
+    "currency": "USD"
+  },
+  "packageDimensions": {
+    "lengthCm": 20.0,
+    "widthCm": 15.0,
+    "heightCm": 10.0,
+    "weightKg": 0.80
+  },
+  "origin": {
+    "street": "1000 Commerce Way",
+    "city": "Los Angeles",
+    "stateOrProvince": "CA",
+    "postalCode": "90001",
+    "countryCode": "US"
+  },
+  "destination": {
+    "street": "123 Main St",
+    "city": "New York",
+    "stateOrProvince": "NY",
+    "postalCode": "10001",
+    "countryCode": "US"
+  },
+  "cacEstimate": {
+    "amount": 8.00,
+    "currency": "USD"
+  },
+  "jurisdiction": "US-NY",
+  "warehouseCost": {
+    "amount": 0.75,
+    "currency": "USD"
+  },
+  "customerServiceCost": {
+    "amount": 0.50,
+    "currency": "USD"
+  },
+  "packagingCost": {
+    "amount": 0.50,
+    "currency": "USD"
+  },
+  "returnHandlingCost": {
+    "amount": 0.80,
+    "currency": "USD"
+  },
+  "refundAllowanceRatePercent": 5.0,
+  "chargebackAllowanceRatePercent": 2.0,
+  "taxesAndDuties": {
+    "amount": 0.00,
+    "currency": "USD"
+  },
+  "estimatedOrderValue": {
+    "amount": 99.99,
+    "currency": "USD"
+  }
+}

@@ -1,3 +1,8 @@
+> **Path update (FR-013):** The `frontend/` directory remains at the repository root and
+> the paths in this plan are unaffected. However, the Spring Boot backend modules that this
+> dashboard calls have moved: use `modules/<name>/src/...` instead of `<name>/src/...` when
+> referencing backend source paths (e.g. `modules/catalog/src/...` instead of `catalog/src/...`).
+
 # FR-012: Frontend Dashboard — Implementation Plan
 
 ## Technical Design
