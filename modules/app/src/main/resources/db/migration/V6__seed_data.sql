@@ -7,7 +7,7 @@
 
 -- ============================================================
 -- SKU 1: Bluetooth Speaker Pro — LISTED
--- all-in cost $36.55 | price $99.99 | stressed total $43.55 | gross margin 56.45% ✓
+-- all-in cost $36.55 | price $99.99 | stressed total $43.5493 | gross margin 56.45% ✓
 -- ============================================================
 INSERT INTO skus (id, name, category, current_state, termination_reason, version, created_at, updated_at)
 VALUES (
@@ -55,7 +55,7 @@ INSERT INTO sku_cost_envelopes (
     NOW() - INTERVAL '12 days'
 );
 
--- stressed total = $43.55 → gross margin = (99.99 − 43.55) / 99.99 × 100 = 56.4456 % ≥ 50 % ✓
+-- stressed total = $43.5493 → gross margin = (99.99 − 43.5493) / 99.99 × 100 = 56.4463 % ≥ 50 % ✓
 INSERT INTO sku_stress_test_results (
     id, sku_id, currency,
     stressed_shipping_amount, stressed_cac_amount, stressed_supplier_amount,
@@ -70,12 +70,12 @@ INSERT INTO sku_stress_test_results (
     10.0000,  -- stressed shipping  (5.00 × 2.0)
     9.2000,   -- stressed CAC       (8.00 × 1.15)
     8.8000,   -- stressed supplier  (8.00 × 1.10)
-    5.0000,   -- stressed refund    (99.99 × 0.05)
-    2.0000,   -- stressed chargeback(99.99 × 0.02)
-    43.5500,  -- stressed total cost
+    4.9995,   -- stressed refund    (99.99 × 0.05)
+    1.9998,   -- stressed chargeback(99.99 × 0.02)
+    43.5493,  -- stressed total cost
     99.9900,  -- estimated price
-    56.4456,  -- gross margin %
-    56.4456,  -- net margin % (equals gross in Phase 1)
+    56.4463,  -- gross margin %
+    56.4463,  -- net margin % (equals gross in Phase 1)
     TRUE,
     2.0000, 15.0000, 10.0000, 5.0000, 2.0000,
     NOW() - INTERVAL '10 days',
@@ -149,7 +149,7 @@ VALUES (
 
 -- ============================================================
 -- SKU 4: USB-C Charging Hub — TERMINATED (STRESS_TEST_FAILED)
--- all-in cost $26.50 | price $39.99 | stressed total $32.85 | gross margin 17.85% ✗
+-- all-in cost $26.50 | price $39.99 | stressed total $32.8493 | gross margin 17.86% ✗
 -- ============================================================
 INSERT INTO skus (id, name, category, current_state, termination_reason, version, created_at, updated_at)
 VALUES (
@@ -197,7 +197,7 @@ INSERT INTO sku_cost_envelopes (
     NOW() - INTERVAL '19 days'
 );
 
--- stressed total = $32.85 → gross margin = (39.99 − 32.85) / 39.99 × 100 = 17.85 % < 50 % ✗
+-- stressed total = $32.8493 → gross margin = (39.99 − 32.8493) / 39.99 × 100 = 17.8562 % < 50 % ✗
 INSERT INTO sku_stress_test_results (
     id, sku_id, currency,
     stressed_shipping_amount, stressed_cac_amount, stressed_supplier_amount,
@@ -212,12 +212,12 @@ INSERT INTO sku_stress_test_results (
     9.0000,   -- stressed shipping  (4.50 × 2.0)
     10.3500,  -- stressed CAC       (9.00 × 1.15)
     5.5000,   -- stressed supplier  (5.00 × 1.10)
-    2.0000,   -- stressed refund    (39.99 × 0.05)
-    0.8000,   -- stressed chargeback(39.99 × 0.02)
-    32.8500,  -- stressed total cost
+    1.9995,   -- stressed refund    (39.99 × 0.05)
+    0.7998,   -- stressed chargeback(39.99 × 0.02)
+    32.8493,  -- stressed total cost
     39.9900,  -- estimated price
-    17.8545,  -- gross margin %
-    17.8545,  -- net margin %
+    17.8562,  -- gross margin %
+    17.8562,  -- net margin %
     FALSE,
     2.0000, 15.0000, 10.0000, 5.0000, 2.0000,
     NOW() - INTERVAL '18 days',

@@ -36,7 +36,7 @@ logs/
 *.class
 *.jar
 !gradle/wrapper/gradle-wrapper.jar
-/*/bin/
+/modules/*/bin/
 
 # Node / Frontend
 node_modules/

@@ -71,6 +71,7 @@ compliance/src/main/kotlin/com/autoshipper/compliance/
 - [ ] Emit `ComplianceFailed` with reason if any check fails
 - [ ] Write audit record for every check run (both pass and fail)
 - [ ] Implement `CatalogComplianceListener` in catalog module: on `ComplianceCleared` → transition SKU to `ValidationPending`; on `ComplianceFailed` → terminate SKU
+  - Note: `POST /api/skus/{id}/state` (added in catalog module, `SkuController`) currently allows manual state transitions as a development escape hatch. Once `CatalogComplianceListener` is wired, evaluate whether to restrict or remove the manual transition to `VALIDATION_PENDING` so the compliance gate cannot be bypassed in production.
 
 ### Proxy Layer
 - [ ] Implement `ClaudeComplianceAdapter` calling Claude API for IP/claims analysis (toggled by `compliance.llm.enabled`)

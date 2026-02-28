@@ -4,6 +4,7 @@ import com.autoshipper.catalog.domain.SkuState
 import com.autoshipper.catalog.domain.service.SkuService
 import com.autoshipper.catalog.handler.dto.CreateSkuRequest
 import com.autoshipper.catalog.handler.dto.SkuResponse
+import com.autoshipper.catalog.handler.dto.TransitionSkuRequest
 import com.autoshipper.shared.identity.SkuId
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -35,5 +36,15 @@ class SkuController(private val skuService: SkuService) {
             skuService.findAll()
         }
         return ResponseEntity.ok(skus.map { SkuResponse.from(it) })
+    }
+
+    @PostMapping("/{id}/state")
+    fun transition(
+        @PathVariable id: String,
+        @Valid @RequestBody request: TransitionSkuRequest
+    ): ResponseEntity<SkuResponse> {
+        val targetState = SkuState.fromDiscriminator(request.state.uppercase())
+        val sku = skuService.transition(SkuId.of(id), targetState)
+        return ResponseEntity.ok(SkuResponse.from(sku))
     }
 }
