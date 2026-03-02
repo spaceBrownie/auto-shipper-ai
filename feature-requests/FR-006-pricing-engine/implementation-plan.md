@@ -1,3 +1,6 @@
+> **Path update (FR-013):** All source paths below use the post-refactor `modules/` prefix,
+> e.g. `modules/pricing/src/...` instead of `pricing/src/...`.
+
 # FR-006: Pricing Engine — Implementation Plan
 
 ## Technical Design

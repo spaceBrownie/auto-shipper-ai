@@ -1,3 +1,6 @@
+> **Path update (FR-013):** All source paths below use the post-refactor `modules/` prefix,
+> e.g. `modules/vendor/src/...` instead of `vendor/src/...`.
+
 # FR-007: Vendor Governance — Implementation Plan
 
 ## Technical Design
