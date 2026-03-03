@@ -10,7 +10,7 @@
 | Tech Stack | Kotlin + Spring Boot + Docker Compose |
 | Target Deploy | Single VPS ($6–12/mo) or local machine |
 | Monthly Budget | ~$80–100/mo total (platforms + infrastructure) |
-| Status | Draft v1.0 |
+| Status | Draft v1.1 — Post-Implementation Audit |
 
 ---
 
@@ -22,7 +22,7 @@ This document specifies the design, architecture, and implementation plan for an
 
 - Discovers demand signals from free public data sources (Google Trends, Reddit, Amazon PA-API)
 - Validates willingness to pay before committing to any product
-- Enforces a mandatory cost gate — no SKU is listed until all 14 cost components are verified and stress-tested
+- Enforces a mandatory cost gate — no SKU is listed until all 13 cost components are verified and stress-tested
 - Lists products across Shopify, Amazon, Etsy, and TikTok Shop via API
 - Routes fulfillment through CJ Dropshipping, Printful, Printify, or Gelato with zero manual steps
 - Monitors margins, vendor SLAs, refund rates, and CAC continuously via scheduled jobs
@@ -99,16 +99,19 @@ volumes:
 
 ### 2.3 Application Modules
 
-| Module | Responsibility | Key Types |
-|---|---|---|
-| `catalog` | SKU lifecycle, cost gate, stress test, state machine | `CostEnvelope`, `LaunchReadySku`, `SkuState` |
-| `pricing` | Dynamic pricing engine, signal processing | `PricingSignal`, `PricingDecision` |
-| `vendor` | Supplier registry, SLA monitoring, reliability scoring | `VendorProfile`, `SlaRecord`, `ReliabilityScore` |
-| `fulfillment` | Order routing, tracking, auto-refund triggers | `Order`, `FulfillmentRoute`, `TrackingEvent` |
-| `capital` | Reserve management, margin dashboards, kill rules | `ReserveAccount`, `MarginSnapshot`, `KillRule` |
-| `compliance` | IP/trademark checks, FTC rule enforcement | `TrademarkCheck`, `FtcComplianceRecord` |
-| `portfolio` | Experiment tracker, scale/kill orchestration | `Experiment`, `AllocationDecision` |
-| `shared` | Common value types used across all modules | `Money`, `Percentage`, `SkuId`, `DomainEvent` |
+All modules live under the `modules/` directory. The entry point is `modules/app`.
+
+| Module | Path | Responsibility | Key Types |
+|---|---|---|---|
+| `app` | `modules/app` | Spring Boot entry point, Flyway migrations, config | `AutoShipperApplication` |
+| `shared` | `modules/shared` | Common value types used across all modules | `Money`, `Percentage`, `SkuId`, `DomainEvent` |
+| `catalog` | `modules/catalog` | SKU lifecycle, cost gate, stress test, state machine | `CostEnvelope`, `LaunchReadySku`, `SkuState` |
+| `pricing` | `modules/pricing` | Dynamic pricing engine, signal processing | `PricingSignal`, `PricingDecision` |
+| `vendor` | `modules/vendor` | Supplier registry, SLA monitoring, reliability scoring | `VendorProfile`, `SlaRecord`, `ReliabilityScore` |
+| `fulfillment` | `modules/fulfillment` | Order routing, tracking, auto-refund triggers | `Order`, `FulfillmentRoute`, `TrackingEvent` |
+| `capital` | `modules/capital` | Reserve management, margin dashboards, kill rules | `ReserveAccount`, `MarginSnapshot`, `KillRule` |
+| `compliance` | `modules/compliance` | IP/trademark checks, FTC rule enforcement | `TrademarkCheck`, `FtcComplianceRecord` |
+| `portfolio` | `modules/portfolio` | Experiment tracker, scale/kill orchestration | `Experiment`, `AllocationDecision` |
 
 ### 2.4 Scheduled Jobs — Replacing Kafka
 
@@ -138,28 +141,45 @@ No SKU may be listed without a fully verified cost envelope. Enforced by the typ
 sealed class CostEnvelope {
     data class Unverified(val skuId: SkuId) : CostEnvelope()
 
-    data class Verified(
+    class Verified internal constructor(
         val skuId: SkuId,
-        val unitCost: Money,
+        val supplierUnitCost: Money,
+        val inboundShipping: Money,           // live — carrier rate APIs
+        val outboundShipping: Money,          // live — carrier rate APIs
+        val platformFee: Money,               // live — platform API (pre-computed)
+        val processingFee: Money,             // live — Stripe API (pre-computed)
         val packagingCost: Money,
-        val freightCost: Money,
-        val lastMileCost: Money,              // live — Shippo API
-        val dimWeightSurcharge: Money,
-        val paymentProcessingFee: Percentage, // live — Stripe API
-        val platformFee: Percentage,          // live — platform API
-        val modeledCac: Money,
-        val refundReserve: Percentage,
-        val chargebackReserve: Percentage,
-        val taxHandling: Money,               // Shopify Tax API
-        val currencyBuffer: Percentage,       // Frankfurter API
-        val reverseLogistics: Money,
-        val supportAllocation: Money,
+        val returnHandlingCost: Money,
+        val customerAcquisitionCost: Money,
+        val warehousingCost: Money,
+        val customerServiceCost: Money,
+        val refundAllowance: Money,
+        val chargebackAllowance: Money,
+        val taxesAndDuties: Money,            // Shopify Tax API
         val verifiedAt: Instant
     ) : CostEnvelope() {
-        val fullyBurdened: Money get() = /* sum all 14 components */
+
+        init {
+            // Enforce currency homogeneity across all 13 components
+            val currencies = listOf(
+                supplierUnitCost, inboundShipping, outboundShipping, platformFee,
+                processingFee, packagingCost, returnHandlingCost, customerAcquisitionCost,
+                warehousingCost, customerServiceCost, refundAllowance, chargebackAllowance,
+                taxesAndDuties
+            ).map { it.currency }.toSet()
+            require(currencies.size == 1) { "All cost components must share the same currency" }
+        }
+
+        val fullyBurdened: Money = /* sum all 13 components */
+
+        companion object {
+            internal fun create(/* all 13 Money fields + verifiedAt */): Verified
+        }
     }
 }
 ```
+
+> **Note:** `Verified` uses `internal constructor` — only `CostGateService` can construct it, enforcing that all cost data flows through the verification pipeline. All fee-based components (platform fees, processing fees, refund/chargeback allowances) are pre-computed into absolute `Money` amounts by the adapter layer before envelope construction.
 
 ### 3.2 Stress Test Gate
 
@@ -195,9 +215,13 @@ sealed class SkuState {
 }
 
 enum class TerminationReason {
-    MARGIN_BELOW_THRESHOLD, COST_EXCEEDS_PRICE_CEILING,
-    HIGH_REFUND_RATE, HIGH_CHARGEBACK_RATE,
-    VENDOR_SLA_BREACH, CAC_INSTABILITY, DYNAMIC_PRICING_INEFFECTIVE
+    STRESS_TEST_FAILED,        // failed pre-launch stress test gate
+    MARGIN_BELOW_FLOOR,        // live margin dropped below 30% floor
+    REFUND_RATE_EXCEEDED,      // refund rate > 5% rolling 30 days
+    CHARGEBACK_RATE_EXCEEDED,  // chargeback rate > 2% rolling 30 days
+    VENDOR_SLA_BREACH,         // vendor delivery SLA breach
+    COMPLIANCE_VIOLATION,      // IP/trademark/regulatory failure
+    MANUAL_OVERRIDE            // operator-initiated termination
 }
 ```
 
@@ -207,16 +231,38 @@ Raw `Double` or `BigDecimal` are prohibited in all domain models.
 
 ```kotlin
 data class Money(val amount: BigDecimal, val currency: Currency) {
-    operator fun plus(other: Money): Money {
-        require(currency == other.currency) { "Currency mismatch" }
-        return Money(amount + other.amount, currency)
+
+    // All amounts normalized to scale=4
+    val normalizedAmount: BigDecimal = amount.setScale(4, RoundingMode.HALF_UP)
+
+    companion object {
+        fun of(amount: BigDecimal, currency: Currency): Money
+        fun of(amount: Double, currency: Currency): Money
     }
-    fun marginAgainst(revenue: Money): Percentage =
-        Percentage((revenue.amount - amount) / revenue.amount * 100.toBigDecimal())
+
+    operator fun plus(other: Money): Money {
+        if (currency != other.currency) throw CurrencyMismatchException(currency, other.currency)
+        return Money(normalizedAmount.add(other.normalizedAmount), currency)
+    }
+    operator fun minus(other: Money): Money
+    operator fun times(factor: BigDecimal): Money
+
+    fun marginAgainst(revenue: Money): Percentage
 }
 
 @JvmInline value class Percentage(val value: BigDecimal) {
-    operator fun compareTo(other: Percentage) = value.compareTo(other.value)
+    init { require(value >= BigDecimal.ZERO && value <= BigDecimal(100)) }
+
+    companion object {
+        fun of(value: BigDecimal): Percentage
+        fun of(value: Double): Percentage
+        fun of(value: Int): Percentage
+    }
+
+    fun toDecimalFraction(): BigDecimal  // value / 100 at scale=4
+    operator fun plus(other: Percentage): Percentage
+    operator fun minus(other: Percentage): Percentage
+    operator fun times(factor: BigDecimal): Percentage
 }
 ```
 
@@ -253,11 +299,15 @@ data class Money(val amount: BigDecimal, val currency: Currency) {
 Every external API lives behind an interface. Swap any provider without touching domain logic.
 
 ```kotlin
+// Implemented — lives in catalog module for cost gate; used by CostGateService
+// Implementations: FedExRateAdapter, UpsRateAdapter, UspsRateAdapter
 interface CarrierRateProvider {
-    fun getRates(shipment: ShipmentSpec): List<CarrierRate>
-    fun getTrackingStatus(trackingNumber: String): TrackingEvent
+    val carrierName: String
+    fun getRate(origin: Address, destination: Address, dims: PackageDimensions): Money
 }
 
+// Target design — not yet implemented
+// Tracking will live in a separate CarrierTrackingProvider in the fulfillment module
 interface PlatformAdapter {
     fun listSku(sku: LaunchReadySku): PlatformListingId
     fun pauseSku(id: PlatformListingId)
@@ -265,12 +315,15 @@ interface PlatformAdapter {
     fun getFees(productCategory: String, price: Money): PlatformFees
 }
 
+// Target design — not yet implemented
 interface SupplierAdapter {
     fun getProductCost(supplierId: String): Money
     fun placeOrder(order: Order): SupplierOrderId
     fun getOrderStatus(id: SupplierOrderId): FulfillmentStatus
 }
 ```
+
+> **Stale reference note:** FR-008 (fulfillment-orchestration) spec and plan reference `CarrierRateProvider` for tracking. The tracking concern now belongs to a separate `CarrierTrackingProvider` interface in the `fulfillment` module. FR-008 docs should be updated when that module enters implementation.
 
 ---
 
@@ -282,7 +335,7 @@ All thresholds are read from environment variables at job execution time. No red
 
 | Requirement | Threshold | Action if Fail |
 |---|---|---|
-| All 14 cost components verified | 100% | SKU stays in `CostGating` |
+| All 13 cost components verified | 100% | SKU stays in `CostGating` |
 | Gross margin | >= 50% | Terminate — cannot launch |
 | Net margin (stress-tested) | >= 30% | Terminate — cannot launch |
 | Stress: 2x shipping | Net >= 30% | Terminate |
@@ -320,21 +373,22 @@ All thresholds are read from environment variables at job execution time. No red
 
 ### 6.2 Core Schema Entities
 
-| Entity | Key Fields | Module |
-|---|---|---|
-| `skus` | id, state, created_at, terminated_reason, fully_burdened_cost | catalog |
-| `cost_envelopes` | sku_id, all 14 cost components, verified_at | catalog |
-| `stress_test_results` | sku_id, gross_margin, net_margin, passed, run_at | catalog |
-| `platform_listings` | sku_id, platform, listing_id, current_price, status | catalog |
-| `vendor_profiles` | id, name, sla_days, defect_rate_pct, reliability_score | vendor |
-| `sla_records` | vendor_id, sku_id, expected_date, actual_date, breached | vendor |
-| `orders` | id, sku_id, platform, supplier_order_id, status, tracking | fulfillment |
-| `margin_snapshots` | sku_id, date, gross_margin, net_margin, cac, refund_rate | capital |
-| `reserve_account` | date, revenue, reserve_amount, reserve_pct | capital |
-| `experiments` | id, sku_id, budget, start_date, end_date, verdict | portfolio |
-| `pricing_signals` | sku_id, signal_type, delta_pct, received_at, applied | pricing |
+| Entity | Key Fields | Module | Status |
+|---|---|---|---|
+| `skus` | id, current_state, termination_reason, version, created_at | catalog | Implemented |
+| `sku_state_history` | sku_id, from_state, to_state, transitioned_at | catalog | Implemented |
+| `sku_cost_envelopes` | sku_id, all 13 cost components, verified_at (UNIQUE on sku_id) | catalog | Implemented |
+| `sku_stress_test_results` | sku_id, stressed amounts, gross/net margins, passed, tested_at | catalog | Implemented |
+| `platform_listings` | sku_id, platform, listing_id, current_price, status | catalog | Planned |
+| `vendor_profiles` | id, name, sla_days, defect_rate_pct, reliability_score | vendor | Planned |
+| `sla_records` | vendor_id, sku_id, expected_date, actual_date, breached | vendor | Planned |
+| `orders` | id, sku_id, platform, supplier_order_id, status, tracking | fulfillment | Planned |
+| `margin_snapshots` | sku_id, date, gross_margin, net_margin, cac, refund_rate | capital | Planned |
+| `reserve_account` | date, revenue, reserve_amount, reserve_pct | capital | Planned |
+| `experiments` | id, sku_id, budget, start_date, end_date, verdict | portfolio | Planned |
+| `pricing_signals` | sku_id, signal_type, delta_pct, received_at, applied | pricing | Planned |
 
-All schema changes managed via Flyway in `src/main/resources/db/migration/`.
+All schema changes managed via Flyway in `modules/app/src/main/resources/db/migration/`.
 
 ---
 
@@ -428,6 +482,7 @@ The `PlatformAdapter` and `CarrierRateProvider` interfaces already abstract coun
 | Dropship vs POD vs both | Determines which supplier adapters to build first | Start with one; add others after first sale |
 | Primary launch platform | Determines which `PlatformAdapter` to build first | Shopify — best API, most control, Tax included |
 | Keepa integration timing | $54/mo but best Amazon demand data | Start with PA-API free; add Keepa for Amazon-focused research |
+| Currency buffer in CostEnvelope | Needed for international expansion (Phase 2+) but not in current 13-component structure | Add as 14th component when Frankfurter API integration is built; not needed for US-only Phase 1 |
 
 ---
 
@@ -445,3 +500,26 @@ The `PlatformAdapter` and `CarrierRateProvider` interfaces already abstract coun
 ---
 
 *Validate before scaling. Protect margin before revenue. Terminate weaknesses early. Compound strengths aggressively.*
+
+---
+
+## Changelog
+
+### v1.1 — Post-Implementation Audit (2026-03-03)
+
+Audited spec against implemented codebase (FR-001 through FR-005, FR-013). Changes reflect obvious implementation improvements; spec remains authoritative for unbuilt modules.
+
+| Section | Change | Rationale |
+|---|---|---|
+| Metadata | Status → "Draft v1.1 — Post-Implementation Audit" | Version bump |
+| 1.1 | "14 cost components" → "13 cost components" | Matches implemented CostEnvelope |
+| 2.3 | Added `modules/` paths and `app` module | FR-013 project structure refactor |
+| 3.1 | Replaced 14-field mixed-type CostEnvelope with 13-field all-Money version | Implementation uses pre-computed Money for all fees; `internal constructor` + factory pattern enforces construction via CostGateService only |
+| 3.1 | Field renames: `unitCost` → `supplierUnitCost`, `freightCost`/`lastMileCost` → `inboundShipping`/`outboundShipping`, `modeledCac` → `customerAcquisitionCost`, `reverseLogistics` → `returnHandlingCost`, `supportAllocation` → `customerServiceCost`, `refundReserve` → `refundAllowance`, `chargebackReserve` → `chargebackAllowance`, `taxHandling` → `taxesAndDuties` | More explicit naming |
+| 3.1 | Removed `dimWeightSurcharge`, `currencyBuffer`; added `warehousingCost` | dimWeight folded into carrier rates; currencyBuffer deferred to Phase 2+; warehousing is a real cost |
+| 3.3 | Updated TerminationReason enum values | Implementation values are more actionable; added STRESS_TEST_FAILED, COMPLIANCE_VIOLATION, MANUAL_OVERRIDE |
+| 3.4 | Updated Money (scale=4, CurrencyMismatchException, factories) and Percentage (0-100 range, toDecimalFraction, factories) | Matches implemented signatures |
+| 4.2 | Updated CarrierRateProvider interface; added stale-reference note for FR-008 | Simpler interface; tracking belongs in fulfillment module |
+| 5.1 | "14 cost components" → "13 cost components" | Consistency |
+| 6.2 | Updated table names (`sku_cost_envelopes`, `sku_stress_test_results`), added `sku_state_history`, added Status column, fixed Flyway path | Matches actual Flyway migrations |
+| 10 | Added currency buffer open decision | Deferred from CostEnvelope to Phase 2+ international expansion |
