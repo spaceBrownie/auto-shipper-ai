@@ -6,17 +6,20 @@ An autonomous, capital-light commerce system that discovers, validates, launches
 
 ## How It Works
 
-Auto Shipper AI is a fully autonomous commerce engine that handles the entire product lifecycle:
+Auto Shipper AI is an autonomous commerce engine designed to handle the entire product lifecycle:
 
-1. **Discover** validated demand (surveys, pre-orders, waitlists) before building inventory
-2. **Verify costs** — fetch live shipping rates from carriers, payment fees from processors, platform fees from marketplaces
-3. **Stress-test margins** — ensure the product survives worst-case scenarios (2× shipping, customer acquisition cost spikes, refunds, chargebacks)
-4. **Launch & price** — set initial price using backward induction from the ceiling of what customers will pay, then adjust dynamically as costs change
+**Implemented today:**
+
+1. **Verify costs** — build a 13-component cost envelope with live shipping rates from carriers, payment fees from processors, and platform fees from marketplaces
+2. **Stress-test margins** — simulate worst-case scenarios (2x shipping, CAC spikes, refunds, chargebacks) and enforce gross >= 50%, net >= 30%
+3. **Price dynamically** — set initial price, then react to cost signals (shipping, vendor, CAC, platform fee changes) with auto-adjust, auto-pause, or auto-terminate decisions
+
+**Planned (specs written, not yet built):**
+
+4. **Discover demand** — validate willingness to pay before committing to any product
 5. **Fulfill with automation** — route orders to vendors, track in real-time, trigger auto-refunds if SLA is breached
 6. **Protect capital** — maintain a rolling reserve, monitor daily margins, auto-pause or terminate SKUs that breach profitability thresholds
 7. **Reallocate intelligently** — scale winners, kill losers, reinvest freed capital into highest-return opportunities
-
-All decisions are **data-driven and automated**: no manual approval gates, no guesswork on costs, no inventory speculation.
 
 ### Product Flow
 
@@ -157,14 +160,14 @@ Most e-commerce systems launch first and optimize later. Auto Shipper AI **valid
 
 | Traditional | Auto Shipper AI |
 |---|---|
-| Build inventory → find customers | Validate demand → build inventory |
-| Manual price adjustments | Real-time margin monitoring → auto-adjust |
-| Hope suppliers deliver on time | Monitor SLA → auto-refund on breach |
-| Founder gut-feel on margins | Stress test all products to 50% gross / 30% net |
-| Scale everything equally | Scale winners, kill losers by margin signal |
 | Guess at carrier costs | Fetch live rates from UPS, FedEx, USPS APIs |
+| Founder gut-feel on margins | Stress test all products to 50% gross / 30% net |
+| Manual price adjustments | React to cost signals with auto-adjust, pause, or terminate |
+| Hope suppliers deliver on time | Monitor SLA and auto-pause on breach *(planned)* |
+| Scale everything equally | Scale winners, kill losers by margin signal *(planned)* |
+| Build inventory → find customers | Validate demand first *(planned)* |
 
-**Result:** Capital efficiency, lower risk of unsellable inventory, faster failure on unprofitable products, continuous reinvestment into highest-return opportunities.
+**Result:** Capital efficiency, lower risk of unsellable inventory, faster failure on unprofitable products.
 
 ---
 
@@ -174,15 +177,16 @@ Modular monolith with bounded contexts, structured to promote independent servic
 
 ```
 auto-shipper-ai/
-├── shared/          # Money, Percentage, domain IDs, domain events
-├── catalog/         # SKU lifecycle, cost gate, stress test, state machine
-├── pricing/         # Dynamic pricing engine, backward induction, signal processing
-├── vendor/          # Vendor registry, SLA monitoring, reliability scoring
-├── fulfillment/     # Order routing, carrier integration, tracking, delay alerts
-├── capital/         # Reserve management, margin dashboards, kill-rule execution
-├── compliance/      # IP checks, regulatory guards, processor rule validation
-├── portfolio/       # Experiment tracking, scale/kill orchestration, reinvestment
-└── app/             # Spring Boot entry point, Flyway migrations, config
+└── modules/
+    ├── shared/          # Money, Percentage, domain IDs, domain events
+    ├── catalog/         # SKU lifecycle, cost gate, stress test, state machine
+    ├── pricing/         # Dynamic pricing engine, cost signal processing
+    ├── vendor/          # Vendor registry, SLA monitoring, reliability scoring
+    ├── fulfillment/     # Order routing, carrier integration, tracking, delay alerts
+    ├── capital/         # Reserve management, margin dashboards, kill-rule execution
+    ├── compliance/      # IP checks, regulatory guards, processor rule validation
+    ├── portfolio/       # Experiment tracking, scale/kill orchestration, reinvestment
+    └── app/             # Spring Boot entry point, Flyway migrations, config
 ```
 
 ## Tech Stack
@@ -288,14 +292,10 @@ Interactive API docs are available via Swagger UI at **`http://localhost:8080/sw
 | `POST` | `/api/skus` | Create a new SKU |
 | `GET` | `/api/skus/{id}` | Get SKU detail |
 | `GET` | `/api/skus?state=Listed` | List SKUs by state |
+| `POST` | `/api/skus/{id}/state` | Transition SKU to a new state |
 | `POST` | `/api/skus/{id}/verify-costs` | Trigger cost gate verification |
 | `POST` | `/api/skus/{id}/stress-test` | Run stress test |
-| `GET` | `/api/skus/{id}/pricing` | Current price + margin |
-| `POST` | `/api/vendors` | Register a vendor |
-| `POST` | `/api/vendors/{id}/activate` | Activate vendor (requires full checklist) |
-| `GET` | `/api/capital/reserve` | Rolling reserve balance |
-| `GET` | `/api/skus/{id}/pnl` | SKU P&L for a date range |
-| `GET` | `/api/portfolio/summary` | Portfolio-level KPIs |
+| `GET` | `/api/skus/{id}/pricing` | Current price, margin, and pricing history |
 | `GET` | `/actuator/health` | Health check |
 | `GET` | `/actuator/prometheus` | Prometheus metrics |
 
@@ -319,20 +319,18 @@ See `.env.example` for all available configuration. Key variables:
 
 ## Database Migrations
 
-Migrations live in `app/src/main/resources/db/migration/` and run automatically on startup via Flyway.
+Migrations live in `modules/app/src/main/resources/db/migration/` and run automatically on startup via Flyway.
 
 | Version | Description |
 |---|---|
-| V1 | UUID extension |
-| V2 | SKU lifecycle tables |
-| V3 | Cost envelopes |
+| V1 | Baseline — UUID extension |
+| V2 | Catalog SKU lifecycle (`skus`, `sku_state_history`) |
+| V3 | Cost envelopes — all 13 cost components |
 | V4 | Stress test results |
-| V5 | Pricing history |
-| V6 | Vendors and SLA breach log |
-| V7 | Orders and fulfillment |
-| V8 | Capital reserve and margin snapshots |
-| V9 | Portfolio experiments |
-| V10 | Compliance audit |
+| V5 | Unique constraint on `sku_cost_envelopes(sku_id)` |
+| V6 | Seed data for local development |
+| V7 | Pricing tables (`sku_prices`, `sku_pricing_history`) |
+| V8 | Running cost + optimistic locking on `sku_prices` |
 
 ## Feature Requests
 
@@ -346,11 +344,11 @@ Implementation is tracked in `feature-requests/FR-NNN-name/` with a `spec.md`, `
 | FR-004 | Catalog cost gate | ✅ Complete |
 | FR-005 | Catalog stress test | ✅ Complete |
 | FR-006 | Pricing engine | ✅ Complete |
-| FR-007 | Vendor governance | Planned |
-| FR-008 | Fulfillment orchestration | Planned |
-| FR-009 | Capital protection | Planned |
-| FR-010 | Portfolio orchestration | Planned |
-| FR-011 | Compliance guards | Planned |
-| FR-012 | Frontend dashboard | Planned |
+| FR-007 | Vendor governance | Spec'd |
+| FR-008 | Fulfillment orchestration | Spec'd |
+| FR-009 | Capital protection | Spec'd |
+| FR-010 | Portfolio orchestration | Spec'd |
+| FR-011 | Compliance guards | Spec'd |
+| FR-012 | Frontend dashboard | Spec'd |
 | FR-013 | Project structure refactor | ✅ Complete |
 | FR-014 | Spec architecture audit | ✅ Complete |
