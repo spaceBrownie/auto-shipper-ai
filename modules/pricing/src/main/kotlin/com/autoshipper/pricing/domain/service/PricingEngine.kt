@@ -95,7 +95,11 @@ class PricingEngine(
 
                     PricingDecision.Adjusted(skuId = skuId, newPrice = minViablePrice)
                 } else {
-                    // Price increase would harm conversion too much
+                    // Price increase would harm conversion too much — persist running cost to avoid drift
+                    priceEntity.currentFullyBurdenedAmount = newFullyBurdened.normalizedAmount
+                    priceEntity.updatedAt = Instant.now()
+                    skuPriceRepository.save(priceEntity)
+
                     PricingDecision.PauseRequired(
                         skuId = skuId,
                         reason = "Price increase of ${priceIncreasePct.value}% exceeds conversion threshold of ${conversionThreshold.value}%"
@@ -104,7 +108,11 @@ class PricingEngine(
             }
 
             else -> {
-                // No viable price exists at all
+                // No viable price exists at all — persist running cost to avoid drift
+                priceEntity.currentFullyBurdenedAmount = newFullyBurdened.normalizedAmount
+                priceEntity.updatedAt = Instant.now()
+                skuPriceRepository.save(priceEntity)
+
                 PricingDecision.TerminateRequired(
                     skuId = skuId,
                     reason = "No price can maintain ${marginFloor.value}% margin with fully burdened cost of $newFullyBurdened"
