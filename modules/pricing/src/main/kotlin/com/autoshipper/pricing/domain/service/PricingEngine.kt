@@ -95,8 +95,9 @@ class PricingEngine(
 
                     PricingDecision.Adjusted(skuId = skuId, newPrice = minViablePrice)
                 } else {
-                    // Price increase would harm conversion too much — persist running cost to avoid drift
+                    // Price increase would harm conversion too much — persist running cost and margin to avoid drift
                     priceEntity.currentFullyBurdenedAmount = newFullyBurdened.normalizedAmount
+                    priceEntity.currentMarginPercent = newMargin.value
                     priceEntity.updatedAt = Instant.now()
                     skuPriceRepository.save(priceEntity)
 
@@ -108,8 +109,9 @@ class PricingEngine(
             }
 
             else -> {
-                // No viable price exists at all — persist running cost to avoid drift
+                // No viable price exists at all — persist running cost and margin to avoid drift
                 priceEntity.currentFullyBurdenedAmount = newFullyBurdened.normalizedAmount
+                priceEntity.currentMarginPercent = newMargin.value
                 priceEntity.updatedAt = Instant.now()
                 skuPriceRepository.save(priceEntity)
 
