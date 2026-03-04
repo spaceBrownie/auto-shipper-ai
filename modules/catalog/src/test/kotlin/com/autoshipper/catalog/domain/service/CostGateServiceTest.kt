@@ -7,8 +7,8 @@ import com.autoshipper.catalog.domain.SkuState
 import com.autoshipper.catalog.persistence.CostEnvelopeEntity
 import com.autoshipper.catalog.persistence.CostEnvelopeRepository
 import com.autoshipper.catalog.proxy.carrier.CarrierRateProvider
-import com.autoshipper.catalog.proxy.payment.StripeProcessingFeeProvider
-import com.autoshipper.catalog.proxy.platform.ShopifyPlatformFeeProvider
+import com.autoshipper.catalog.proxy.payment.ProcessingFeeProvider
+import com.autoshipper.catalog.proxy.platform.PlatformFeeProvider
 import com.autoshipper.shared.events.CostEnvelopeVerified
 import com.autoshipper.shared.identity.SkuId
 import com.autoshipper.shared.money.Currency
@@ -30,8 +30,8 @@ class CostGateServiceTest {
 
     @Mock lateinit var skuService: SkuService
     @Mock lateinit var upsRateProvider: CarrierRateProvider
-    @Mock lateinit var stripeProvider: StripeProcessingFeeProvider
-    @Mock lateinit var shopifyProvider: ShopifyPlatformFeeProvider
+    @Mock lateinit var stripeProvider: ProcessingFeeProvider
+    @Mock lateinit var shopifyProvider: PlatformFeeProvider
     @Mock lateinit var costEnvelopeRepository: CostEnvelopeRepository
     @Mock lateinit var eventPublisher: ApplicationEventPublisher
 
@@ -55,8 +55,8 @@ class CostGateServiceTest {
         costGateService = CostGateService(
             skuService = skuService,
             carrierRateProviders = listOf(upsRateProvider),
-            stripeProcessingFeeProvider = stripeProvider,
-            shopifyPlatformFeeProvider = shopifyProvider,
+            processingFeeProvider = stripeProvider,
+            platformFeeProvider = shopifyProvider,
             costEnvelopeRepository = costEnvelopeRepository,
             eventPublisher = eventPublisher
         )

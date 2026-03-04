@@ -7,6 +7,7 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker
 import io.github.resilience4j.retry.annotation.Retry
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import java.math.BigDecimal
@@ -21,11 +22,12 @@ import java.math.BigDecimal
  *   - Plus: 0.0%
  */
 @Component
+@Profile("!local")
 class ShopifyPlatformFeeProvider(
     @Qualifier("shopifyRestClient") private val shopifyRestClient: RestClient,
     @Value("\${shopify.api.access-token}") private val accessToken: String,
     @Value("\${shopify.platform.estimated-order-value:100.00}") private val estimatedOrderValue: BigDecimal
-) {
+) : PlatformFeeProvider {
     companion object {
         private val PLAN_FEE_RATES: Map<String, BigDecimal> = mapOf(
             "basic" to BigDecimal("0.020"),
@@ -38,7 +40,7 @@ class ShopifyPlatformFeeProvider(
 
     @CircuitBreaker(name = "shopify-fee")
     @Retry(name = "shopify-fee")
-    fun getFee(): Money {
+    override fun getFee(): Money {
         try {
             @Suppress("UNCHECKED_CAST")
             val response = shopifyRestClient.get()

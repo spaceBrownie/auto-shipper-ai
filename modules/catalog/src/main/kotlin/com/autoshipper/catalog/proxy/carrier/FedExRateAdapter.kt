@@ -9,11 +9,13 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker
 import io.github.resilience4j.retry.annotation.Retry
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import java.math.BigDecimal
 
 @Component
+@Profile("!local")
 class FedExRateAdapter(
     @Qualifier("fedexRestClient") private val fedexRestClient: RestClient,
     @Value("\${fedex.api.client-id}") private val clientId: String,

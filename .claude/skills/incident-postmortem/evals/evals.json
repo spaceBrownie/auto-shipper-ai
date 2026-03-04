@@ -1,0 +1,23 @@
+{
+  "skill_name": "incident-postmortem",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "write a post-mortem for the ShopifyPriceSyncAdapter startup failure we just fixed — the app crashed on startup with local profile because ExternalApiConfig was profile-gated but ShopifyPriceSyncAdapter still depended on shopifyRestClient",
+      "expected_output": "A markdown post-mortem document at docs/postmortems/PM-001-*.md covering the startup failure, root cause (profile-gated RestClient beans with ungated consumer), fix (PriceSyncAdapter interface + stub + profile annotations), and prevention items",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "hey can you document that pricing 404 bug? the one where GET /pricing returned 404 for listed SKUs because PricingEngine.setInitialPrice was never called",
+      "expected_output": "A markdown post-mortem covering the missing event listener, root cause (no bridge between SkuStateChanged and PricingEngine), fix (PricingInitializer with @TransactionalEventListener + REQUIRES_NEW), and prevention items about cross-module integration testing",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "PM this bug — we had @TransactionalEventListener(AFTER_COMMIT) on PricingInitializer but it wasn't persisting because there was no active transaction after commit. had to add @Transactional(propagation = REQUIRES_NEW)",
+      "expected_output": "A markdown post-mortem focused on the Spring transaction lifecycle subtlety, root cause (AFTER_COMMIT runs outside transaction boundary), fix (REQUIRES_NEW propagation), with a deeper 5-whys analysis",
+      "files": []
+    }
+  ]
+}

@@ -7,8 +7,8 @@ import com.autoshipper.catalog.domain.SkuState
 import com.autoshipper.catalog.persistence.CostEnvelopeEntity
 import com.autoshipper.catalog.persistence.CostEnvelopeRepository
 import com.autoshipper.catalog.proxy.carrier.CarrierRateProvider
-import com.autoshipper.catalog.proxy.payment.StripeProcessingFeeProvider
-import com.autoshipper.catalog.proxy.platform.ShopifyPlatformFeeProvider
+import com.autoshipper.catalog.proxy.payment.ProcessingFeeProvider
+import com.autoshipper.catalog.proxy.platform.PlatformFeeProvider
 import com.autoshipper.shared.events.CostEnvelopeVerified
 import com.autoshipper.shared.identity.SkuId
 import com.autoshipper.shared.money.Money
@@ -24,8 +24,8 @@ import java.time.Instant
 class CostGateService(
     private val skuService: SkuService,
     private val carrierRateProviders: List<CarrierRateProvider>,
-    private val stripeProcessingFeeProvider: StripeProcessingFeeProvider,
-    private val shopifyPlatformFeeProvider: ShopifyPlatformFeeProvider,
+    private val processingFeeProvider: ProcessingFeeProvider,
+    private val platformFeeProvider: PlatformFeeProvider,
     private val costEnvelopeRepository: CostEnvelopeRepository,
     private val eventPublisher: ApplicationEventPublisher
 ) {
@@ -53,11 +53,11 @@ class CostGateService(
         // Fetch cheapest carrier rate
         val outboundShipping = fetchCheapestCarrierRate(skuId, origin, destination, packageDims)
 
-        // Fetch processing fee from Stripe
-        val processingFee = stripeProcessingFeeProvider.getFee(estimatedOrderValue)
+        // Fetch processing fee
+        val processingFee = processingFeeProvider.getFee(estimatedOrderValue)
 
-        // Fetch platform fee from Shopify
-        val platformFee = shopifyPlatformFeeProvider.getFee()
+        // Fetch platform fee
+        val platformFee = platformFeeProvider.getFee()
 
         // Compute allowances from rates
         val refundAllowance = estimatedOrderValue * refundAllowanceRate.toDecimalFraction()

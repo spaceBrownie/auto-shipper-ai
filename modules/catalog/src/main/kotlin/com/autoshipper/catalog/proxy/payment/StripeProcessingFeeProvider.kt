@@ -6,6 +6,7 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker
 import io.github.resilience4j.retry.annotation.Retry
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import java.math.BigDecimal
@@ -19,10 +20,11 @@ import java.math.RoundingMode
  * the standard formula.
  */
 @Component
+@Profile("!local")
 class StripeProcessingFeeProvider(
     @Qualifier("stripeRestClient") private val stripeRestClient: RestClient,
     @Value("\${stripe.api.secret-key}") private val secretKey: String
-) {
+) : ProcessingFeeProvider {
     companion object {
         private val STRIPE_PERCENTAGE_RATE = BigDecimal("0.029")  // 2.9%
         private val STRIPE_FIXED_FEE = BigDecimal("0.30")          // $0.30
@@ -30,7 +32,7 @@ class StripeProcessingFeeProvider(
 
     @CircuitBreaker(name = "stripe-fee")
     @Retry(name = "stripe-fee")
-    fun getFee(estimatedOrderValue: Money): Money {
+    override fun getFee(estimatedOrderValue: Money): Money {
         try {
             // Validate connectivity to Stripe by fetching account info
             stripeRestClient.get()
