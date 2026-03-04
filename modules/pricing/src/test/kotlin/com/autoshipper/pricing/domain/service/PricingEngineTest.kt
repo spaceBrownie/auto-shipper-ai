@@ -261,4 +261,39 @@ class PricingEngineTest {
             this.signalType == "SHIPPING_COST_CHANGED" && this.decisionType == "ADJUSTED"
         })
     }
+
+    @Test
+    fun `history records effective margin against adjusted price, not stale old-price margin`() {
+        // Price = 100, cost = 65. Delta +10 → cost = 75, margin vs old price = 25% (below floor)
+        // Min viable price = 75 / 0.70 = 107.1429 → increase = 7.14% (< 15% threshold)
+        // Adjusted price = 107.1429, effective margin = (107.1429 - 75) / 107.1429 = 30%
+        // History should record ~30% margin, NOT the stale 25%
+        whenever(skuPriceRepository.findBySkuId(skuId.value)).thenReturn(priceEntity(100.0, 35.0))
+        whenever(costEnvelopeRepository.findBySkuId(skuId.value)).thenReturn(costEnvelopeEntity(65.0))
+        whenever(skuPriceRepository.save(any<SkuPriceEntity>())).thenAnswer { it.arguments[0] }
+        whenever(pricingHistoryRepository.save(any<SkuPricingHistoryEntity>())).thenAnswer { it.arguments[0] }
+
+        engine.onPricingSignal(PricingSignal.VendorCostChanged(skuId, usd(10.0)))
+
+        verify(pricingHistoryRepository).save(argThat<SkuPricingHistoryEntity> {
+            // Effective margin should be ~30% (at the floor), not 25% (stale old-price margin)
+            this.marginPercent >= BigDecimal("29.9") && this.marginPercent <= BigDecimal("30.1")
+        })
+    }
+
+    @Test
+    fun `history records unchanged margin when price stays the same`() {
+        // Price = 100, cost = 40. Delta +5 → cost = 45, margin = 55%
+        // Price stays at 100, margin against 100 = 55% — should be recorded as-is
+        whenever(skuPriceRepository.findBySkuId(skuId.value)).thenReturn(priceEntity(100.0, 60.0))
+        whenever(costEnvelopeRepository.findBySkuId(skuId.value)).thenReturn(costEnvelopeEntity(40.0))
+        whenever(skuPriceRepository.save(any<SkuPriceEntity>())).thenAnswer { it.arguments[0] }
+        whenever(pricingHistoryRepository.save(any<SkuPricingHistoryEntity>())).thenAnswer { it.arguments[0] }
+
+        engine.onPricingSignal(PricingSignal.ShippingCostChanged(skuId, usd(5.0)))
+
+        verify(pricingHistoryRepository).save(argThat<SkuPricingHistoryEntity> {
+            this.marginPercent.compareTo(BigDecimal("55.0000")) == 0
+        })
+    }
 }

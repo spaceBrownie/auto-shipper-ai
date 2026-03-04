@@ -106,7 +106,12 @@ class PricingEngine(
             }
         }
 
-        persistHistory(skuId, currentPrice, newMargin, signalType, decision)
+        val effectiveMargin = when (decision) {
+            is PricingDecision.Adjusted -> safeMargin(newFullyBurdened, decision.newPrice)
+            else -> newMargin
+        }
+
+        persistHistory(skuId, currentPrice, effectiveMargin, signalType, decision)
         eventPublisher.publishEvent(decision)
 
         log.info("Emitted {} for SKU {}", decision::class.simpleName, skuId)

@@ -6,8 +6,9 @@ import com.autoshipper.catalog.domain.service.SkuService
 import com.autoshipper.pricing.proxy.ShopifyPriceSyncAdapter
 import com.autoshipper.shared.events.PricingDecision
 import org.slf4j.LoggerFactory
-import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
+import org.springframework.transaction.event.TransactionPhase
+import org.springframework.transaction.event.TransactionalEventListener
 
 @Component
 class PricingDecisionListener(
@@ -16,7 +17,7 @@ class PricingDecisionListener(
 ) {
     private val log = LoggerFactory.getLogger(PricingDecisionListener::class.java)
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun onPricingDecision(decision: PricingDecision) {
         when (decision) {
             is PricingDecision.Adjusted -> {
