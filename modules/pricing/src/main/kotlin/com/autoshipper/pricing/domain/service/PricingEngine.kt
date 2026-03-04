@@ -164,7 +164,8 @@ class PricingEngine(
 
     private fun canFindViablePrice(fullyBurdened: Money, currentPrice: Money, marginFloor: Percentage): Boolean {
         val minPrice = computeMinViablePrice(fullyBurdened, marginFloor)
-        return minPrice.normalizedAmount > BigDecimal.ZERO
+        val maxAcceptablePrice = currentPrice.normalizedAmount.multiply(pricingConfig.maxPriceMultiplier)
+        return minPrice.normalizedAmount <= maxAcceptablePrice
     }
 
     private fun computeMinViablePrice(fullyBurdened: Money, marginFloor: Percentage): Money {

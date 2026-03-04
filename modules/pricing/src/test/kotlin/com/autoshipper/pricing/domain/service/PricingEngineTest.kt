@@ -40,7 +40,8 @@ class PricingEngineTest {
     private val skuId = SkuId.new()
     private val config = PricingConfig(
         marginFloorPercent = BigDecimal("30"),
-        conversionThresholdPercent = BigDecimal("15")
+        conversionThresholdPercent = BigDecimal("15"),
+        maxPriceMultiplier = BigDecimal("2.0")
     )
 
     private fun usd(amount: Double) = Money.of(amount, Currency.USD)
@@ -139,25 +140,37 @@ class PricingEngineTest {
     }
 
     @Test
-    fun `emits TerminateRequired when margin is negative and no viable price exists`() {
-        // Price = 100, cost = 95, margin = 5%. Delta +20 → cost = 115 > price
-        // Min viable price = 115 / 0.70 = 164.29 → increase = 64.29% (> 15%)
-        // But really, cost > price, so margin is negative.
-        // With the huge price increase needed (64%), this triggers PauseRequired, not terminate.
-        // For true terminate: we need a scenario where the margin floor is impossible.
-        // Actually let's test with very high costs where increase is > 100%
+    fun `emits TerminateRequired when min viable price exceeds max price multiplier`() {
+        // Price = 50, cost = 45. Delta +30 → cost = 75
+        // Min viable price = 75 / 0.70 = 107.14
+        // Max acceptable = 50 * 2.0 = 100 → 107.14 > 100 → structurally dead
         whenever(skuPriceRepository.findBySkuId(skuId.value)).thenReturn(priceEntity(50.0, 10.0))
         whenever(costEnvelopeRepository.findBySkuId(skuId.value)).thenReturn(costEnvelopeEntity(45.0))
         whenever(pricingHistoryRepository.save(any<SkuPricingHistoryEntity>())).thenAnswer { it.arguments[0] }
 
-        // Delta +30 → cost = 75, min price = 75/0.70 = 107.14, increase from 50 = 114% > 15%
         val signal = PricingSignal.PlatformFeeChanged(skuId, usd(30.0))
         engine.onPricingSignal(signal)
 
         verify(eventPublisher).publishEvent(decisionCaptor.capture())
-        val decision = decisionCaptor.value
-        // Should be PauseRequired since a viable price technically exists but increase is too high
-        assertTrue(decision is PricingDecision.PauseRequired)
+        val decision = decisionCaptor.value as PricingDecision.TerminateRequired
+        assertEquals(skuId, decision.skuId)
+    }
+
+    @Test
+    fun `emits PauseRequired when min viable price within multiplier but exceeds conversion threshold`() {
+        // Price = 100, cost = 65. Delta +20 → cost = 85
+        // Min viable price = 85 / 0.70 = 121.43 → within 2x cap (200)
+        // Price increase = 21.43% > 15% threshold → PauseRequired
+        whenever(skuPriceRepository.findBySkuId(skuId.value)).thenReturn(priceEntity(100.0, 35.0))
+        whenever(costEnvelopeRepository.findBySkuId(skuId.value)).thenReturn(costEnvelopeEntity(65.0))
+        whenever(pricingHistoryRepository.save(any<SkuPricingHistoryEntity>())).thenAnswer { it.arguments[0] }
+
+        val signal = PricingSignal.PlatformFeeChanged(skuId, usd(20.0))
+        engine.onPricingSignal(signal)
+
+        verify(eventPublisher).publishEvent(decisionCaptor.capture())
+        val decision = decisionCaptor.value as PricingDecision.PauseRequired
+        assertTrue(decision.reason.contains("conversion threshold"))
     }
 
     @Test

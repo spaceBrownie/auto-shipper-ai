@@ -136,6 +136,7 @@ shopify:
 pricing:
   margin-floor-percent: 30
   conversion-threshold-percent: 15
+  max-price-multiplier: 2.0
 
 stress-test:
   shipping-multiplier: 2.0
