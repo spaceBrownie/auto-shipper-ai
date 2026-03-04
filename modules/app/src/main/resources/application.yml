@@ -98,6 +98,11 @@ resilience4j:
         wait-duration: 500ms
         enable-exponential-backoff: true
         exponential-backoff-multiplier: 2
+      shopify-price-sync:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
 
 ups:
   api:
@@ -127,6 +132,11 @@ shopify:
     access-token: ${SHOPIFY_ACCESS_TOKEN:}
   platform:
     estimated-order-value: ${SHOPIFY_ESTIMATED_ORDER_VALUE:100.00}
+
+pricing:
+  margin-floor-percent: 30
+  conversion-threshold-percent: 15
+  max-price-multiplier: 2.0
 
 stress-test:
   shipping-multiplier: 2.0

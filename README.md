@@ -345,10 +345,12 @@ Implementation is tracked in `feature-requests/FR-NNN-name/` with a `spec.md`, `
 | FR-003 | Catalog SKU lifecycle | ✅ Complete |
 | FR-004 | Catalog cost gate | ✅ Complete |
 | FR-005 | Catalog stress test | ✅ Complete |
-| FR-006 | Pricing engine | Planned |
+| FR-006 | Pricing engine | ✅ Complete |
 | FR-007 | Vendor governance | Planned |
 | FR-008 | Fulfillment orchestration | Planned |
 | FR-009 | Capital protection | Planned |
 | FR-010 | Portfolio orchestration | Planned |
 | FR-011 | Compliance guards | Planned |
 | FR-012 | Frontend dashboard | Planned |
+| FR-013 | Project structure refactor | ✅ Complete |
+| FR-014 | Spec architecture audit | ✅ Complete |
