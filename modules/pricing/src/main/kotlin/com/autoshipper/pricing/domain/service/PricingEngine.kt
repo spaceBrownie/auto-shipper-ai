@@ -55,7 +55,11 @@ class PricingEngine(
 
         val currency = Currency.valueOf(priceEntity.currency)
         val currentPrice = Money.of(priceEntity.currentPriceAmount, currency)
-        val currentFullyBurdened = computeFullyBurdened(envelopeEntity)
+        val currentFullyBurdened = if (priceEntity.currentFullyBurdenedAmount != null) {
+            Money.of(priceEntity.currentFullyBurdenedAmount!!, currency)
+        } else {
+            computeFullyBurdened(envelopeEntity)
+        }
         val newFullyBurdened = currentFullyBurdened + delta
 
         val marginFloor = Percentage.of(pricingConfig.marginFloorPercent)
@@ -66,6 +70,7 @@ class PricingEngine(
             marginAboveFloor -> {
                 // Margin still healthy — adjust (price stays the same, margin changes)
                 priceEntity.currentMarginPercent = newMargin.value
+                priceEntity.currentFullyBurdenedAmount = newFullyBurdened.normalizedAmount
                 priceEntity.updatedAt = Instant.now()
                 skuPriceRepository.save(priceEntity)
 
@@ -83,6 +88,7 @@ class PricingEngine(
                     val adjustedMargin = newFullyBurdened.marginAgainst(minViablePrice)
                     priceEntity.currentPriceAmount = minViablePrice.normalizedAmount
                     priceEntity.currentMarginPercent = adjustedMargin.value
+                    priceEntity.currentFullyBurdenedAmount = newFullyBurdened.normalizedAmount
                     priceEntity.currency = minViablePrice.currency.name
                     priceEntity.updatedAt = Instant.now()
                     skuPriceRepository.save(priceEntity)
@@ -117,12 +123,13 @@ class PricingEngine(
         log.info("Emitted {} for SKU {}", decision::class.simpleName, skuId)
     }
 
-    fun setInitialPrice(skuId: SkuId, price: Money, margin: Percentage) {
+    fun setInitialPrice(skuId: SkuId, price: Money, margin: Percentage, fullyBurdenedCost: Money? = null) {
         val entity = SkuPriceEntity(
             skuId = skuId.value,
             currency = price.currency.name,
             currentPriceAmount = price.normalizedAmount,
-            currentMarginPercent = margin.value
+            currentMarginPercent = margin.value,
+            currentFullyBurdenedAmount = fullyBurdenedCost?.normalizedAmount
         )
         skuPriceRepository.save(entity)
 

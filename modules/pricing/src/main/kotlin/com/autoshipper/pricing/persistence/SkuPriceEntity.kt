@@ -24,9 +24,16 @@ class SkuPriceEntity(
     @Column(name = "current_margin_percent", nullable = false, precision = 8, scale = 4)
     var currentMarginPercent: BigDecimal,
 
+    @Column(name = "current_fully_burdened_amount", precision = 19, scale = 4)
+    var currentFullyBurdenedAmount: BigDecimal? = null,
+
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    val createdAt: Instant = Instant.now()
+    val createdAt: Instant = Instant.now(),
+
+    @Version
+    @Column(name = "version", nullable = false)
+    var version: Long = 0
 )

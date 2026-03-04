@@ -348,4 +348,101 @@ class PricingEngineTest {
             this.marginPercent.compareTo(BigDecimal("55.0000")) == 0
         })
     }
+
+    // --- Cumulative cost drift tests ---
+
+    @Test
+    fun `sequential signals accumulate fully burdened cost`() {
+        // Price = 100, envelope cost = 40. Signal 1: +5 → running = 45. Signal 2: +3 → running = 48.
+        // Without the fix, signal 2 would see 40+3=43 instead of 45+3=48.
+        val entity = priceEntity(100.0, 60.0)
+        whenever(skuPriceRepository.findBySkuId(skuId.value)).thenReturn(entity)
+        whenever(costEnvelopeRepository.findBySkuId(skuId.value)).thenReturn(costEnvelopeEntity(40.0))
+        whenever(skuPriceRepository.save(any<SkuPriceEntity>())).thenAnswer { it.arguments[0] }
+        whenever(pricingHistoryRepository.save(any<SkuPricingHistoryEntity>())).thenAnswer { it.arguments[0] }
+
+        engine.onPricingSignal(PricingSignal.ShippingCostChanged(skuId, usd(5.0)))
+
+        // After signal 1: running total should be 45
+        assertEquals(0, BigDecimal("45.0000").compareTo(entity.currentFullyBurdenedAmount),
+            "After first signal, running total should be 45")
+
+        engine.onPricingSignal(PricingSignal.VendorCostChanged(skuId, usd(3.0)))
+
+        // After signal 2: running total should be 48 (45+3), not 43 (40+3)
+        assertEquals(0, BigDecimal("48.0000").compareTo(entity.currentFullyBurdenedAmount),
+            "After second signal, running total should be 48 (cumulative)")
+        // Margin = (100-48)/100 = 52%
+        assertEquals(0, BigDecimal("52.0000").compareTo(entity.currentMarginPercent),
+            "Margin should reflect cumulative cost of 48 against price 100")
+    }
+
+    @Test
+    fun `first signal falls back to envelope when no running total exists`() {
+        // Entity has null currentFullyBurdenedAmount → falls back to computeFullyBurdened(envelope)
+        val entity = priceEntity(100.0, 60.0)
+        assertNull(entity.currentFullyBurdenedAmount, "Fresh entity should have null running total")
+
+        whenever(skuPriceRepository.findBySkuId(skuId.value)).thenReturn(entity)
+        whenever(costEnvelopeRepository.findBySkuId(skuId.value)).thenReturn(costEnvelopeEntity(40.0))
+        whenever(skuPriceRepository.save(any<SkuPriceEntity>())).thenAnswer { it.arguments[0] }
+        whenever(pricingHistoryRepository.save(any<SkuPricingHistoryEntity>())).thenAnswer { it.arguments[0] }
+
+        engine.onPricingSignal(PricingSignal.ShippingCostChanged(skuId, usd(5.0)))
+
+        // After first signal, running total is initialized from envelope (40) + delta (5) = 45
+        assertNotNull(entity.currentFullyBurdenedAmount)
+        assertEquals(0, BigDecimal("45.0000").compareTo(entity.currentFullyBurdenedAmount))
+    }
+
+    @Test
+    fun `persists running fully burdened amount when price is adjusted upward`() {
+        // Price = 100, cost = 65. Delta +10 → cost = 75 → margin breached → price bumped
+        val entity = priceEntity(100.0, 35.0)
+        whenever(skuPriceRepository.findBySkuId(skuId.value)).thenReturn(entity)
+        whenever(costEnvelopeRepository.findBySkuId(skuId.value)).thenReturn(costEnvelopeEntity(65.0))
+        whenever(skuPriceRepository.save(any<SkuPriceEntity>())).thenAnswer { it.arguments[0] }
+        whenever(pricingHistoryRepository.save(any<SkuPricingHistoryEntity>())).thenAnswer { it.arguments[0] }
+
+        engine.onPricingSignal(PricingSignal.VendorCostChanged(skuId, usd(10.0)))
+
+        // Running total should be 75 even after price adjustment
+        assertEquals(0, BigDecimal("75.0000").compareTo(entity.currentFullyBurdenedAmount),
+            "Running total should persist even when price is adjusted")
+    }
+
+    @Test
+    fun `cumulative signals that cross margin floor trigger price adjustment`() {
+        // Price = 100, envelope cost = 40.
+        // Signal 1: +20 → cost = 60, margin = 40% (ok)
+        // Signal 2: +15 → cost = 75, margin = 25% (breaches 30% floor → price bump)
+        // Without cumulative tracking, signal 2 would see 40+15=55, margin 45% (incorrectly fine)
+        val entity = priceEntity(100.0, 60.0)
+        whenever(skuPriceRepository.findBySkuId(skuId.value)).thenReturn(entity)
+        whenever(costEnvelopeRepository.findBySkuId(skuId.value)).thenReturn(costEnvelopeEntity(40.0))
+        whenever(skuPriceRepository.save(any<SkuPriceEntity>())).thenAnswer { it.arguments[0] }
+        whenever(pricingHistoryRepository.save(any<SkuPricingHistoryEntity>())).thenAnswer { it.arguments[0] }
+
+        // Signal 1: +20 → cost = 60, margin = 40% → Adjusted (price stays 100)
+        engine.onPricingSignal(PricingSignal.ShippingCostChanged(skuId, usd(20.0)))
+        verify(eventPublisher).publishEvent(argThat<PricingDecision> { this is PricingDecision.Adjusted })
+
+        // Signal 2: +15 → cost = 75, margin = 25% < 30% → should bump price
+        engine.onPricingSignal(PricingSignal.VendorCostChanged(skuId, usd(15.0)))
+
+        // The second decision should be Adjusted with a price > 100 (min viable price)
+        val captor = ArgumentCaptor.forClass(Any::class.java)
+        verify(eventPublisher, times(2)).publishEvent(captor.capture())
+        val secondDecision = captor.allValues[1] as PricingDecision.Adjusted
+        assertTrue(secondDecision.newPrice.normalizedAmount > BigDecimal("100"),
+            "Second signal should trigger price bump due to cumulative cost of 75")
+    }
+
+    // --- Optimistic locking tests ---
+
+    @Test
+    fun `SkuPriceEntity has version field for optimistic locking`() {
+        val entity = priceEntity(100.0, 60.0)
+        assertEquals(0L, entity.version, "New entity should have version 0")
+    }
 }
