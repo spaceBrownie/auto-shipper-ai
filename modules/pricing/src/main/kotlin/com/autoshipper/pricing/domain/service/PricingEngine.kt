@@ -140,11 +140,13 @@ class PricingEngine(
     }
 
     private fun isMarginAboveFloor(cost: Money, revenue: Money, floor: Percentage): Boolean {
+        if (cost.normalizedAmount <= BigDecimal.ZERO) return true
         if (cost.normalizedAmount >= revenue.normalizedAmount) return false
         return cost.marginAgainst(revenue).value >= floor.value
     }
 
     private fun safeMargin(cost: Money, revenue: Money): Percentage {
+        if (cost.normalizedAmount <= BigDecimal.ZERO) return Percentage.of(100)
         if (cost.normalizedAmount >= revenue.normalizedAmount) return Percentage.of(0)
         return cost.marginAgainst(revenue)
     }

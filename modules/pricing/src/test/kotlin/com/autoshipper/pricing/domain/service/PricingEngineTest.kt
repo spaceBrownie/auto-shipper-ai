@@ -282,6 +282,58 @@ class PricingEngineTest {
     }
 
     @Test
+    fun `emits Adjusted when cost decrease makes fully burdened negative`() {
+        // Price = 100, cost = 40. Delta -50 → cost = -10 (negative fully burdened)
+        // Negative cost means margin is above any floor — should emit Adjusted, not crash
+        whenever(skuPriceRepository.findBySkuId(skuId.value)).thenReturn(priceEntity(100.0, 60.0))
+        whenever(costEnvelopeRepository.findBySkuId(skuId.value)).thenReturn(costEnvelopeEntity(40.0))
+        whenever(skuPriceRepository.save(any<SkuPriceEntity>())).thenAnswer { it.arguments[0] }
+        whenever(pricingHistoryRepository.save(any<SkuPricingHistoryEntity>())).thenAnswer { it.arguments[0] }
+
+        val signal = PricingSignal.ShippingCostChanged(skuId, usd(-50.0))
+        engine.onPricingSignal(signal)
+
+        verify(eventPublisher).publishEvent(decisionCaptor.capture())
+        val decision = decisionCaptor.value as PricingDecision.Adjusted
+        assertEquals(skuId, decision.skuId)
+        assertEquals(usd(100.0), decision.newPrice)
+    }
+
+    @Test
+    fun `emits Adjusted when cost decrease makes fully burdened zero`() {
+        // Price = 100, cost = 40. Delta -40 → cost = 0
+        // Zero cost means margin is above any floor — should emit Adjusted
+        whenever(skuPriceRepository.findBySkuId(skuId.value)).thenReturn(priceEntity(100.0, 60.0))
+        whenever(costEnvelopeRepository.findBySkuId(skuId.value)).thenReturn(costEnvelopeEntity(40.0))
+        whenever(skuPriceRepository.save(any<SkuPriceEntity>())).thenAnswer { it.arguments[0] }
+        whenever(pricingHistoryRepository.save(any<SkuPricingHistoryEntity>())).thenAnswer { it.arguments[0] }
+
+        val signal = PricingSignal.VendorCostChanged(skuId, usd(-40.0))
+        engine.onPricingSignal(signal)
+
+        verify(eventPublisher).publishEvent(decisionCaptor.capture())
+        val decision = decisionCaptor.value as PricingDecision.Adjusted
+        assertEquals(skuId, decision.skuId)
+        assertEquals(usd(100.0), decision.newPrice)
+    }
+
+    @Test
+    fun `history records 100 percent margin when cost goes negative`() {
+        // Price = 100, cost = 40. Delta -50 → cost = -10
+        // safeMargin should return 100% for negative cost
+        whenever(skuPriceRepository.findBySkuId(skuId.value)).thenReturn(priceEntity(100.0, 60.0))
+        whenever(costEnvelopeRepository.findBySkuId(skuId.value)).thenReturn(costEnvelopeEntity(40.0))
+        whenever(skuPriceRepository.save(any<SkuPriceEntity>())).thenAnswer { it.arguments[0] }
+        whenever(pricingHistoryRepository.save(any<SkuPricingHistoryEntity>())).thenAnswer { it.arguments[0] }
+
+        engine.onPricingSignal(PricingSignal.ShippingCostChanged(skuId, usd(-50.0)))
+
+        verify(pricingHistoryRepository).save(argThat<SkuPricingHistoryEntity> {
+            this.marginPercent.compareTo(BigDecimal("100")) == 0
+        })
+    }
+
+    @Test
     fun `history records unchanged margin when price stays the same`() {
         // Price = 100, cost = 40. Delta +5 → cost = 45, margin = 55%
         // Price stays at 100, margin against 100 = 55% — should be recorded as-is
