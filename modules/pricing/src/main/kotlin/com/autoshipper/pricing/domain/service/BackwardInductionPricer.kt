@@ -17,6 +17,9 @@ class BackwardInductionPricer {
      * Returns null if no price at or below the WTP ceiling can maintain the required margin.
      */
     fun compute(wtpCeiling: Money, fullyBurdenedCost: Money, marginFloor: Percentage): Money? {
+        if (fullyBurdenedCost.normalizedAmount <= BigDecimal.ZERO) {
+            return wtpCeiling // Zero or negative cost → margin exceeds any floor
+        }
         if (fullyBurdenedCost.normalizedAmount >= wtpCeiling.normalizedAmount) {
             return null // Cost exceeds or equals WTP — negative or zero margin
         }
@@ -35,6 +38,9 @@ class BackwardInductionPricer {
      */
     fun computeMinimumViablePrice(fullyBurdenedCost: Money, marginFloor: Percentage): Money {
         val divisor = BigDecimal.ONE.subtract(marginFloor.toDecimalFraction())
+        if (divisor.compareTo(BigDecimal.ZERO) <= 0) {
+            return Money.of(BigDecimal("999999"), fullyBurdenedCost.currency)
+        }
         val minPrice = fullyBurdenedCost.normalizedAmount
             .divide(divisor, 4, RoundingMode.HALF_UP)
         return Money.of(minPrice, fullyBurdenedCost.currency)

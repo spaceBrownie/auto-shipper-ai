@@ -70,4 +70,27 @@ class BackwardInductionPricerTest {
 
         assertEquals(Money.of(71.4286, Currency.USD), result)
     }
+
+    @Test
+    fun `returns WTP ceiling when cost is zero`() {
+        val result = pricer.compute(usd(100.0), usd(0.0), marginFloor)
+
+        assertNotNull(result)
+        assertEquals(usd(100.0), result)
+    }
+
+    @Test
+    fun `returns WTP ceiling when cost is negative`() {
+        val result = pricer.compute(usd(100.0), Money.of(-10.0, Currency.USD), marginFloor)
+
+        assertNotNull(result)
+        assertEquals(usd(100.0), result)
+    }
+
+    @Test
+    fun `computeMinimumViablePrice returns sentinel when margin floor is 100 percent`() {
+        val result = pricer.computeMinimumViablePrice(usd(50.0), Percentage.of(100))
+
+        assertEquals(Money.of(999999.0, Currency.USD), result)
+    }
 }
