@@ -1,0 +1,2 @@
+ALTER TABLE orders ADD COLUMN payment_intent_id VARCHAR(255) NOT NULL DEFAULT '';
+ALTER TABLE orders ALTER COLUMN payment_intent_id DROP DEFAULT;
