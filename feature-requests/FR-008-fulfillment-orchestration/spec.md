@@ -38,5 +38,5 @@ Customer trust is a long-term balance sheet asset. Fulfillment must be transpare
 
 - FR-001 (shared-domain-primitives) — `OrderId`, `VendorSlaBreached`, `OrderFulfilled`
 - FR-002 (project-bootstrap) — Spring Boot, `@Scheduled`
-- FR-004 (catalog-cost-gate) — `CarrierRateProvider` adapters reused for tracking
+- FR-004 (catalog-cost-gate) — `CarrierRateProvider` for rate quoting; fulfillment defines separate `CarrierTrackingProvider` for shipment tracking
 - FR-007 (vendor-governance) — `VendorSlaBreached` event triggers auto-refund

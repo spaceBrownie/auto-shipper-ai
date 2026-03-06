@@ -14,11 +14,11 @@ Auto Shipper AI is an autonomous commerce engine designed to handle the entire p
 2. **Stress-test margins** — simulate worst-case scenarios (2x shipping, CAC spikes, refunds, chargebacks) and enforce gross >= 50%, net >= 30%
 3. **Price dynamically** — set initial price, then react to cost signals (shipping, vendor, CAC, platform fee changes) with auto-adjust, auto-pause, or auto-terminate decisions
 4. **Govern vendors** — register vendors, enforce onboarding checklists, monitor SLA breaches on a 30-day rolling window, compute reliability scores, and auto-suspend vendors that exceed breach thresholds
+5. **Fulfill orders** — route orders to vendors with inventory pre-check, track shipments via carrier APIs (UPS, FedEx, USPS), detect delays with proactive customer alerts, and auto-refund via Stripe on vendor SLA breaches
 
 **Planned (specs written, not yet built):**
 
-5. **Discover demand** — validate willingness to pay before committing to any product
-6. **Fulfill with automation** — route orders to vendors, track in real-time, trigger auto-refunds if SLA is breached
+6. **Discover demand** — validate willingness to pay before committing to any product
 7. **Protect capital** — maintain a rolling reserve, monitor daily margins, auto-pause or terminate SKUs that breach profitability thresholds
 8. **Reallocate intelligently** — scale winners, kill losers, reinvest freed capital into highest-return opportunities
 
@@ -165,6 +165,7 @@ Most e-commerce systems launch first and optimize later. Auto Shipper AI **valid
 | Founder gut-feel on margins | Stress test all products to 50% gross / 30% net |
 | Manual price adjustments | React to cost signals with auto-adjust, pause, or terminate |
 | Hope suppliers deliver on time | Monitor SLA and auto-pause on breach |
+| Manual order tracking | Real-time carrier polling with proactive delay alerts and auto-refunds |
 | Scale everything equally | Scale winners, kill losers by margin signal *(planned)* |
 | Build inventory → find customers | Validate demand first *(planned)* |
 
@@ -303,6 +304,9 @@ Interactive API docs are available via Swagger UI at **`http://localhost:8080/sw
 | `PATCH` | `/api/vendors/{id}/checklist` | Update vendor onboarding checklist |
 | `POST` | `/api/vendors/{id}/activate` | Activate a vendor (requires completed checklist) |
 | `POST` | `/api/vendors/{id}/score` | Compute vendor reliability score |
+| `POST` | `/api/orders` | Create a new order (with inventory pre-check) |
+| `GET` | `/api/orders/{id}` | Get order detail and status |
+| `GET` | `/api/orders/{id}/tracking` | Get shipment tracking details |
 | `GET` | `/actuator/health` | Health check |
 | `GET` | `/actuator/prometheus` | Prometheus metrics |
 
@@ -339,6 +343,7 @@ Migrations live in `modules/app/src/main/resources/db/migration/` and run automa
 | V7 | Pricing tables (`sku_prices`, `sku_pricing_history`) |
 | V8 | Running cost + optimistic locking on `sku_prices` |
 | V9 | Vendor governance (`vendors`, `vendor_sku_assignments`, `vendor_breach_log`) |
+| V10 | Fulfillment orchestration (`orders`, `return_records`, `customer_notifications`) |
 
 ## Feature Requests
 
@@ -353,7 +358,7 @@ Implementation is tracked in `feature-requests/FR-NNN-name/` with a `spec.md`, `
 | FR-005 | Catalog stress test | ✅ Complete |
 | FR-006 | Pricing engine | ✅ Complete |
 | FR-007 | Vendor governance | ✅ Complete |
-| FR-008 | Fulfillment orchestration | Spec'd |
+| FR-008 | Fulfillment orchestration | ✅ Complete |
 | FR-009 | Capital protection | Spec'd |
 | FR-010 | Portfolio orchestration | Spec'd |
 | FR-011 | Compliance guards | Spec'd |
