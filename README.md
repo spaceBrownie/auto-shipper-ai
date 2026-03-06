@@ -271,6 +271,16 @@ Ideation → ValidationPending → CostGating → StressTesting → Listed → S
 
 Every transition is validated by `SkuStateMachine`, emits a domain event, and is written to the `sku_state_history` audit log. Invalid transitions throw `InvalidSkuTransitionException` — they never silently succeed.
 
+## Order Lifecycle
+
+```
+Pending → Confirmed → Shipped → Delivered
+   ↓          ↓          ↓          ↓
+ Refunded  Refunded   Refunded   Returned / Refunded
+```
+
+Transitions are enforced by `Order.VALID_TRANSITIONS` with the same pattern as `SkuStateMachine`. `OrderService` methods guard precondition status before transitioning. Invalid transitions throw `IllegalArgumentException`. Terminal states (`Refunded`, `Returned`) have no outbound transitions.
+
 ## Stress Test Gate
 
 Before a SKU can be listed it must survive:
@@ -321,10 +331,10 @@ See `.env.example` for all available configuration. Key variables:
 | `DB_PASSWORD` | Database password (must be set securely) |
 | `SHOPIFY_API_KEY` | Shopify storefront integration (Phase 2+) |
 | `SHOPIFY_API_SECRET` | Shopify API secret (Phase 2+) |
-| `STRIPE_SECRET_KEY` | Stripe payment processing (Phase 2+) |
-| `UPS_API_KEY` | UPS carrier rate API (Phase 2+) |
-| `FEDEX_API_KEY` | FedEx carrier rate API (Phase 2+) |
-| `USPS_API_KEY` | USPS carrier rate API (Phase 2+) |
+| `STRIPE_SECRET_KEY` | Stripe payment processing and SLA breach refunds |
+| `UPS_API_KEY` | UPS carrier rates and shipment tracking |
+| `FEDEX_API_KEY` | FedEx carrier rates and shipment tracking |
+| `USPS_API_KEY` | USPS carrier rates and shipment tracking |
 
 **Never commit `.env` to version control.** It is listed in `.gitignore`.
 
@@ -344,6 +354,8 @@ Migrations live in `modules/app/src/main/resources/db/migration/` and run automa
 | V8 | Running cost + optimistic locking on `sku_prices` |
 | V9 | Vendor governance (`vendors`, `vendor_sku_assignments`, `vendor_breach_log`) |
 | V10 | Fulfillment orchestration (`orders`, `return_records`, `customer_notifications`) |
+| V11 | Add `total_amount` and `total_currency` columns to `orders` |
+| V12 | Add `payment_intent_id` column to `orders` |
 
 ## Feature Requests
 
