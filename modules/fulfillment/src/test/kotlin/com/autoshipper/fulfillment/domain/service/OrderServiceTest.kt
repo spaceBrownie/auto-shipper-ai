@@ -45,6 +45,7 @@ class OrderServiceTest {
             vendorId = vendorId,
             customerId = customerId,
             totalAmount = Money.of(BigDecimal("49.99"), Currency.USD),
+            paymentIntentId = "pi_test_123",
             idempotencyKey = idempotencyKey
         )
 
@@ -55,6 +56,7 @@ class OrderServiceTest {
         customerId = customerId,
         totalAmount = BigDecimal("49.9900"),
         totalCurrency = Currency.USD,
+        paymentIntentId = "pi_test_123",
         status = OrderStatus.PENDING
     )
 
@@ -148,6 +150,42 @@ class OrderServiceTest {
         verify(eventPublisher).publishEvent(argThat<OrderFulfilled> {
             this.orderId.value == order.id && this.skuId.value == order.skuId
         })
+    }
+
+    @Test
+    fun `routeToVendor rejects non-PENDING order`() {
+        val order = pendingOrder().apply { updateStatus(OrderStatus.CONFIRMED) }
+        whenever(orderRepository.findById(order.id)).thenReturn(Optional.of(order))
+
+        assertThrows<IllegalArgumentException> {
+            orderService.routeToVendor(order.id)
+        }
+
+        verify(orderRepository, never()).save(any<Order>())
+    }
+
+    @Test
+    fun `markShipped rejects non-CONFIRMED order`() {
+        val order = pendingOrder()
+        whenever(orderRepository.findById(order.id)).thenReturn(Optional.of(order))
+
+        assertThrows<IllegalArgumentException> {
+            orderService.markShipped(order.id, "1Z999", "UPS")
+        }
+
+        verify(orderRepository, never()).save(any<Order>())
+    }
+
+    @Test
+    fun `markDelivered rejects non-SHIPPED order`() {
+        val order = pendingOrder().apply { updateStatus(OrderStatus.CONFIRMED) }
+        whenever(orderRepository.findById(order.id)).thenReturn(Optional.of(order))
+
+        assertThrows<IllegalArgumentException> {
+            orderService.markDelivered(order.id)
+        }
+
+        verify(orderRepository, never()).save(any<Order>())
     }
 
     @Test

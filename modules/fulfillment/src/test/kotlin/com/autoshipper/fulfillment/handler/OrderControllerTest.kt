@@ -54,6 +54,7 @@ class OrderControllerTest {
         customerId = customerId,
         totalAmount = BigDecimal("49.9900"),
         totalCurrency = Currency.USD,
+        paymentIntentId = "pi_test_abc123",
         status = status,
         shipmentDetails = ShipmentDetails(
             trackingNumber = "1Z999",
@@ -75,6 +76,7 @@ class OrderControllerTest {
             "customerId" to customerId.toString(),
             "totalAmount" to "49.99",
             "totalCurrency" to "USD",
+            "paymentIntentId" to "pi_test_abc123",
             "idempotencyKey" to "idem-key-1"
         )
 
@@ -100,6 +102,7 @@ class OrderControllerTest {
             "customerId" to customerId.toString(),
             "totalAmount" to "49.99",
             "totalCurrency" to "USD",
+            "paymentIntentId" to "pi_test_abc123",
             "idempotencyKey" to "idem-key-1"
         )
 

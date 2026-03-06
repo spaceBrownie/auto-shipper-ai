@@ -46,6 +46,7 @@ class VendorSlaBreachRefunder(
                 val result = refundProvider.refund(
                     orderId = order.id,
                     amount = refundAmount,
+                    paymentIntentId = order.paymentIntentId,
                     idempotencyKey = idempotencyKey
                 )
 

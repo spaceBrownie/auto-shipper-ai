@@ -36,6 +36,9 @@ class Order(
     @Column(name = "total_currency", nullable = false)
     val totalCurrency: Currency,
 
+    @Column(name = "payment_intent_id", nullable = false)
+    val paymentIntentId: String,
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     var status: OrderStatus = OrderStatus.PENDING,
@@ -58,7 +61,23 @@ class Order(
     fun totalAmount(): Money = Money.of(totalAmount, totalCurrency)
 
     fun updateStatus(newStatus: OrderStatus) {
+        val allowed = VALID_TRANSITIONS[status]
+            ?: error("No transitions defined from status $status")
+        require(newStatus in allowed) {
+            "Invalid order transition: $status → $newStatus (allowed: $allowed)"
+        }
         status = newStatus
         updatedAt = Instant.now()
+    }
+
+    companion object {
+        private val VALID_TRANSITIONS: Map<OrderStatus, Set<OrderStatus>> = mapOf(
+            OrderStatus.PENDING to setOf(OrderStatus.CONFIRMED, OrderStatus.REFUNDED),
+            OrderStatus.CONFIRMED to setOf(OrderStatus.SHIPPED, OrderStatus.REFUNDED),
+            OrderStatus.SHIPPED to setOf(OrderStatus.DELIVERED, OrderStatus.REFUNDED),
+            OrderStatus.DELIVERED to setOf(OrderStatus.RETURNED, OrderStatus.REFUNDED),
+            OrderStatus.REFUNDED to emptySet(),
+            OrderStatus.RETURNED to emptySet()
+        )
     }
 }

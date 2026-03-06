@@ -101,6 +101,7 @@ class OrderLifecycleTest {
             vendorId = vendorUUID,
             customerId = customerId,
             totalAmount = Money.of(BigDecimal("59.99"), Currency.USD),
+            paymentIntentId = "pi_lifecycle_1",
             idempotencyKey = "lifecycle-test-1"
         )
         val (order, created) = orderService.create(command)
@@ -154,11 +155,11 @@ class OrderLifecycleTest {
 
         // Create and confirm two orders
         val amount = Money.of(BigDecimal("39.99"), Currency.USD)
-        val cmd1 = CreateOrderCommand(skuId, vendorUUID, customerId, amount, "breach-test-1")
+        val cmd1 = CreateOrderCommand(skuId, vendorUUID, customerId, amount, "pi_breach_1", "breach-test-1")
         val (order1, _) = orderService.create(cmd1)
         orderService.routeToVendor(order1.id)
 
-        val cmd2 = CreateOrderCommand(skuId, vendorUUID, customerId, amount, "breach-test-2")
+        val cmd2 = CreateOrderCommand(skuId, vendorUUID, customerId, amount, "pi_breach_2", "breach-test-2")
         val (order2, _) = orderService.create(cmd2)
         orderService.routeToVendor(order2.id)
 
@@ -168,7 +169,7 @@ class OrderLifecycleTest {
             eq(listOf(OrderStatus.SHIPPED, OrderStatus.CONFIRMED))
         )).thenReturn(store.values.filter { it.status == OrderStatus.CONFIRMED }.toList())
 
-        whenever(refundProvider.refund(any(), any<Money>(), any())).thenReturn(
+        whenever(refundProvider.refund(any(), any<Money>(), any(), any())).thenReturn(
             RefundResult(refundId = "ref-breach", status = "succeeded")
         )
 
@@ -182,7 +183,7 @@ class OrderLifecycleTest {
         refunder.onVendorSlaBreached(event)
 
         // Both orders should be refunded
-        verify(refundProvider, times(2)).refund(any(), any<Money>(), any())
+        verify(refundProvider, times(2)).refund(any(), any<Money>(), any(), any())
         verify(notificationSender, times(2)).send(any(), eq("SLA_BREACH_REFUND"), any())
     }
 
@@ -198,6 +199,7 @@ class OrderLifecycleTest {
             vendorId = vendorUUID,
             customerId = customerId,
             totalAmount = Money.of(BigDecimal("19.99"), Currency.USD),
+            paymentIntentId = "pi_no_inv",
             idempotencyKey = "no-inventory-test"
         )
 
@@ -218,7 +220,7 @@ class OrderLifecycleTest {
         val orderService = OrderService(orderRepository, inventoryChecker, eventPublisher)
 
         // Create, route, and ship
-        val cmd = CreateOrderCommand(skuId, vendorUUID, customerId, Money.of(BigDecimal("29.99"), Currency.USD), "delay-test-1")
+        val cmd = CreateOrderCommand(skuId, vendorUUID, customerId, Money.of(BigDecimal("29.99"), Currency.USD), "pi_delay_1", "delay-test-1")
         val (order, _) = orderService.create(cmd)
         orderService.routeToVendor(order.id)
         orderService.markShipped(order.id, "DELAY-TRACK", "UPS")

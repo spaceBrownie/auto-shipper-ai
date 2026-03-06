@@ -8,5 +8,6 @@ data class CreateOrderCommand(
     val vendorId: UUID,
     val customerId: UUID,
     val totalAmount: Money,
+    val paymentIntentId: String,
     val idempotencyKey: String
 )

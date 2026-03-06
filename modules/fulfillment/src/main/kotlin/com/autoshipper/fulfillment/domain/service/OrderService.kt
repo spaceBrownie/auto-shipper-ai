@@ -46,6 +46,7 @@ class OrderService(
             customerId = request.customerId,
             totalAmount = request.totalAmount.normalizedAmount,
             totalCurrency = request.totalAmount.currency,
+            paymentIntentId = request.paymentIntentId,
             status = OrderStatus.PENDING
         )
 
@@ -67,6 +68,9 @@ class OrderService(
     fun routeToVendor(orderId: UUID): Order {
         val order = orderRepository.findById(orderId)
             .orElseThrow { IllegalArgumentException("Order $orderId not found") }
+        require(order.status == OrderStatus.PENDING) {
+            "Cannot route order $orderId: expected PENDING but was ${order.status}"
+        }
 
         order.updateStatus(OrderStatus.CONFIRMED)
         val saved = orderRepository.save(order)
@@ -81,6 +85,9 @@ class OrderService(
     fun markShipped(orderId: UUID, trackingNumber: String, carrier: String): Order {
         val order = orderRepository.findById(orderId)
             .orElseThrow { IllegalArgumentException("Order $orderId not found") }
+        require(order.status == OrderStatus.CONFIRMED) {
+            "Cannot mark order $orderId as shipped: expected CONFIRMED but was ${order.status}"
+        }
 
         order.updateStatus(OrderStatus.SHIPPED)
         order.shipmentDetails = ShipmentDetails(
@@ -103,6 +110,9 @@ class OrderService(
     fun markDelivered(orderId: UUID): Order {
         val order = orderRepository.findById(orderId)
             .orElseThrow { IllegalArgumentException("Order $orderId not found") }
+        require(order.status == OrderStatus.SHIPPED) {
+            "Cannot mark order $orderId as delivered: expected SHIPPED but was ${order.status}"
+        }
 
         order.updateStatus(OrderStatus.DELIVERED)
         val saved = orderRepository.save(order)

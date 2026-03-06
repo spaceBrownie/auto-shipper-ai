@@ -52,6 +52,7 @@ class VendorSlaBreachRefunderTest {
         customerId = UUID.randomUUID(),
         totalAmount = BigDecimal("39.9900"),
         totalCurrency = Currency.USD,
+        paymentIntentId = "pi_test_${UUID.randomUUID()}",
         status = status
     )
 
@@ -64,14 +65,14 @@ class VendorSlaBreachRefunderTest {
             eq(vendorUUID),
             eq(listOf(OrderStatus.SHIPPED, OrderStatus.CONFIRMED))
         )).thenReturn(listOf(order))
-        whenever(refundProvider.refund(eq(order.id), any<Money>(), any())).thenReturn(
+        whenever(refundProvider.refund(eq(order.id), any<Money>(), any(), any())).thenReturn(
             RefundResult(refundId = "ref-123", status = "succeeded")
         )
         whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
 
         refunder.onVendorSlaBreached(event)
 
-        verify(refundProvider).refund(eq(order.id), any<Money>(), argThat { startsWith("sla_breach_refund_") })
+        verify(refundProvider).refund(eq(order.id), any<Money>(), eq(order.paymentIntentId), argThat { startsWith("sla_breach_refund_") })
     }
 
     @Test
@@ -83,7 +84,7 @@ class VendorSlaBreachRefunderTest {
             eq(vendorUUID),
             eq(listOf(OrderStatus.SHIPPED, OrderStatus.CONFIRMED))
         )).thenReturn(listOf(order))
-        whenever(refundProvider.refund(eq(order.id), any<Money>(), any())).thenReturn(
+        whenever(refundProvider.refund(eq(order.id), any<Money>(), any(), any())).thenReturn(
             RefundResult(refundId = "ref-456", status = "succeeded")
         )
         whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
@@ -102,7 +103,7 @@ class VendorSlaBreachRefunderTest {
             eq(vendorUUID),
             eq(listOf(OrderStatus.SHIPPED, OrderStatus.CONFIRMED))
         )).thenReturn(listOf(order))
-        whenever(refundProvider.refund(eq(order.id), any<Money>(), any())).thenReturn(
+        whenever(refundProvider.refund(eq(order.id), any<Money>(), any(), any())).thenReturn(
             RefundResult(refundId = "ref-789", status = "succeeded")
         )
         whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
@@ -127,7 +128,7 @@ class VendorSlaBreachRefunderTest {
 
         refunder.onVendorSlaBreached(event)
 
-        verify(refundProvider, never()).refund(any(), any<Money>(), any())
+        verify(refundProvider, never()).refund(any(), any<Money>(), any(), any())
         verify(notificationSender, never()).send(any(), any(), any())
         verify(orderRepository, never()).save(any<Order>())
     }
@@ -142,14 +143,14 @@ class VendorSlaBreachRefunderTest {
             eq(vendorUUID),
             eq(listOf(OrderStatus.SHIPPED, OrderStatus.CONFIRMED))
         )).thenReturn(listOf(order1, order2))
-        whenever(refundProvider.refund(any(), any<Money>(), any())).thenReturn(
+        whenever(refundProvider.refund(any(), any<Money>(), any(), any())).thenReturn(
             RefundResult(refundId = "ref-multi", status = "succeeded")
         )
         whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
 
         refunder.onVendorSlaBreached(event)
 
-        verify(refundProvider, times(2)).refund(any(), any<Money>(), any())
+        verify(refundProvider, times(2)).refund(any(), any<Money>(), any(), any())
         verify(orderRepository, times(2)).save(any<Order>())
         verify(notificationSender, times(2)).send(any(), eq("SLA_BREACH_REFUND"), any())
     }
@@ -164,9 +165,9 @@ class VendorSlaBreachRefunderTest {
             eq(vendorUUID),
             eq(listOf(OrderStatus.SHIPPED, OrderStatus.CONFIRMED))
         )).thenReturn(listOf(order1, order2))
-        whenever(refundProvider.refund(eq(order1.id), any<Money>(), any()))
+        whenever(refundProvider.refund(eq(order1.id), any<Money>(), any(), any()))
             .thenThrow(RuntimeException("Stripe error"))
-        whenever(refundProvider.refund(eq(order2.id), any<Money>(), any())).thenReturn(
+        whenever(refundProvider.refund(eq(order2.id), any<Money>(), any(), any())).thenReturn(
             RefundResult(refundId = "ref-ok", status = "succeeded")
         )
         whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }

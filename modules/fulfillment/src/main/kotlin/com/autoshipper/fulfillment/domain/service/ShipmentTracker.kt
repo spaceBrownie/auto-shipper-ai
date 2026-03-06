@@ -56,7 +56,7 @@ class ShipmentTracker(
                     delayDetected = status.delayed
                 )
 
-                if (status.delivered) {
+                if (status.delivered && order.status == OrderStatus.SHIPPED) {
                     order.updateStatus(OrderStatus.DELIVERED)
                     orderRepository.save(order)
                     eventPublisher.publishEvent(

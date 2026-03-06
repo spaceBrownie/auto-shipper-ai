@@ -25,6 +25,7 @@ class OrderController(private val orderService: OrderService) {
             vendorId = UUID.fromString(request.vendorId),
             customerId = UUID.fromString(request.customerId),
             totalAmount = Money.of(BigDecimal(request.totalAmount), Currency.valueOf(request.totalCurrency)),
+            paymentIntentId = request.paymentIntentId,
             idempotencyKey = request.idempotencyKey
         )
         val (order, created) = orderService.create(command)

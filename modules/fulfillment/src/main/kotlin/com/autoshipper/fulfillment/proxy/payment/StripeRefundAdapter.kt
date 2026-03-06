@@ -12,7 +12,7 @@ import org.springframework.web.client.RestClient
 import java.util.UUID
 
 interface RefundProvider {
-    fun refund(orderId: UUID, amount: Money, idempotencyKey: String): RefundResult
+    fun refund(orderId: UUID, amount: Money, paymentIntentId: String, idempotencyKey: String): RefundResult
 }
 
 data class RefundResult(val refundId: String, val status: String)
@@ -30,7 +30,7 @@ class StripeRefundAdapter(
 
     @CircuitBreaker(name = "stripe-refund")
     @Retry(name = "stripe-refund")
-    override fun refund(orderId: UUID, amount: Money, idempotencyKey: String): RefundResult {
+    override fun refund(orderId: UUID, amount: Money, paymentIntentId: String, idempotencyKey: String): RefundResult {
         val amountInCents = amount.normalizedAmount.movePointRight(2).toLong()
 
         @Suppress("UNCHECKED_CAST")
@@ -38,7 +38,7 @@ class StripeRefundAdapter(
             .uri("/v1/refunds")
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Idempotency-Key", idempotencyKey)
-            .body("amount=$amountInCents&currency=${amount.currency.name.lowercase()}&metadata[order_id]=$orderId")
+            .body("payment_intent=$paymentIntentId&amount=$amountInCents&currency=${amount.currency.name.lowercase()}&metadata[order_id]=$orderId")
             .retrieve()
             .body(Map::class.java) as? Map<String, Any>
             ?: throw RuntimeException("Empty response from Stripe Refund API")
@@ -57,7 +57,7 @@ class StubRefundConfiguration {
 
     @Bean
     fun stubRefundProvider(): RefundProvider = object : RefundProvider {
-        override fun refund(orderId: UUID, amount: Money, idempotencyKey: String): RefundResult =
+        override fun refund(orderId: UUID, amount: Money, paymentIntentId: String, idempotencyKey: String): RefundResult =
             RefundResult(
                 refundId = "stub_refund_${UUID.randomUUID()}",
                 status = "succeeded"
