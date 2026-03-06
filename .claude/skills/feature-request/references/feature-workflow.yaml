@@ -227,6 +227,13 @@ phases:
         - "src/**/*.yml"
         - "src/**/*.xml"
         - "src/**/*.sql"
+        - "modules/**/*.kt"
+        - "modules/**/*.java"
+        - "modules/**/*.sql"
+        - "modules/**/*.yml"
+        - "modules/**/*.yaml"
+        - "modules/**/*.properties"
+        - "modules/**/*.xml"
         - "feature-requests/FR-*/implementation-plan.md"  # Can update checkboxes
         - "feature-requests/FR-*/summary.md"  # Create at end
         - "pom.xml"  # If dependencies needed

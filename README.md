@@ -13,13 +13,14 @@ Auto Shipper AI is an autonomous commerce engine designed to handle the entire p
 1. **Verify costs** — build a 13-component cost envelope with live shipping rates from carriers, payment fees from processors, and platform fees from marketplaces
 2. **Stress-test margins** — simulate worst-case scenarios (2x shipping, CAC spikes, refunds, chargebacks) and enforce gross >= 50%, net >= 30%
 3. **Price dynamically** — set initial price, then react to cost signals (shipping, vendor, CAC, platform fee changes) with auto-adjust, auto-pause, or auto-terminate decisions
+4. **Govern vendors** — register vendors, enforce onboarding checklists, monitor SLA breaches on a 30-day rolling window, compute reliability scores, and auto-suspend vendors that exceed breach thresholds
 
 **Planned (specs written, not yet built):**
 
-4. **Discover demand** — validate willingness to pay before committing to any product
-5. **Fulfill with automation** — route orders to vendors, track in real-time, trigger auto-refunds if SLA is breached
-6. **Protect capital** — maintain a rolling reserve, monitor daily margins, auto-pause or terminate SKUs that breach profitability thresholds
-7. **Reallocate intelligently** — scale winners, kill losers, reinvest freed capital into highest-return opportunities
+5. **Discover demand** — validate willingness to pay before committing to any product
+6. **Fulfill with automation** — route orders to vendors, track in real-time, trigger auto-refunds if SLA is breached
+7. **Protect capital** — maintain a rolling reserve, monitor daily margins, auto-pause or terminate SKUs that breach profitability thresholds
+8. **Reallocate intelligently** — scale winners, kill losers, reinvest freed capital into highest-return opportunities
 
 ### Product Flow
 
@@ -163,7 +164,7 @@ Most e-commerce systems launch first and optimize later. Auto Shipper AI **valid
 | Guess at carrier costs | Fetch live rates from UPS, FedEx, USPS APIs |
 | Founder gut-feel on margins | Stress test all products to 50% gross / 30% net |
 | Manual price adjustments | React to cost signals with auto-adjust, pause, or terminate |
-| Hope suppliers deliver on time | Monitor SLA and auto-pause on breach *(planned)* |
+| Hope suppliers deliver on time | Monitor SLA and auto-pause on breach |
 | Scale everything equally | Scale winners, kill losers by margin signal *(planned)* |
 | Build inventory → find customers | Validate demand first *(planned)* |
 
@@ -296,6 +297,12 @@ Interactive API docs are available via Swagger UI at **`http://localhost:8080/sw
 | `POST` | `/api/skus/{id}/verify-costs` | Trigger cost gate verification |
 | `POST` | `/api/skus/{id}/stress-test` | Run stress test |
 | `GET` | `/api/skus/{id}/pricing` | Current price, margin, and pricing history |
+| `POST` | `/api/vendors` | Register a new vendor |
+| `GET` | `/api/vendors` | List all vendors |
+| `GET` | `/api/vendors/{id}` | Get vendor detail |
+| `PATCH` | `/api/vendors/{id}/checklist` | Update vendor onboarding checklist |
+| `POST` | `/api/vendors/{id}/activate` | Activate a vendor (requires completed checklist) |
+| `POST` | `/api/vendors/{id}/score` | Compute vendor reliability score |
 | `GET` | `/actuator/health` | Health check |
 | `GET` | `/actuator/prometheus` | Prometheus metrics |
 
@@ -331,6 +338,7 @@ Migrations live in `modules/app/src/main/resources/db/migration/` and run automa
 | V6 | Seed data for local development |
 | V7 | Pricing tables (`sku_prices`, `sku_pricing_history`) |
 | V8 | Running cost + optimistic locking on `sku_prices` |
+| V9 | Vendor governance (`vendors`, `vendor_sku_assignments`, `vendor_breach_log`) |
 
 ## Feature Requests
 
@@ -344,7 +352,7 @@ Implementation is tracked in `feature-requests/FR-NNN-name/` with a `spec.md`, `
 | FR-004 | Catalog cost gate | ✅ Complete |
 | FR-005 | Catalog stress test | ✅ Complete |
 | FR-006 | Pricing engine | ✅ Complete |
-| FR-007 | Vendor governance | Spec'd |
+| FR-007 | Vendor governance | ✅ Complete |
 | FR-008 | Fulfillment orchestration | Spec'd |
 | FR-009 | Capital protection | Spec'd |
 | FR-010 | Portfolio orchestration | Spec'd |
@@ -352,3 +360,4 @@ Implementation is tracked in `feature-requests/FR-NNN-name/` with a `spec.md`, `
 | FR-012 | Frontend dashboard | Spec'd |
 | FR-013 | Project structure refactor | ✅ Complete |
 | FR-014 | Spec architecture audit | ✅ Complete |
+| FR-015 | Validate State Machine | ✅ Complete |

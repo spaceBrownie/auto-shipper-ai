@@ -50,32 +50,32 @@ vendor/src/main/kotlin/com/autoshipper/vendor/
 ## Task Breakdown
 
 ### Domain Layer
-- [ ] Implement `Vendor` JPA entity (id, name, contactInfo, status: PENDING/ACTIVE/SUSPENDED, softDelete fields)
-- [ ] Implement `VendorActivationChecklist` as `@Embeddable` value object with 5 boolean fields
-- [ ] Implement `VendorReliabilityScore` value class (score 0–100, breakdown components)
-- [ ] Implement `VendorSkuAssignment` JPA entity (vendorId, skuId, assignedAt, status)
-- [ ] Define `VendorNotActivatedException` (checklist incomplete)
-- [ ] Define `VendorStatus` enum (PENDING, ACTIVE, SUSPENDED)
+- [x] Implement `Vendor` JPA entity (id, name, contactInfo, status: PENDING/ACTIVE/SUSPENDED, softDelete fields)
+- [x] Implement `VendorActivationChecklist` as `@Embeddable` value object with 5 boolean fields
+- [x] Implement `VendorReliabilityScore` value class (score 0–100, breakdown components)
+- [x] Implement `VendorSkuAssignment` JPA entity (vendorId, skuId, assignedAt, status)
+- [x] Define `VendorNotActivatedException` (checklist incomplete)
+- [x] Define `VendorStatus` enum (PENDING, ACTIVE, SUSPENDED)
 
 ### Domain Service
-- [ ] Implement `VendorActivationService.activate(vendorId)` — validates checklist, transitions status
-- [ ] Implement `VendorReliabilityScorer.compute(vendorId)` — weighted score from onTimeRate, defectRate, breachCount, responseTime
-- [ ] Implement `VendorSlaMonitor` `@Scheduled(fixedRate = 900_000)` (every 15 min)
-- [ ] Implement breach rate calculation (breach count / total orders in rolling 30 days)
-- [ ] Emit `VendorSlaBreached(vendorId, affectedSkuIds, breachRate)` when threshold exceeded
-- [ ] Persist breach to `vendor_breach_log`
-- [ ] Implement `VendorBreachListener` in catalog module consuming `VendorSlaBreached` and auto-pausing linked SKUs
+- [x] Implement `VendorActivationService.activate(vendorId)` — validates checklist, transitions status
+- [x] Implement `VendorReliabilityScorer.compute(vendorId)` — weighted score from onTimeRate, defectRate, breachCount, responseTime
+- [x] Implement `VendorSlaMonitor` `@Scheduled(fixedRate = 900_000)` (every 15 min)
+- [x] Implement breach rate calculation (breach count / total orders in rolling 30 days)
+- [x] Emit `VendorSlaBreached(vendorId, affectedSkuIds, breachRate)` when threshold exceeded
+- [x] Persist breach to `vendor_breach_log`
+- [x] Implement `VendorBreachListener` in catalog module consuming `VendorSlaBreached` and auto-pausing linked SKUs
 
 ### Handler Layer
-- [ ] Implement `VendorController` with `POST /api/vendors` (register)
-- [ ] Implement `GET /api/vendors/{id}` returning vendor detail + checklist status + score
-- [ ] Implement `POST /api/vendors/{id}/activate` enforcing checklist
-- [ ] Implement `GET /api/vendors/{id}/score` returning `VendorReliabilityScore` breakdown
-- [ ] Add `RegisterVendorRequest`, `VendorResponse`, `VendorScoreResponse` DTOs
+- [x] Implement `VendorController` with `POST /api/vendors` (register)
+- [x] Implement `GET /api/vendors/{id}` returning vendor detail + checklist status + score
+- [x] Implement `POST /api/vendors/{id}/activate` enforcing checklist
+- [x] Implement `GET /api/vendors/{id}/score` returning `VendorReliabilityScore` breakdown
+- [x] Add `RegisterVendorRequest`, `VendorResponse`, `VendorScoreResponse` DTOs
 
 ### Persistence (Common Layer)
-- [ ] Write `V6__vendors.sql` migration (vendors, vendor_sku_assignments, vendor_breach_log tables)
-- [ ] Implement `VendorRepository`, `VendorSkuAssignmentRepository`, `VendorBreachLogRepository`
+- [x] Write `V9__vendors.sql` migration (vendors, vendor_sku_assignments, vendor_breach_log tables)
+- [x] Implement `VendorRepository`, `VendorSkuAssignmentRepository`, `VendorBreachLogRepository`
 
 ## Testing Strategy
 
@@ -87,7 +87,7 @@ vendor/src/main/kotlin/com/autoshipper/vendor/
 
 ## Rollout Plan
 
-1. Write `V6__vendors.sql`
+1. Write `V9__vendors.sql`
 2. Implement domain entities and value objects
 3. Implement activation service and reliability scorer
 4. Implement SLA monitor
