@@ -1,6 +1,14 @@
 > **Path update (FR-013):** All source paths below use the post-refactor `modules/` prefix,
 > e.g. `modules/fulfillment/src/...` instead of `fulfillment/src/...`.
 
+> **FR-007 dependency note:** The vendor module (FR-007) needs fulfillment data to compute SLA breach
+> rates and vendor reliability scores. Since FR-008 wasn't implemented yet, FR-007 introduced a
+> `VendorFulfillmentDataProvider` interface with a `StubFulfillmentDataProvider` that returns 0s.
+> This FR must provide a real implementation of that interface, backed by order fulfillment records.
+> See `modules/vendor/src/main/kotlin/.../service/VendorFulfillmentDataProvider.kt` for the contract.
+> Both `VendorSlaMonitor` and `VendorReliabilityScorer` depend on it for 30-day rolling window
+> violation counts. See `docs/postmortems/PM-002-circular-sla-breach-detection.md` for full context.
+
 # FR-008: Fulfillment Orchestration — Implementation Plan
 
 ## Technical Design
@@ -62,6 +70,7 @@ fulfillment/src/main/kotlin/com/autoshipper/fulfillment/
 - [ ] Implement `ReturnRecord` JPA entity (orderId, reason, returnedAt, reverseLogisticsCost)
 
 ### Domain Service
+- [ ] Implement `VendorFulfillmentDataProvider` backed by order fulfillment records — replace `StubFulfillmentDataProvider` from FR-007 (counts fulfillments and violations in a rolling time window per vendor)
 - [ ] Implement `OrderService.create(request)` with inventory pre-check gate
 - [ ] Implement `OrderService.routeToVendor(orderId)` assigning vendor and updating status to CONFIRMED
 - [ ] Implement `ShipmentTracker` `@Scheduled(fixedRate = 1_800_000)` (every 30 min)
@@ -82,7 +91,7 @@ fulfillment/src/main/kotlin/com/autoshipper/fulfillment/
 - [ ] Add `OrderResponse`, `TrackingResponse` DTOs
 
 ### Persistence (Common Layer)
-- [ ] Write `V7__orders.sql` migration (orders, shipment_details, return_records, customer_notifications tables)
+- [ ] Write `V10__orders.sql` migration (orders, shipment_details, return_records, customer_notifications tables)
 - [ ] Implement `OrderRepository`, `ReturnRecordRepository`
 
 ## Testing Strategy
@@ -96,7 +105,7 @@ fulfillment/src/main/kotlin/com/autoshipper/fulfillment/
 
 ## Rollout Plan
 
-1. Write `V7__orders.sql`
+1. Write `V10__orders.sql`
 2. Implement `Order` aggregate and `OrderService`
 3. Implement `InventoryCheckAdapter`
 4. Implement `ShipmentTracker`
