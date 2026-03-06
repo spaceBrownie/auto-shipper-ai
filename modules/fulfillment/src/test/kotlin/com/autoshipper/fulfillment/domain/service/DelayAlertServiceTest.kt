@@ -4,12 +4,14 @@ import com.autoshipper.fulfillment.domain.Order
 import com.autoshipper.fulfillment.domain.OrderStatus
 import com.autoshipper.fulfillment.domain.ShipmentDetails
 import com.autoshipper.fulfillment.proxy.notification.NotificationSender
+import com.autoshipper.shared.money.Currency
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.*
+import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
 
@@ -27,6 +29,8 @@ class DelayAlertServiceTest {
         skuId = UUID.randomUUID(),
         vendorId = UUID.randomUUID(),
         customerId = UUID.randomUUID(),
+        totalAmount = BigDecimal("29.9900"),
+        totalCurrency = Currency.USD,
         status = OrderStatus.SHIPPED,
         shipmentDetails = ShipmentDetails(
             trackingNumber = trackingNumber,

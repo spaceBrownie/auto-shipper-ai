@@ -5,7 +5,7 @@ import com.autoshipper.fulfillment.domain.OrderStatus
 import com.autoshipper.fulfillment.domain.ShipmentDetails
 import com.autoshipper.fulfillment.domain.service.CreateOrderCommand
 import com.autoshipper.fulfillment.domain.service.OrderService
-import com.fasterxml.jackson.databind.ObjectMapper
+import com.autoshipper.shared.money.Currency
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.junit.jupiter.api.BeforeEach
@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
 
@@ -51,6 +52,8 @@ class OrderControllerTest {
         skuId = skuId,
         vendorId = vendorId,
         customerId = customerId,
+        totalAmount = BigDecimal("49.9900"),
+        totalCurrency = Currency.USD,
         status = status,
         shipmentDetails = ShipmentDetails(
             trackingNumber = "1Z999",
@@ -70,6 +73,8 @@ class OrderControllerTest {
             "skuId" to skuId.toString(),
             "vendorId" to vendorId.toString(),
             "customerId" to customerId.toString(),
+            "totalAmount" to "49.99",
+            "totalCurrency" to "USD",
             "idempotencyKey" to "idem-key-1"
         )
 
@@ -93,6 +98,8 @@ class OrderControllerTest {
             "skuId" to skuId.toString(),
             "vendorId" to vendorId.toString(),
             "customerId" to customerId.toString(),
+            "totalAmount" to "49.99",
+            "totalCurrency" to "USD",
             "idempotencyKey" to "idem-key-1"
         )
 

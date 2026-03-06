@@ -3,7 +3,10 @@ package com.autoshipper.fulfillment.domain
 import com.autoshipper.shared.identity.OrderId
 import com.autoshipper.shared.identity.SkuId
 import com.autoshipper.shared.identity.VendorId
+import com.autoshipper.shared.money.Currency
+import com.autoshipper.shared.money.Money
 import jakarta.persistence.*
+import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
 
@@ -26,6 +29,13 @@ class Order(
     @Column(name = "customer_id", nullable = false)
     val customerId: UUID,
 
+    @Column(name = "total_amount", nullable = false)
+    val totalAmount: BigDecimal,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "total_currency", nullable = false)
+    val totalCurrency: Currency,
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     var status: OrderStatus = OrderStatus.PENDING,
@@ -45,6 +55,7 @@ class Order(
     fun orderId(): OrderId = OrderId(id)
     fun skuId(): SkuId = SkuId(skuId)
     fun vendorId(): VendorId = VendorId(vendorId)
+    fun totalAmount(): Money = Money.of(totalAmount, totalCurrency)
 
     fun updateStatus(newStatus: OrderStatus) {
         status = newStatus

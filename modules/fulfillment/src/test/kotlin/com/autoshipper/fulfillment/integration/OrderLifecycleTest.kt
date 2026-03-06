@@ -19,6 +19,7 @@ import com.autoshipper.shared.events.OrderFulfilled
 import com.autoshipper.shared.events.VendorSlaBreached
 import com.autoshipper.shared.identity.SkuId
 import com.autoshipper.shared.identity.VendorId
+import com.autoshipper.shared.money.Currency
 import com.autoshipper.shared.money.Money
 import com.autoshipper.shared.money.Percentage
 import org.junit.jupiter.api.Test
@@ -28,6 +29,7 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.*
 import org.springframework.context.ApplicationEventPublisher
+import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
 import java.util.UUID
@@ -98,6 +100,7 @@ class OrderLifecycleTest {
             skuId = skuId,
             vendorId = vendorUUID,
             customerId = customerId,
+            totalAmount = Money.of(BigDecimal("59.99"), Currency.USD),
             idempotencyKey = "lifecycle-test-1"
         )
         val (order, created) = orderService.create(command)
@@ -150,11 +153,12 @@ class OrderLifecycleTest {
         val orderService = OrderService(orderRepository, inventoryChecker, eventPublisher)
 
         // Create and confirm two orders
-        val cmd1 = CreateOrderCommand(skuId, vendorUUID, customerId, "breach-test-1")
+        val amount = Money.of(BigDecimal("39.99"), Currency.USD)
+        val cmd1 = CreateOrderCommand(skuId, vendorUUID, customerId, amount, "breach-test-1")
         val (order1, _) = orderService.create(cmd1)
         orderService.routeToVendor(order1.id)
 
-        val cmd2 = CreateOrderCommand(skuId, vendorUUID, customerId, "breach-test-2")
+        val cmd2 = CreateOrderCommand(skuId, vendorUUID, customerId, amount, "breach-test-2")
         val (order2, _) = orderService.create(cmd2)
         orderService.routeToVendor(order2.id)
 
@@ -193,6 +197,7 @@ class OrderLifecycleTest {
             skuId = skuId,
             vendorId = vendorUUID,
             customerId = customerId,
+            totalAmount = Money.of(BigDecimal("19.99"), Currency.USD),
             idempotencyKey = "no-inventory-test"
         )
 
@@ -213,7 +218,7 @@ class OrderLifecycleTest {
         val orderService = OrderService(orderRepository, inventoryChecker, eventPublisher)
 
         // Create, route, and ship
-        val cmd = CreateOrderCommand(skuId, vendorUUID, customerId, "delay-test-1")
+        val cmd = CreateOrderCommand(skuId, vendorUUID, customerId, Money.of(BigDecimal("29.99"), Currency.USD), "delay-test-1")
         val (order, _) = orderService.create(cmd)
         orderService.routeToVendor(order.id)
         orderService.markShipped(order.id, "DELAY-TRACK", "UPS")

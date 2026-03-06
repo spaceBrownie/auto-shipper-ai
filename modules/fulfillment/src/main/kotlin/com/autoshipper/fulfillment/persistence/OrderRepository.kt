@@ -3,6 +3,8 @@ package com.autoshipper.fulfillment.persistence
 import com.autoshipper.fulfillment.domain.Order
 import com.autoshipper.fulfillment.domain.OrderStatus
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import java.time.Instant
 import java.util.UUID
@@ -28,5 +30,16 @@ interface OrderRepository : JpaRepository<Order, UUID> {
         vendorId: UUID,
         statuses: List<OrderStatus>,
         since: Instant
+    ): Long
+
+    @Query("""
+        SELECT COUNT(o) FROM Order o
+        WHERE o.vendorId = :vendorId
+          AND o.createdAt >= :since
+          AND (o.shipmentDetails.delayDetected = true OR o.status = 'REFUNDED')
+    """)
+    fun countViolations(
+        @Param("vendorId") vendorId: UUID,
+        @Param("since") since: Instant
     ): Long
 }

@@ -5,13 +5,10 @@ import com.autoshipper.fulfillment.persistence.OrderRepository
 import com.autoshipper.fulfillment.proxy.notification.NotificationSender
 import com.autoshipper.fulfillment.proxy.payment.RefundProvider
 import com.autoshipper.shared.events.VendorSlaBreached
-import com.autoshipper.shared.money.Currency
-import com.autoshipper.shared.money.Money
 import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.math.BigDecimal
 
 @Component
 class VendorSlaBreachRefunder(
@@ -40,8 +37,11 @@ class VendorSlaBreachRefunder(
         for (order in affectedOrders) {
             try {
                 val idempotencyKey = "sla_breach_refund_${order.id}"
-                // Use a placeholder amount — in production this would come from the order's payment record
-                val refundAmount = Money.of(BigDecimal.ZERO, Currency.USD)
+                val refundAmount = order.totalAmount()
+
+                require(refundAmount.normalizedAmount > java.math.BigDecimal.ZERO) {
+                    "Order ${order.id} has zero total amount — cannot issue refund"
+                }
 
                 val result = refundProvider.refund(
                     orderId = order.id,

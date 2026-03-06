@@ -44,6 +44,8 @@ class OrderService(
             skuId = request.skuId,
             vendorId = request.vendorId,
             customerId = request.customerId,
+            totalAmount = request.totalAmount.normalizedAmount,
+            totalCurrency = request.totalAmount.currency,
             status = OrderStatus.PENDING
         )
 

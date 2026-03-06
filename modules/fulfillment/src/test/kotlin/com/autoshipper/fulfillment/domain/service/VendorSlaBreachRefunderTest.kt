@@ -9,6 +9,7 @@ import com.autoshipper.fulfillment.proxy.payment.RefundResult
 import com.autoshipper.shared.events.VendorSlaBreached
 import com.autoshipper.shared.identity.SkuId
 import com.autoshipper.shared.identity.VendorId
+import com.autoshipper.shared.money.Currency
 import com.autoshipper.shared.money.Money
 import com.autoshipper.shared.money.Percentage
 import org.junit.jupiter.api.Test
@@ -17,6 +18,7 @@ import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.*
+import java.math.BigDecimal
 import java.util.UUID
 
 @ExtendWith(MockitoExtension::class)
@@ -48,6 +50,8 @@ class VendorSlaBreachRefunderTest {
         skuId = UUID.randomUUID(),
         vendorId = vendorUUID,
         customerId = UUID.randomUUID(),
+        totalAmount = BigDecimal("39.9900"),
+        totalCurrency = Currency.USD,
         status = status
     )
 

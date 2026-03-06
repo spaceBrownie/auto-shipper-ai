@@ -6,9 +6,12 @@ import com.autoshipper.fulfillment.domain.service.OrderService
 import com.autoshipper.fulfillment.handler.dto.CreateOrderRequest
 import com.autoshipper.fulfillment.handler.dto.OrderResponse
 import com.autoshipper.fulfillment.handler.dto.TrackingResponse
+import com.autoshipper.shared.money.Currency
+import com.autoshipper.shared.money.Money
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.math.BigDecimal
 import java.util.UUID
 
 @RestController
@@ -21,6 +24,7 @@ class OrderController(private val orderService: OrderService) {
             skuId = UUID.fromString(request.skuId),
             vendorId = UUID.fromString(request.vendorId),
             customerId = UUID.fromString(request.customerId),
+            totalAmount = Money.of(BigDecimal(request.totalAmount), Currency.valueOf(request.totalCurrency)),
             idempotencyKey = request.idempotencyKey
         )
         val (order, created) = orderService.create(command)
@@ -47,6 +51,8 @@ class OrderController(private val orderService: OrderService) {
         skuId = skuId.toString(),
         vendorId = vendorId.toString(),
         customerId = customerId.toString(),
+        totalAmount = totalAmount.toPlainString(),
+        totalCurrency = totalCurrency.name,
         status = status.name,
         trackingNumber = shipmentDetails.trackingNumber,
         carrier = shipmentDetails.carrier,

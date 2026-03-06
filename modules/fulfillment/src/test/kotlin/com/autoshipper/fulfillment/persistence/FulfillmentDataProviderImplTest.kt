@@ -39,35 +39,18 @@ class FulfillmentDataProviderImplTest {
     }
 
     @Test
-    fun `countViolationsSince counts delayed and refunded orders`() {
-        whenever(
-            orderRepository.countByVendorIdAndShipmentDetailsDelayDetectedAndCreatedAtGreaterThanEqual(
-                vendorId, true, since
-            )
-        ).thenReturn(5L)
-        whenever(
-            orderRepository.countByVendorIdAndStatusAndCreatedAtGreaterThanEqual(
-                vendorId, OrderStatus.REFUNDED, since
-            )
-        ).thenReturn(3L)
+    fun `countViolationsSince uses single OR query to avoid double-counting`() {
+        whenever(orderRepository.countViolations(vendorId, since)).thenReturn(7L)
 
         val count = provider.countViolationsSince(vendorId, since)
 
-        assert(count == 8L) { "Expected 8 violations (5 delays + 3 refunds), got $count" }
+        assert(count == 7L) { "Expected 7 violations, got $count" }
+        verify(orderRepository).countViolations(vendorId, since)
     }
 
     @Test
     fun `countViolationsSince returns zero when no violations`() {
-        whenever(
-            orderRepository.countByVendorIdAndShipmentDetailsDelayDetectedAndCreatedAtGreaterThanEqual(
-                vendorId, true, since
-            )
-        ).thenReturn(0L)
-        whenever(
-            orderRepository.countByVendorIdAndStatusAndCreatedAtGreaterThanEqual(
-                vendorId, OrderStatus.REFUNDED, since
-            )
-        ).thenReturn(0L)
+        whenever(orderRepository.countViolations(vendorId, since)).thenReturn(0L)
 
         val count = provider.countViolationsSince(vendorId, since)
 

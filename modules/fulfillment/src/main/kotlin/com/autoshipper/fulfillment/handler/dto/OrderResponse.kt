@@ -5,6 +5,8 @@ data class OrderResponse(
     val skuId: String,
     val vendorId: String,
     val customerId: String,
+    val totalAmount: String,
+    val totalCurrency: String,
     val status: String,
     val trackingNumber: String?,
     val carrier: String?,

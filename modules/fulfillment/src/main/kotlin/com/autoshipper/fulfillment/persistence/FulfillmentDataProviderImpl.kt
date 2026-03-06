@@ -13,9 +13,6 @@ class FulfillmentDataProviderImpl(
     private val orderRepository: OrderRepository
 ) : VendorFulfillmentDataProvider {
 
-    /**
-     * Counts DELIVERED orders for the given vendor since the specified instant.
-     */
     override fun countFulfillmentsSince(vendorId: UUID, since: Instant): Long =
         orderRepository.countByVendorIdAndStatusAndCreatedAtGreaterThanEqual(
             vendorId,
@@ -24,20 +21,9 @@ class FulfillmentDataProviderImpl(
         )
 
     /**
-     * Counts violations for the given vendor since the specified instant.
-     * A violation is an order where delay was detected OR the order was refunded.
+     * Counts distinct violations: orders where delay was detected OR status is REFUNDED.
+     * Uses a single OR query to avoid double-counting orders that are both delayed and refunded.
      */
-    override fun countViolationsSince(vendorId: UUID, since: Instant): Long {
-        val delayCount = orderRepository.countByVendorIdAndShipmentDetailsDelayDetectedAndCreatedAtGreaterThanEqual(
-            vendorId,
-            true,
-            since
-        )
-        val refundedCount = orderRepository.countByVendorIdAndStatusAndCreatedAtGreaterThanEqual(
-            vendorId,
-            OrderStatus.REFUNDED,
-            since
-        )
-        return delayCount + refundedCount
-    }
+    override fun countViolationsSince(vendorId: UUID, since: Instant): Long =
+        orderRepository.countViolations(vendorId, since)
 }

@@ -7,6 +7,7 @@ import com.autoshipper.fulfillment.persistence.OrderRepository
 import com.autoshipper.fulfillment.proxy.carrier.CarrierTrackingProvider
 import com.autoshipper.fulfillment.proxy.carrier.TrackingStatus
 import com.autoshipper.shared.events.OrderFulfilled
+import com.autoshipper.shared.money.Currency
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -16,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoSettings
 import org.mockito.kotlin.*
 import org.mockito.quality.Strictness
 import org.springframework.context.ApplicationEventPublisher
+import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
 
@@ -48,6 +50,8 @@ class ShipmentTrackerTest {
         skuId = UUID.randomUUID(),
         vendorId = UUID.randomUUID(),
         customerId = UUID.randomUUID(),
+        totalAmount = BigDecimal("29.9900"),
+        totalCurrency = Currency.USD,
         status = OrderStatus.SHIPPED,
         shipmentDetails = ShipmentDetails(
             trackingNumber = trackingNumber,

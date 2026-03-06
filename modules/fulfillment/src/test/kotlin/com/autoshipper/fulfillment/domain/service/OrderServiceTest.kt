@@ -6,6 +6,8 @@ import com.autoshipper.fulfillment.domain.ShipmentDetails
 import com.autoshipper.fulfillment.persistence.OrderRepository
 import com.autoshipper.fulfillment.proxy.inventory.InventoryChecker
 import com.autoshipper.shared.events.OrderFulfilled
+import com.autoshipper.shared.money.Currency
+import com.autoshipper.shared.money.Money
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
@@ -14,6 +16,7 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.*
 import org.springframework.context.ApplicationEventPublisher
+import java.math.BigDecimal
 import java.util.Optional
 import java.util.UUID
 
@@ -41,6 +44,7 @@ class OrderServiceTest {
             skuId = skuId,
             vendorId = vendorId,
             customerId = customerId,
+            totalAmount = Money.of(BigDecimal("49.99"), Currency.USD),
             idempotencyKey = idempotencyKey
         )
 
@@ -49,6 +53,8 @@ class OrderServiceTest {
         skuId = skuId,
         vendorId = vendorId,
         customerId = customerId,
+        totalAmount = BigDecimal("49.9900"),
+        totalCurrency = Currency.USD,
         status = OrderStatus.PENDING
     )
 
