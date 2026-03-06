@@ -6,7 +6,6 @@ import com.autoshipper.vendor.domain.VendorActivationChecklist
 import com.autoshipper.vendor.domain.VendorSkuAssignment
 import com.autoshipper.vendor.domain.VendorStatus
 import com.autoshipper.vendor.persistence.VendorBreachLogRepository
-import com.autoshipper.vendor.persistence.VendorFulfillmentRecordRepository
 import com.autoshipper.vendor.persistence.VendorRepository
 import com.autoshipper.vendor.persistence.VendorSkuAssignmentRepository
 import org.junit.jupiter.api.Test
@@ -33,7 +32,7 @@ class VendorSlaMonitorTest {
     lateinit var breachLogRepository: VendorBreachLogRepository
 
     @Mock
-    lateinit var fulfillmentRecordRepository: VendorFulfillmentRecordRepository
+    lateinit var fulfillmentDataProvider: VendorFulfillmentDataProvider
 
     @Mock
     lateinit var eventPublisher: ApplicationEventPublisher
@@ -58,8 +57,8 @@ class VendorSlaMonitorTest {
     fun `does not emit event when violation rate below threshold`() {
         val vendor = activeVendor()
         whenever(vendorRepository.findByStatus(VendorStatus.ACTIVE.name)).thenReturn(listOf(vendor))
-        whenever(fulfillmentRecordRepository.countByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(100L)
-        whenever(fulfillmentRecordRepository.countViolationsByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(5L)
+        whenever(fulfillmentDataProvider.countFulfillmentsSince(eq(vendor.id), any<Instant>())).thenReturn(100L)
+        whenever(fulfillmentDataProvider.countViolationsSince(eq(vendor.id), any<Instant>())).thenReturn(5L)
 
         monitor.runCheck(BigDecimal("10"))
 
@@ -70,7 +69,7 @@ class VendorSlaMonitorTest {
     fun `does not emit event when no fulfillment records exist`() {
         val vendor = activeVendor()
         whenever(vendorRepository.findByStatus(VendorStatus.ACTIVE.name)).thenReturn(listOf(vendor))
-        whenever(fulfillmentRecordRepository.countByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(0L)
+        whenever(fulfillmentDataProvider.countFulfillmentsSince(eq(vendor.id), any<Instant>())).thenReturn(0L)
 
         monitor.runCheck(BigDecimal("10"))
 
@@ -84,8 +83,8 @@ class VendorSlaMonitorTest {
         val assignment = VendorSkuAssignment(vendorId = vendor.id, skuId = skuId)
 
         whenever(vendorRepository.findByStatus(VendorStatus.ACTIVE.name)).thenReturn(listOf(vendor))
-        whenever(fulfillmentRecordRepository.countByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(100L)
-        whenever(fulfillmentRecordRepository.countViolationsByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(15L)
+        whenever(fulfillmentDataProvider.countFulfillmentsSince(eq(vendor.id), any<Instant>())).thenReturn(100L)
+        whenever(fulfillmentDataProvider.countViolationsSince(eq(vendor.id), any<Instant>())).thenReturn(15L)
         whenever(assignmentRepository.findByVendorIdAndActiveTrue(vendor.id)).thenReturn(listOf(assignment))
         whenever(vendorRepository.save(any<Vendor>())).thenAnswer { it.arguments[0] }
         whenever(breachLogRepository.save(any())).thenAnswer { it.arguments[0] }
@@ -102,8 +101,8 @@ class VendorSlaMonitorTest {
         val vendor = activeVendor()
 
         whenever(vendorRepository.findByStatus(VendorStatus.ACTIVE.name)).thenReturn(listOf(vendor))
-        whenever(fulfillmentRecordRepository.countByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(50L)
-        whenever(fulfillmentRecordRepository.countViolationsByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(10L)
+        whenever(fulfillmentDataProvider.countFulfillmentsSince(eq(vendor.id), any<Instant>())).thenReturn(50L)
+        whenever(fulfillmentDataProvider.countViolationsSince(eq(vendor.id), any<Instant>())).thenReturn(10L)
         whenever(assignmentRepository.findByVendorIdAndActiveTrue(vendor.id)).thenReturn(emptyList())
         whenever(vendorRepository.save(any<Vendor>())).thenAnswer { it.arguments[0] }
         whenever(breachLogRepository.save(any())).thenAnswer { it.arguments[0] }
@@ -120,8 +119,8 @@ class VendorSlaMonitorTest {
         val vendor = activeVendor()
 
         whenever(vendorRepository.findByStatus(VendorStatus.ACTIVE.name)).thenReturn(listOf(vendor))
-        whenever(fulfillmentRecordRepository.countByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(20L)
-        whenever(fulfillmentRecordRepository.countViolationsByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(10L)
+        whenever(fulfillmentDataProvider.countFulfillmentsSince(eq(vendor.id), any<Instant>())).thenReturn(20L)
+        whenever(fulfillmentDataProvider.countViolationsSince(eq(vendor.id), any<Instant>())).thenReturn(10L)
         whenever(assignmentRepository.findByVendorIdAndActiveTrue(vendor.id)).thenReturn(emptyList())
         whenever(vendorRepository.save(any<Vendor>())).thenAnswer { it.arguments[0] }
         whenever(breachLogRepository.save(any())).thenAnswer { it.arguments[0] }
@@ -134,13 +133,11 @@ class VendorSlaMonitorTest {
     @Test
     fun `breach rate calculated as violations over total fulfillments percentage`() {
         val vendor = activeVendor()
-        val skuId = UUID.randomUUID()
-        val assignment = VendorSkuAssignment(vendorId = vendor.id, skuId = skuId)
 
         whenever(vendorRepository.findByStatus(VendorStatus.ACTIVE.name)).thenReturn(listOf(vendor))
         // 9 violations out of 100 = 9% — below 10% threshold
-        whenever(fulfillmentRecordRepository.countByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(100L)
-        whenever(fulfillmentRecordRepository.countViolationsByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(9L)
+        whenever(fulfillmentDataProvider.countFulfillmentsSince(eq(vendor.id), any<Instant>())).thenReturn(100L)
+        whenever(fulfillmentDataProvider.countViolationsSince(eq(vendor.id), any<Instant>())).thenReturn(9L)
 
         monitor.runCheck(BigDecimal("10"))
 

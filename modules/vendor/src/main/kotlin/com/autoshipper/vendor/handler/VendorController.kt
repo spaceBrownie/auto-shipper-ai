@@ -55,20 +55,6 @@ class VendorController(
         return ResponseEntity.ok(VendorResponse.from(vendor))
     }
 
-    @PostMapping("/{id}/fulfillments")
-    fun recordFulfillment(
-        @PathVariable id: String,
-        @Valid @RequestBody request: RecordFulfillmentRequest
-    ): ResponseEntity<Void> {
-        activationService.recordFulfillment(
-            vendorId = VendorId.of(id),
-            orderId = request.orderId,
-            isViolation = request.isViolation,
-            violationType = request.violationType
-        )
-        return ResponseEntity.status(HttpStatus.CREATED).build()
-    }
-
     @PostMapping("/{id}/score")
     fun computeScore(
         @PathVariable id: String,

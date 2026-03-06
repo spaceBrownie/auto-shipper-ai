@@ -6,7 +6,6 @@ import com.autoshipper.shared.money.Percentage
 import com.autoshipper.vendor.domain.VendorBreachLog
 import com.autoshipper.vendor.domain.VendorStatus
 import com.autoshipper.vendor.persistence.VendorBreachLogRepository
-import com.autoshipper.vendor.persistence.VendorFulfillmentRecordRepository
 import com.autoshipper.vendor.persistence.VendorRepository
 import com.autoshipper.vendor.persistence.VendorSkuAssignmentRepository
 import org.slf4j.LoggerFactory
@@ -24,7 +23,7 @@ class VendorSlaMonitor(
     private val vendorRepository: VendorRepository,
     private val assignmentRepository: VendorSkuAssignmentRepository,
     private val breachLogRepository: VendorBreachLogRepository,
-    private val fulfillmentRecordRepository: VendorFulfillmentRecordRepository,
+    private val fulfillmentDataProvider: VendorFulfillmentDataProvider,
     private val eventPublisher: ApplicationEventPublisher
 ) {
     private val logger = LoggerFactory.getLogger(VendorSlaMonitor::class.java)
@@ -46,13 +45,10 @@ class VendorSlaMonitor(
         val since = Instant.now().minus(ROLLING_WINDOW)
 
         for (vendor in activeVendors) {
-            val totalFulfillments = fulfillmentRecordRepository
-                .countByVendorIdAndRecordedAtAfter(vendor.id, since)
-
+            val totalFulfillments = fulfillmentDataProvider.countFulfillmentsSince(vendor.id, since)
             if (totalFulfillments == 0L) continue
 
-            val violations = fulfillmentRecordRepository
-                .countViolationsByVendorIdAndRecordedAtAfter(vendor.id, since)
+            val violations = fulfillmentDataProvider.countViolationsSince(vendor.id, since)
 
             val breachRate = BigDecimal(violations)
                 .multiply(BigDecimal(100))
