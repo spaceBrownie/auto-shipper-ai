@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
+import java.net.URLEncoder
 import java.util.UUID
 
 interface RefundProvider {
@@ -32,13 +33,15 @@ class StripeRefundAdapter(
     @Retry(name = "stripe-refund")
     override fun refund(orderId: UUID, amount: Money, paymentIntentId: String, idempotencyKey: String): RefundResult {
         val amountInCents = amount.normalizedAmount.movePointRight(2).toLong()
+        val encodedPi = URLEncoder.encode(paymentIntentId, Charsets.UTF_8)
+        val encodedOrderId = URLEncoder.encode(orderId.toString(), Charsets.UTF_8)
 
         @Suppress("UNCHECKED_CAST")
         val response = restClient.post()
             .uri("/v1/refunds")
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Idempotency-Key", idempotencyKey)
-            .body("payment_intent=$paymentIntentId&amount=$amountInCents&currency=${amount.currency.name.lowercase()}&metadata[order_id]=$orderId")
+            .body("payment_intent=$encodedPi&amount=$amountInCents&currency=${amount.currency.name.lowercase()}&metadata[order_id]=$encodedOrderId")
             .retrieve()
             .body(Map::class.java) as? Map<String, Any>
             ?: throw RuntimeException("Empty response from Stripe Refund API")

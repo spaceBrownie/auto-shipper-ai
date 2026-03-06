@@ -7,7 +7,7 @@
 
 ## Summary
 
-Four bugs in the FR-008 fulfillment orchestration module were caught across two rounds of automated PR review on PR #10 before merge to `main`. Round 1 found (1) $0 refunds with hardcoded USD currency and (2) inflated vendor violation counts from double-counting. Round 2 found (3) the Stripe refund API call missing the required `payment_intent` parameter and (4) no state transition guards on Order status changes, allowing invalid transitions like DELIVERED → CONFIRMED. All four were fixed, verified with 44 passing tests, and pushed.
+Five bugs in the FR-008 fulfillment orchestration module were caught across three rounds of automated PR review on PR #10 before merge to `main`. Round 1 found (1) $0 refunds with hardcoded USD currency and (2) inflated vendor violation counts from double-counting. Round 2 found (3) the Stripe refund API call missing the required `payment_intent` parameter and (4) no state transition guards on Order status changes. Round 3 found (5) a parameter injection vulnerability in the Stripe refund request body. All five were fixed, verified with 44 passing tests, and pushed.
 
 ## Timeline
 
@@ -27,6 +27,9 @@ Four bugs in the FR-008 fulfillment orchestration module were caught across two 
 | Round 2 fix applied | Added `paymentIntentId` to Order and refund flow; added `VALID_TRANSITIONS` map and `require()` guards |
 | Round 2 verified | All 44 tests passing (3 new), full project build green |
 | Round 2 pushed | Bugfix commit `f56c79e` pushed to branch |
+| PR review round 3 | Automated reviewer flagged one additional issue on PR #10 |
+| Bug 5 identified | `StripeRefundAdapter.kt:41` — `paymentIntentId` and `orderId` interpolated into form-encoded body without URL-encoding, enabling parameter injection |
+| Round 3 fix applied | URL-encode all user-supplied values before interpolation into form body |
 
 ## Symptom
 
@@ -74,6 +77,15 @@ fun routeToVendor(orderId: UUID): Order {
 ```
 
 A DELIVERED or REFUNDED order could be re-routed, re-shipped, or re-delivered without error. This contrasts with the catalog module's `SkuStateMachine` which enforces explicit transition maps. In production, concurrent events (e.g., a carrier webhook marking an order DELIVERED while the SLA breach refunder is processing the same order) could cause nonsensical state like REFUNDED → CONFIRMED.
+
+### Bug 5: Parameter Injection in Stripe Refund Body
+`StripeRefundAdapter` interpolated `paymentIntentId` (originating from user input via `CreateOrderRequest`) directly into the `application/x-www-form-urlencoded` body without URL-encoding:
+
+```kotlin
+.body("payment_intent=$paymentIntentId&amount=$amountInCents&currency=...&metadata[order_id]=$orderId")
+```
+
+A crafted value like `pi_test&amount=0&charge=ch_other` would inject extra form parameters, potentially overriding the refund amount or redirecting the refund to a different Stripe charge.
 
 ## Root Cause
 
@@ -242,3 +254,4 @@ All four bugs were caught during automated PR review before merge to `main`. No 
 - [ ] Establish an architectural guideline: all domain aggregates with lifecycle states must use an explicit transition map (following the `SkuStateMachine` / `Order.VALID_TRANSITIONS` pattern)
 - [ ] Consider adding a `@NonZero` or similar validation annotation for Money fields used in payment operations
 - [ ] In refund-related tests, assert exact amounts rather than using `any<Money>()` matchers — verify the refund amount matches the order's payment amount
+- [ ] All external API adapters that build form-encoded or URL-interpolated request bodies must URL-encode user-supplied values — add this as a standard for proxy-layer code and consider a shared utility or linter rule to catch raw string interpolation in HTTP body construction
