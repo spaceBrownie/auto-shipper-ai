@@ -6,6 +6,7 @@ import com.autoshipper.vendor.domain.VendorActivationChecklist
 import com.autoshipper.vendor.domain.VendorSkuAssignment
 import com.autoshipper.vendor.domain.VendorStatus
 import com.autoshipper.vendor.persistence.VendorBreachLogRepository
+import com.autoshipper.vendor.persistence.VendorFulfillmentRecordRepository
 import com.autoshipper.vendor.persistence.VendorRepository
 import com.autoshipper.vendor.persistence.VendorSkuAssignmentRepository
 import org.junit.jupiter.api.Test
@@ -16,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.*
 import org.springframework.context.ApplicationEventPublisher
 import java.math.BigDecimal
+import java.time.Instant
 import java.util.UUID
 
 @ExtendWith(MockitoExtension::class)
@@ -29,6 +31,9 @@ class VendorSlaMonitorTest {
 
     @Mock
     lateinit var breachLogRepository: VendorBreachLogRepository
+
+    @Mock
+    lateinit var fulfillmentRecordRepository: VendorFulfillmentRecordRepository
 
     @Mock
     lateinit var eventPublisher: ApplicationEventPublisher
@@ -50,29 +55,42 @@ class VendorSlaMonitorTest {
     )
 
     @Test
-    fun `does not emit event when breach count below threshold`() {
+    fun `does not emit event when violation rate below threshold`() {
         val vendor = activeVendor()
         whenever(vendorRepository.findByStatus(VendorStatus.ACTIVE.name)).thenReturn(listOf(vendor))
-        whenever(breachLogRepository.countByVendorId(vendor.id)).thenReturn(2L)
+        whenever(fulfillmentRecordRepository.countByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(100L)
+        whenever(fulfillmentRecordRepository.countViolationsByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(5L)
 
-        monitor.runCheck(BigDecimal("5"))
+        monitor.runCheck(BigDecimal("10"))
 
         verify(eventPublisher, never()).publishEvent(any<VendorSlaBreached>())
     }
 
     @Test
-    fun `emits VendorSlaBreached when breach count meets threshold`() {
+    fun `does not emit event when no fulfillment records exist`() {
+        val vendor = activeVendor()
+        whenever(vendorRepository.findByStatus(VendorStatus.ACTIVE.name)).thenReturn(listOf(vendor))
+        whenever(fulfillmentRecordRepository.countByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(0L)
+
+        monitor.runCheck(BigDecimal("10"))
+
+        verify(eventPublisher, never()).publishEvent(any<VendorSlaBreached>())
+    }
+
+    @Test
+    fun `emits VendorSlaBreached when violation rate meets threshold`() {
         val vendor = activeVendor()
         val skuId = UUID.randomUUID()
         val assignment = VendorSkuAssignment(vendorId = vendor.id, skuId = skuId)
 
         whenever(vendorRepository.findByStatus(VendorStatus.ACTIVE.name)).thenReturn(listOf(vendor))
-        whenever(breachLogRepository.countByVendorId(vendor.id)).thenReturn(5L)
+        whenever(fulfillmentRecordRepository.countByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(100L)
+        whenever(fulfillmentRecordRepository.countViolationsByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(15L)
         whenever(assignmentRepository.findByVendorIdAndActiveTrue(vendor.id)).thenReturn(listOf(assignment))
         whenever(vendorRepository.save(any<Vendor>())).thenAnswer { it.arguments[0] }
         whenever(breachLogRepository.save(any())).thenAnswer { it.arguments[0] }
 
-        monitor.runCheck(BigDecimal("5"))
+        monitor.runCheck(BigDecimal("10"))
 
         verify(eventPublisher).publishEvent(argThat<VendorSlaBreached> {
             this.vendorId.value == vendor.id && this.skuIds.size == 1
@@ -84,12 +102,13 @@ class VendorSlaMonitorTest {
         val vendor = activeVendor()
 
         whenever(vendorRepository.findByStatus(VendorStatus.ACTIVE.name)).thenReturn(listOf(vendor))
-        whenever(breachLogRepository.countByVendorId(vendor.id)).thenReturn(10L)
+        whenever(fulfillmentRecordRepository.countByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(50L)
+        whenever(fulfillmentRecordRepository.countViolationsByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(10L)
         whenever(assignmentRepository.findByVendorIdAndActiveTrue(vendor.id)).thenReturn(emptyList())
         whenever(vendorRepository.save(any<Vendor>())).thenAnswer { it.arguments[0] }
         whenever(breachLogRepository.save(any())).thenAnswer { it.arguments[0] }
 
-        monitor.runCheck(BigDecimal("5"))
+        monitor.runCheck(BigDecimal("10"))
 
         verify(vendorRepository).save(argThat<Vendor> {
             this.currentStatus() == VendorStatus.SUSPENDED
@@ -101,13 +120,31 @@ class VendorSlaMonitorTest {
         val vendor = activeVendor()
 
         whenever(vendorRepository.findByStatus(VendorStatus.ACTIVE.name)).thenReturn(listOf(vendor))
-        whenever(breachLogRepository.countByVendorId(vendor.id)).thenReturn(10L)
+        whenever(fulfillmentRecordRepository.countByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(20L)
+        whenever(fulfillmentRecordRepository.countViolationsByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(10L)
         whenever(assignmentRepository.findByVendorIdAndActiveTrue(vendor.id)).thenReturn(emptyList())
         whenever(vendorRepository.save(any<Vendor>())).thenAnswer { it.arguments[0] }
         whenever(breachLogRepository.save(any())).thenAnswer { it.arguments[0] }
 
-        monitor.runCheck(BigDecimal("5"))
+        monitor.runCheck(BigDecimal("10"))
 
         verify(eventPublisher, never()).publishEvent(any<VendorSlaBreached>())
+    }
+
+    @Test
+    fun `breach rate calculated as violations over total fulfillments percentage`() {
+        val vendor = activeVendor()
+        val skuId = UUID.randomUUID()
+        val assignment = VendorSkuAssignment(vendorId = vendor.id, skuId = skuId)
+
+        whenever(vendorRepository.findByStatus(VendorStatus.ACTIVE.name)).thenReturn(listOf(vendor))
+        // 9 violations out of 100 = 9% — below 10% threshold
+        whenever(fulfillmentRecordRepository.countByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(100L)
+        whenever(fulfillmentRecordRepository.countViolationsByVendorIdAndRecordedAtAfter(eq(vendor.id), any<Instant>())).thenReturn(9L)
+
+        monitor.runCheck(BigDecimal("10"))
+
+        verify(eventPublisher, never()).publishEvent(any<VendorSlaBreached>())
+        verify(vendorRepository, never()).save(any<Vendor>())
     }
 }

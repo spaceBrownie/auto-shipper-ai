@@ -162,6 +162,30 @@ class VendorEndpointIntegrationTest {
     }
 
     @Test
+    fun `POST fulfillments records a fulfillment outcome`() {
+        val vendorId = registerVendor()
+
+        mockMvc.perform(
+            post("/api/vendors/$vendorId/fulfillments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"orderId":"00000000-0000-0000-0000-000000000001","isViolation":false}""")
+        )
+            .andExpect(status().isCreated)
+    }
+
+    @Test
+    fun `POST fulfillments records a violation`() {
+        val vendorId = registerVendor()
+
+        mockMvc.perform(
+            post("/api/vendors/$vendorId/fulfillments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"orderId":"00000000-0000-0000-0000-000000000002","isViolation":true,"violationType":"LATE_SHIPMENT"}""")
+        )
+            .andExpect(status().isCreated)
+    }
+
+    @Test
     fun `GET vendors lists all vendors`() {
         registerVendor("Vendor A", "a@test.com")
         registerVendor("Vendor B", "b@test.com")

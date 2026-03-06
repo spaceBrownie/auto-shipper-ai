@@ -2,7 +2,9 @@ package com.autoshipper.vendor.domain.service
 
 import com.autoshipper.shared.identity.VendorId
 import com.autoshipper.vendor.domain.Vendor
+import com.autoshipper.vendor.domain.VendorFulfillmentRecord
 import com.autoshipper.vendor.domain.VendorSkuAssignment
+import com.autoshipper.vendor.persistence.VendorFulfillmentRecordRepository
 import com.autoshipper.vendor.persistence.VendorRepository
 import com.autoshipper.vendor.persistence.VendorSkuAssignmentRepository
 import org.springframework.stereotype.Service
@@ -13,7 +15,8 @@ import java.util.UUID
 @Transactional
 class VendorActivationService(
     private val vendorRepository: VendorRepository,
-    private val assignmentRepository: VendorSkuAssignmentRepository
+    private val assignmentRepository: VendorSkuAssignmentRepository,
+    private val fulfillmentRecordRepository: VendorFulfillmentRecordRepository
 ) {
     fun register(name: String, contactEmail: String): Vendor {
         val vendor = Vendor(name = name, contactEmail = contactEmail)
@@ -53,6 +56,20 @@ class VendorActivationService(
 
         val assignment = VendorSkuAssignment(vendorId = vendorId.value, skuId = skuId)
         return assignmentRepository.save(assignment)
+    }
+
+    fun recordFulfillment(vendorId: VendorId, orderId: UUID, isViolation: Boolean, violationType: String?): VendorFulfillmentRecord {
+        vendorRepository.findById(vendorId.value)
+            .orElseThrow { NoSuchElementException("Vendor not found: $vendorId") }
+
+        return fulfillmentRecordRepository.save(
+            VendorFulfillmentRecord(
+                vendorId = vendorId.value,
+                orderId = orderId,
+                isViolation = isViolation,
+                violationType = violationType
+            )
+        )
     }
 
     @Transactional(readOnly = true)

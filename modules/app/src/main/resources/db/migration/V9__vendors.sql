@@ -30,7 +30,18 @@ CREATE TABLE vendor_breach_log (
     occurred_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE vendor_fulfillment_records (
+    id UUID PRIMARY KEY,
+    vendor_id UUID NOT NULL REFERENCES vendors(id),
+    order_id UUID NOT NULL,
+    is_violation BOOLEAN NOT NULL DEFAULT FALSE,
+    violation_type VARCHAR(100),
+    recorded_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 CREATE INDEX idx_vendor_status ON vendors(status);
 CREATE INDEX idx_vendor_sku_vendor_id ON vendor_sku_assignments(vendor_id);
 CREATE INDEX idx_vendor_sku_sku_id ON vendor_sku_assignments(sku_id);
 CREATE INDEX idx_vendor_breach_vendor_id ON vendor_breach_log(vendor_id);
+CREATE INDEX idx_vendor_fulfillment_vendor_id ON vendor_fulfillment_records(vendor_id);
+CREATE INDEX idx_vendor_fulfillment_recorded_at ON vendor_fulfillment_records(vendor_id, recorded_at);

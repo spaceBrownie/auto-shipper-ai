@@ -5,6 +5,7 @@ import com.autoshipper.vendor.domain.Vendor
 import com.autoshipper.vendor.domain.VendorActivationChecklist
 import com.autoshipper.vendor.domain.VendorNotActivatedException
 import com.autoshipper.vendor.domain.VendorStatus
+import com.autoshipper.vendor.persistence.VendorFulfillmentRecordRepository
 import com.autoshipper.vendor.persistence.VendorRepository
 import com.autoshipper.vendor.persistence.VendorSkuAssignmentRepository
 import org.junit.jupiter.api.Assertions.*
@@ -25,6 +26,9 @@ class VendorActivationServiceTest {
 
     @Mock
     lateinit var assignmentRepository: VendorSkuAssignmentRepository
+
+    @Mock
+    lateinit var fulfillmentRecordRepository: VendorFulfillmentRecordRepository
 
     @InjectMocks
     lateinit var service: VendorActivationService
