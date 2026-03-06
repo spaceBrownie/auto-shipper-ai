@@ -9,12 +9,14 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker
 import io.github.resilience4j.retry.annotation.Retry
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import java.math.BigDecimal
 import java.math.RoundingMode
 
 @Component
+@Profile("!local")
 class UspsRateAdapter(
     @Qualifier("uspsRestClient") private val uspsRestClient: RestClient,
     @Value("\${usps.api.oauth-token}") private val oauthToken: String
