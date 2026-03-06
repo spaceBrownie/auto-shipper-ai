@@ -2,16 +2,17 @@ package com.autoshipper.vendor.domain.service
 
 import com.autoshipper.shared.identity.VendorId
 import com.autoshipper.vendor.domain.VendorReliabilityScore
-import com.autoshipper.vendor.persistence.VendorBreachLogRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Duration
+import java.time.Instant
 
 @Service
 @Transactional(readOnly = true)
 class VendorReliabilityScorer(
-    private val breachLogRepository: VendorBreachLogRepository
+    private val fulfillmentDataProvider: VendorFulfillmentDataProvider
 ) {
     companion object {
         private val ON_TIME_WEIGHT = BigDecimal("0.40")
@@ -21,6 +22,7 @@ class VendorReliabilityScorer(
         private val HUNDRED = BigDecimal(100)
         private val MAX_BREACH_PENALTY = BigDecimal(10)
         private val MAX_RESPONSE_HOURS = BigDecimal(72)
+        val ROLLING_WINDOW: Duration = Duration.ofDays(30)
     }
 
     fun compute(
@@ -29,7 +31,8 @@ class VendorReliabilityScorer(
         defectRate: BigDecimal,
         avgResponseTimeHours: BigDecimal
     ): VendorReliabilityScore {
-        val breachCount = breachLogRepository.countByVendorId(vendorId.value)
+        val since = Instant.now().minus(ROLLING_WINDOW)
+        val breachCount = fulfillmentDataProvider.countViolationsSince(vendorId.value, since)
 
         val onTimeScore = onTimeRate.coerceIn(BigDecimal.ZERO, HUNDRED)
         val defectScore = (HUNDRED - defectRate.multiply(BigDecimal(10)))
