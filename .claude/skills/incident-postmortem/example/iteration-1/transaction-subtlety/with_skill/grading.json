@@ -1,0 +1,43 @@
+{
+  "eval_id": 3,
+  "eval_name": "transaction-subtlety",
+  "run_type": "with_skill",
+  "expectations": [
+    {
+      "text": "file_in_correct_location",
+      "passed": true,
+      "evidence": "File is at outputs/PM-001-pricing-not-persisted-after-commit-listener.md with PM-001 prefix"
+    },
+    {
+      "text": "has_all_sections",
+      "passed": true,
+      "evidence": "Contains Summary, Timeline, Symptom, Root Cause, Fix Applied, Impact, Lessons Learned, and Prevention sections"
+    },
+    {
+      "text": "has_severity",
+      "passed": true,
+      "evidence": "**Severity:** High"
+    },
+    {
+      "text": "has_prevention_checkboxes",
+      "passed": true,
+      "evidence": "Prevention section has 4 '- [ ]' action items"
+    },
+    {
+      "text": "mentions_after_commit",
+      "passed": true,
+      "evidence": "Root Cause: 'AFTER_COMMIT listeners run after the originating transaction has already committed and closed, so Spring's transaction synchronization state prevented the @Transactional proxy on PricingEngine from opening a new transaction'"
+    },
+    {
+      "text": "mentions_requires_new",
+      "passed": true,
+      "evidence": "Fix Applied: 'Added @Transactional(propagation = Propagation.REQUIRES_NEW) directly on the onSkuStateChanged() method in PricingInitializer'"
+    },
+    {
+      "text": "explains_transaction_lifecycle",
+      "passed": true,
+      "evidence": "Root Cause explains the full chain: the originating transaction commits, AFTER_COMMIT listener runs outside it, TransactionSynchronizationManager still has residual state, @Transactional REQUIRED proxy 'did not open a new transaction because it interprets the synchronization state as already participating in a transaction (even though that transaction has committed)'"
+    }
+  ],
+  "overall_pass_rate": 1.0
+}

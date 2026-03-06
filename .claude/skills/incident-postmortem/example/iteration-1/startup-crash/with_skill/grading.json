@@ -1,0 +1,43 @@
+{
+  "eval_id": 1,
+  "eval_name": "startup-crash",
+  "run_type": "with_skill",
+  "expectations": [
+    {
+      "text": "file_in_correct_location",
+      "passed": true,
+      "evidence": "File is at outputs/PM-001-shopify-adapter-startup-crash-local-profile.md with PM-001 prefix"
+    },
+    {
+      "text": "has_all_sections",
+      "passed": true,
+      "evidence": "Contains Summary, Timeline, Symptom, Root Cause, Fix Applied, Impact, Lessons Learned, and Prevention sections"
+    },
+    {
+      "text": "has_severity",
+      "passed": true,
+      "evidence": "**Severity:** High"
+    },
+    {
+      "text": "has_prevention_checkboxes",
+      "passed": true,
+      "evidence": "Prevention section has 4 '- [ ]' action items"
+    },
+    {
+      "text": "mentions_exception",
+      "passed": true,
+      "evidence": "Root cause mentions 'UnsatisfiedDependencyException' and 'required a bean of type org.springframework.web.client.RestClient that could not be found'"
+    },
+    {
+      "text": "names_key_files",
+      "passed": true,
+      "evidence": "Both ExternalApiConfig and ShopifyPriceSyncAdapter are named in the Root Cause and Fix Applied sections"
+    },
+    {
+      "text": "explains_profile_mismatch",
+      "passed": true,
+      "evidence": "Explains that '@Profile(\"!local\")' was added to ExternalApiConfig making beans unavailable, but ShopifyPriceSyncAdapter 'unconditionally required @Qualifier(\"shopifyRestClient\") RestClient' and was not profile-gated"
+    }
+  ],
+  "overall_pass_rate": 1.0
+}

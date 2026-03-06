@@ -1,0 +1,43 @@
+{
+  "eval_id": 2,
+  "eval_name": "pricing-404",
+  "run_type": "with_skill",
+  "expectations": [
+    {
+      "text": "file_in_correct_location",
+      "passed": true,
+      "evidence": "File is at outputs/PM-001-pricing-404-on-listed-skus.md with PM-001 prefix"
+    },
+    {
+      "text": "has_all_sections",
+      "passed": true,
+      "evidence": "Contains Summary, Timeline, Symptom, Root Cause, Fix Applied, Impact, Lessons Learned, and Prevention sections"
+    },
+    {
+      "text": "has_severity",
+      "passed": true,
+      "evidence": "**Severity:** High"
+    },
+    {
+      "text": "has_prevention_checkboxes",
+      "passed": true,
+      "evidence": "Prevention section has 5 '- [ ]' action items"
+    },
+    {
+      "text": "mentions_404",
+      "passed": true,
+      "evidence": "Symptom section: 'the pricing endpoint returned a 404' and 'GET /api/skus/{id}/pricing -> 404 Not Found'"
+    },
+    {
+      "text": "names_setInitialPrice",
+      "passed": true,
+      "evidence": "Root Cause section: 'PricingEngine.setInitialPrice() existed but was never invoked from any code path. No event listener or service call connected the SKU-listed transition to pricing initialization'"
+    },
+    {
+      "text": "explains_missing_listener",
+      "passed": true,
+      "evidence": "Root Cause explains 'No event listener bridged SkuStateChanged to the pricing module' and details the 5-whys: 'No listener written? The two modules were implemented in separate feature requests without an explicit integration contract'"
+    }
+  ],
+  "overall_pass_rate": 1.0
+}

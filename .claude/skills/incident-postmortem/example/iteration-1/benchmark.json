@@ -1,0 +1,55 @@
+{
+  "metadata": {
+    "skill_name": "incident-postmortem",
+    "skill_path": "/Users/dennyjoy/git/auto-shipper-ai/.claude/skills/incident-postmortem",
+    "executor_model": "claude-opus-4-6",
+    "analyzer_model": "claude-opus-4-6",
+    "timestamp": "2026-03-04T20:05:27Z",
+    "evals_run": ["startup-crash", "pricing-404", "transaction-subtlety"],
+    "runs_per_configuration": 3
+  },
+  "configurations": [
+    {
+      "name": "with_skill",
+      "pass_rate": {"mean": 1.0, "stddev": 0.0},
+      "time_seconds": {"mean": 85.1, "stddev": 9.7},
+      "total_tokens": {"mean": 26938, "stddev": 3552}
+    },
+    {
+      "name": "without_skill",
+      "pass_rate": {"mean": 0.62, "stddev": 0.08},
+      "time_seconds": {"mean": 72.5, "stddev": 13.3},
+      "total_tokens": {"mean": 24470, "stddev": 3338}
+    }
+  ],
+  "runs": [
+    {
+      "eval_name": "startup-crash",
+      "with_skill": {"pass_rate": 1.0, "time_seconds": 75.9, "total_tokens": 22684},
+      "without_skill": {"pass_rate": 0.57, "time_seconds": 58.6, "total_tokens": 20778}
+    },
+    {
+      "eval_name": "pricing-404",
+      "with_skill": {"pass_rate": 1.0, "time_seconds": 84.2, "total_tokens": 28908},
+      "without_skill": {"pass_rate": 0.71, "time_seconds": 73.8, "total_tokens": 27385}
+    },
+    {
+      "eval_name": "transaction-subtlety",
+      "with_skill": {"pass_rate": 1.0, "time_seconds": 95.3, "total_tokens": 29221},
+      "without_skill": {"pass_rate": 0.57, "time_seconds": 85.1, "total_tokens": 25247}
+    }
+  ],
+  "run_summary": {
+    "delta": {
+      "pass_rate": "+0.38",
+      "time_seconds": "+12.6",
+      "tokens": "+2468"
+    }
+  },
+  "notes": [
+    "With-skill runs achieve 100% pass rate across all 3 test cases vs 62% average for baseline",
+    "The pass rate delta (+38%) is entirely from structural assertions: PM-XXX naming, required section headers, prevention checkboxes",
+    "Content-specific assertions pass in both configurations — technical accuracy is comparable",
+    "With-skill runs take ~17% longer and use ~10% more tokens — overhead of reading and following the template"
+  ]
+}
