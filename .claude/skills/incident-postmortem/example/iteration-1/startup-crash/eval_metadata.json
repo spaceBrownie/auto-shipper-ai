@@ -1,0 +1,14 @@
+{
+  "eval_id": 1,
+  "eval_name": "startup-crash",
+  "prompt": "write a post-mortem for the ShopifyPriceSyncAdapter startup failure we just fixed — the app crashed on startup with local profile because ExternalApiConfig was profile-gated but ShopifyPriceSyncAdapter still depended on shopifyRestClient",
+  "assertions": [
+    {"name": "file_in_correct_location", "type": "file_exists", "description": "Post-mortem saved to docs/postmortems/PM-*.md"},
+    {"name": "has_all_sections", "type": "content_check", "description": "Contains sections: Summary, Timeline, Symptom, Root Cause, Fix Applied, Impact, Lessons Learned, Prevention"},
+    {"name": "has_severity", "type": "content_check", "description": "Includes a severity rating (Critical, High, Medium, or Low)"},
+    {"name": "has_prevention_checkboxes", "type": "content_check", "description": "Prevention section has at least one '- [ ]' action item"},
+    {"name": "mentions_exception", "type": "content_check", "description": "Root cause mentions UnsatisfiedDependencyException or bean not found error"},
+    {"name": "names_key_files", "type": "content_check", "description": "Names ExternalApiConfig and ShopifyPriceSyncAdapter in root cause or fix"},
+    {"name": "explains_profile_mismatch", "type": "content_check", "description": "Explains that the RestClient bean was profile-gated but the consumer was not"}
+  ]
+}

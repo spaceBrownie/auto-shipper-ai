@@ -1,0 +1,43 @@
+{
+  "eval_id": 3,
+  "eval_name": "transaction-subtlety",
+  "run_type": "without_skill",
+  "expectations": [
+    {
+      "text": "file_in_correct_location",
+      "passed": false,
+      "evidence": "File is named postmortem.md without a PM-XXX prefix"
+    },
+    {
+      "text": "has_all_sections",
+      "passed": false,
+      "evidence": "Has Summary, Timeline, Root Cause, Impact, Lessons Learned. Uses 'Fix' instead of 'Fix Applied' (acceptable). Has 'Action Items' as a table instead of 'Prevention'. Missing dedicated 'Symptom' section (symptom details embedded in Summary/Timeline)."
+    },
+    {
+      "text": "has_severity",
+      "passed": true,
+      "evidence": "**Severity:** Medium (data not persisted; no errors logged)"
+    },
+    {
+      "text": "has_prevention_checkboxes",
+      "passed": false,
+      "evidence": "Action Items section uses a table format with numbered rows and Status column, not '- [ ]' checkbox format"
+    },
+    {
+      "text": "mentions_after_commit",
+      "passed": true,
+      "evidence": "Root Cause: 'AFTER_COMMIT phase runs inside the TransactionSynchronization.afterCompletion() callback, where the transaction synchronization resources have not yet been fully cleared. A REQUIRED propagation call sees stale synchronization state and does not start a fresh transaction'"
+    },
+    {
+      "text": "mentions_requires_new",
+      "passed": true,
+      "evidence": "Fix section: 'Added @Transactional(propagation = Propagation.REQUIRES_NEW) directly on the onSkuStateChanged method' with code example"
+    },
+    {
+      "text": "explains_transaction_lifecycle",
+      "passed": true,
+      "evidence": "Detailed explanation: 'AFTER_COMMIT defers event delivery until the originating transaction commits. Once that transaction commits, Spring invokes the listener outside of any active transaction context.' Explains REQUIRED propagation checks for existing transaction and 'synchronization state from the just-committed transaction interferes with new transaction creation'"
+    }
+  ],
+  "overall_pass_rate": 0.57
+}

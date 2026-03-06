@@ -1,0 +1,14 @@
+{
+  "eval_id": 2,
+  "eval_name": "pricing-404",
+  "prompt": "hey can you document that pricing 404 bug? the one where GET /pricing returned 404 for listed SKUs because PricingEngine.setInitialPrice was never called",
+  "assertions": [
+    {"name": "file_in_correct_location", "type": "file_exists", "description": "Post-mortem saved to docs/postmortems/PM-*.md"},
+    {"name": "has_all_sections", "type": "content_check", "description": "Contains sections: Summary, Timeline, Symptom, Root Cause, Fix Applied, Impact, Lessons Learned, Prevention"},
+    {"name": "has_severity", "type": "content_check", "description": "Includes a severity rating (Critical, High, Medium, or Low)"},
+    {"name": "has_prevention_checkboxes", "type": "content_check", "description": "Prevention section has at least one '- [ ]' action item"},
+    {"name": "mentions_404", "type": "content_check", "description": "Symptom section mentions 404 status code"},
+    {"name": "names_setInitialPrice", "type": "content_check", "description": "Root cause mentions PricingEngine.setInitialPrice was never called"},
+    {"name": "explains_missing_listener", "type": "content_check", "description": "Explains that no event listener bridged SkuStateChanged to the pricing module"}
+  ]
+}

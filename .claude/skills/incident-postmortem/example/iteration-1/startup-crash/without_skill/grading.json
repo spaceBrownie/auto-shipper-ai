@@ -1,0 +1,43 @@
+{
+  "eval_id": 1,
+  "eval_name": "startup-crash",
+  "run_type": "without_skill",
+  "expectations": [
+    {
+      "text": "file_in_correct_location",
+      "passed": false,
+      "evidence": "File is named postmortem.md without a PM-XXX prefix"
+    },
+    {
+      "text": "has_all_sections",
+      "passed": false,
+      "evidence": "Has Summary, Timeline, Root Cause, Lessons Learned. Missing dedicated Symptom section (symptom details are embedded in Summary/Root Cause). Uses 'Resolution' instead of 'Fix Applied' which is acceptable. Has no 'Prevention' header — uses 'Action Items' instead. Missing dedicated Impact section."
+    },
+    {
+      "text": "has_severity",
+      "passed": true,
+      "evidence": "**Severity:** P1 (application fails to start) — uses P1 rather than Critical/High/Medium/Low but conveys severity"
+    },
+    {
+      "text": "has_prevention_checkboxes",
+      "passed": false,
+      "evidence": "Action Items section uses a table format with numbered rows, not '- [ ]' checkbox format"
+    },
+    {
+      "text": "mentions_exception",
+      "passed": true,
+      "evidence": "Mentions 'UnsatisfiedDependencyException' and the full error message about RestClient bean not found"
+    },
+    {
+      "text": "names_key_files",
+      "passed": true,
+      "evidence": "Both ExternalApiConfig and ShopifyPriceSyncAdapter are named throughout the document"
+    },
+    {
+      "text": "explains_profile_mismatch",
+      "passed": true,
+      "evidence": "Explains 'ExternalApiConfig was annotated with @Profile(\"!local\")' but 'ShopifyPriceSyncAdapter still had a hard dependency on the shopifyRestClient bean via @Qualifier'"
+    }
+  ],
+  "overall_pass_rate": 0.57
+}

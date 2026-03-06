@@ -1,0 +1,43 @@
+{
+  "eval_id": 2,
+  "eval_name": "pricing-404",
+  "run_type": "without_skill",
+  "expectations": [
+    {
+      "text": "file_in_correct_location",
+      "passed": false,
+      "evidence": "File is named postmortem.md without a PM-XXX prefix"
+    },
+    {
+      "text": "has_all_sections",
+      "passed": false,
+      "evidence": "Has Summary, Timeline, Root Cause, Impact, Lessons Learned. Uses 'Fix' instead of 'Fix Applied' (acceptable). Has 'Action Items' instead of 'Prevention'. Missing dedicated 'Symptom' section (symptom info embedded in Summary). Also has 'Verification' section which is extra."
+    },
+    {
+      "text": "has_severity",
+      "passed": true,
+      "evidence": "**Severity:** High"
+    },
+    {
+      "text": "has_prevention_checkboxes",
+      "passed": true,
+      "evidence": "Action Items section uses '- [ ]' checkbox format with 4 items"
+    },
+    {
+      "text": "mentions_404",
+      "passed": true,
+      "evidence": "Summary mentions 'returned HTTP 404' and Timeline mentions 'returned 404'"
+    },
+    {
+      "text": "names_setInitialPrice",
+      "passed": true,
+      "evidence": "Root Cause: 'PricingEngine.setInitialPrice(), which creates the SkuPriceEntity record... no event listener existed to bridge these two modules. The setInitialPrice() method was implemented but never wired into any call path'"
+    },
+    {
+      "text": "explains_missing_listener",
+      "passed": true,
+      "evidence": "Root Cause explains 'no event listener existed to bridge these two modules' and 'a classic cross-module integration gap in a modular monolith: each module's internal logic was correct, but the event-driven contract between them was never established'"
+    }
+  ],
+  "overall_pass_rate": 0.71
+}
