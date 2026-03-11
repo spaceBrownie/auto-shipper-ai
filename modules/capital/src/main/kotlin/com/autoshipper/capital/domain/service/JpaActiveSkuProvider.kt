@@ -13,7 +13,7 @@ class JpaActiveSkuProvider(
     @Suppress("UNCHECKED_CAST")
     override fun getActiveSkuIds(): List<UUID> {
         return entityManager.createNativeQuery(
-            "SELECT id FROM skus WHERE current_state_discriminator IN ('LISTED', 'SCALED')"
+            "SELECT id FROM skus WHERE current_state IN ('LISTED', 'SCALED')"
         ).resultList as List<UUID>
     }
 }

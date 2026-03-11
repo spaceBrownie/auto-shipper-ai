@@ -24,6 +24,8 @@ subprojects {
             dependencies {
                 add("implementation", platform("org.springframework.boot:spring-boot-dependencies:3.3.4"))
                 add("testImplementation", platform("org.springframework.boot:spring-boot-dependencies:3.3.4"))
+                // Override Testcontainers to version compatible with Docker API 1.53 (PM-004)
+                add("testImplementation", platform("org.testcontainers:testcontainers-bom:1.21.0"))
             }
         }
 

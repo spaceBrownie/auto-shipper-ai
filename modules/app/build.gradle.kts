@@ -39,6 +39,9 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    // Pin Docker API version for Testcontainers compatibility (PM-004)
+    environment("DOCKER_API_VERSION", "1.44")
+    systemProperty("com.github.dockerjava.api.model.RemoteApiVersion", "1.44")
 }
 
 tasks.named<BootRun>("bootRun") {
