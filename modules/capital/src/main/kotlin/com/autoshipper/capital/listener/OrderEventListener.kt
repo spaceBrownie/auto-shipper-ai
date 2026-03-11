@@ -6,9 +6,11 @@ import com.autoshipper.capital.domain.service.ReserveAccountService
 import com.autoshipper.capital.persistence.CapitalOrderRecordRepository
 import com.autoshipper.shared.events.OrderFulfilled
 import org.slf4j.LoggerFactory
-import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.event.TransactionPhase
+import org.springframework.transaction.event.TransactionalEventListener
 
 @Component
 class OrderEventListener(
@@ -18,8 +20,8 @@ class OrderEventListener(
 ) {
     private val logger = LoggerFactory.getLogger(OrderEventListener::class.java)
 
-    @EventListener
-    @Transactional
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun onOrderFulfilled(event: OrderFulfilled) {
         if (orderRecordRepository.findByOrderId(event.orderId.value) != null) {
             logger.debug("Order {} already recorded, skipping", event.orderId)

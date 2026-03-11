@@ -17,6 +17,7 @@ import com.autoshipper.catalog.persistence.SkuRepository
 import com.autoshipper.shared.events.ShutdownRuleTriggered
 import com.autoshipper.shared.identity.SkuId
 import com.autoshipper.shared.money.Currency
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -24,42 +25,26 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
-import org.springframework.transaction.annotation.Transactional
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 
+/**
+ * Integration tests for capital module shutdown rules and reserve reconciliation.
+ *
+ * NOT @Transactional — ShutdownRuleListener uses @TransactionalEventListener(phase = AFTER_COMMIT),
+ * which only fires after the transaction commits. A @Transactional test never commits,
+ * so the listener would never fire and assertions on SKU state changes would silently pass
+ * only when tests are skipped.
+ *
+ * Uses the running Postgres container (application-test.yml) instead of Testcontainers
+ * due to Docker API 1.53 incompatibility (PM-004).
+ */
 @SpringBootTest
 @ActiveProfiles("test")
-@Testcontainers(disabledWithoutDocker = true)
-@Transactional
 class CapitalIntegrationTest {
-
-    companion object {
-        @Container
-        @JvmStatic
-        val postgres = PostgreSQLContainer("postgres:16-alpine")
-            .withDatabaseName("autoshipper_test")
-            .withUsername("autoshipper")
-            .withPassword("autoshipper")
-
-        @JvmStatic
-        @DynamicPropertySource
-        fun configureDatasource(registry: DynamicPropertyRegistry) {
-            registry.add("spring.datasource.url", postgres::getJdbcUrl)
-            registry.add("spring.datasource.username", postgres::getUsername)
-            registry.add("spring.datasource.password", postgres::getPassword)
-            registry.add("spring.flyway.url", postgres::getJdbcUrl)
-            registry.add("spring.flyway.user", postgres::getUsername)
-            registry.add("spring.flyway.password", postgres::getPassword)
-        }
-    }
 
     @Autowired lateinit var shutdownRuleEngine: ShutdownRuleEngine
     @Autowired lateinit var reserveCalcJob: ReserveCalcJob
@@ -70,6 +55,12 @@ class CapitalIntegrationTest {
     @Autowired lateinit var reserveAccountRepository: ReserveAccountRepository
     @Autowired lateinit var skuRepository: SkuRepository
     @Autowired lateinit var eventPublisher: ApplicationEventPublisher
+    @Autowired lateinit var jdbcTemplate: JdbcTemplate
+
+    @AfterEach
+    fun cleanup() {
+        jdbcTemplate.execute("TRUNCATE TABLE capital_rule_audit, margin_snapshots, capital_order_records, reserve_accounts, sku_state_history, skus CASCADE")
+    }
 
     /**
      * Walk a SKU through the state machine to reach LISTED.
