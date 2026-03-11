@@ -102,47 +102,47 @@ shared/src/main/kotlin/com/autoshipper/shared/events/
 ## Task Breakdown
 
 ### Shared Events
-- [ ] Add `ShutdownRuleTriggered` event to `modules/shared/src/.../events/`
-- [ ] Add `MarginSnapshotTaken` event to `modules/shared/src/.../events/`
+- [x] Add `ShutdownRuleTriggered` event to `modules/shared/src/.../events/`
+- [x] Add `MarginSnapshotTaken` event to `modules/shared/src/.../events/`
 
 ### Domain Layer
-- [ ] Implement `ReserveAccount` JPA entity (balance, targetRateMin, targetRateMax, lastUpdatedAt)
-- [ ] Implement `MarginSnapshot` JPA entity (skuId, snapshotDate, grossMargin, netMargin, revenue, totalCost, refundRate, chargebackRate, cacVariance)
-- [ ] Implement `KillRule` sealed class with 4 variants (MarginBreach, RefundRateBreach, ChargebackRateBreach, CacInstability)
-- [ ] Implement `CapitalRuleAudit` JPA entity (skuId, rule, conditionValue, action, firedAt)
-- [ ] Implement `CapitalOrderRecord` JPA entity (orderId, skuId, totalAmount, currency, status, refunded, chargebacked, recordedAt)
-- [ ] Implement `CapitalConfig` `@ConfigurationProperties` (netMarginFloor=30, sustainedDays=7, refundRateMax=5, chargebackRateMax=2, cacVarianceMax=15, cacVarianceDays=14, reserveRateMin=10, reserveRateMax=15)
+- [x] Implement `ReserveAccount` JPA entity (balance, targetRateMin, targetRateMax, lastUpdatedAt)
+- [x] Implement `MarginSnapshot` JPA entity (skuId, snapshotDate, grossMargin, netMargin, revenue, totalCost, refundRate, chargebackRate, cacVariance)
+- [x] Implement `KillRule` sealed class with 4 variants (MarginBreach, RefundRateBreach, ChargebackRateBreach, CacInstability)
+- [x] Implement `CapitalRuleAudit` JPA entity (skuId, rule, conditionValue, action, firedAt)
+- [x] Implement `CapitalOrderRecord` JPA entity (orderId, skuId, totalAmount, currency, status, refunded, chargebacked, recordedAt)
+- [x] Implement `CapitalConfig` `@ConfigurationProperties` (netMarginFloor=30, sustainedDays=7, refundRateMax=5, chargebackRateMax=2, cacVarianceMax=15, cacVarianceDays=14, reserveRateMin=10, reserveRateMax=15)
 
 ### Domain Service
-- [ ] Implement `ReserveAccountService.creditFromOrder(orderId, revenue)` — adds revenue * rate to reserve balance
-- [ ] Implement `ReserveAccountService.getBalance()` — returns current balance and health status
-- [ ] Implement `ReserveCalcJob` `@Scheduled(cron = "0 0 2 * * *")` (nightly 02:00) — reconcile reserve from all orders, flag if below minimum
-- [ ] Implement `MarginSweepJob` `@Scheduled(fixedRate = 21_600_000)` (every 6h) — snapshot + rule evaluation
-- [ ] Implement snapshot computation: aggregate recent orders per SKU → compute gross/net margin, refund rate, chargeback rate, CAC variance
-- [ ] Implement `ShutdownRuleEngine.evaluate(skuId, snapshots)` checking all 4 KillRule conditions
-- [ ] Rule 1: net margin < 30% for 7+ consecutive days → publish `ShutdownRuleTriggered` with action=PAUSE
-- [ ] Rule 2: 30-day rolling refund rate > 5% → publish `ShutdownRuleTriggered` with action=PAUSE
-- [ ] Rule 3: 30-day rolling chargeback rate > 2% → publish `ShutdownRuleTriggered` with action=PAUSE_COMPLIANCE
-- [ ] Rule 4: CAC variance > 15% over 14 days → publish `PricingSignal.CacChanged`
-- [ ] Log every rule firing to `capital_rule_audit` table (skuId, rule, conditionValue, action, timestamp)
-- [ ] Implement `SkuPnlReporter.report(skuId, from, to)` aggregating snapshots into P&L report
-- [ ] Publish `MarginSnapshotTaken` event after each snapshot write
+- [x] Implement `ReserveAccountService.creditFromOrder(orderId, revenue)` — adds revenue * rate to reserve balance
+- [x] Implement `ReserveAccountService.getBalance()` — returns current balance and health status
+- [x] Implement `ReserveCalcJob` `@Scheduled(cron = "0 0 2 * * *")` (nightly 02:00) — reconcile reserve from all orders, flag if below minimum
+- [x] Implement `MarginSweepJob` `@Scheduled(fixedRate = 21_600_000)` (every 6h) — snapshot + rule evaluation
+- [x] Implement snapshot computation: aggregate recent orders per SKU → compute gross/net margin, refund rate, chargeback rate, CAC variance
+- [x] Implement `ShutdownRuleEngine.evaluate(skuId, snapshots)` checking all 4 KillRule conditions
+- [x] Rule 1: net margin < 30% for 7+ consecutive days → publish `ShutdownRuleTriggered` with action=PAUSE
+- [x] Rule 2: 30-day rolling refund rate > 5% → publish `ShutdownRuleTriggered` with action=PAUSE
+- [x] Rule 3: 30-day rolling chargeback rate > 2% → publish `ShutdownRuleTriggered` with action=PAUSE_COMPLIANCE
+- [x] Rule 4: CAC variance > 15% over 14 days → publish `PricingSignal.CacChanged`
+- [x] Log every rule firing to `capital_rule_audit` table (skuId, rule, conditionValue, action, timestamp)
+- [x] Implement `SkuPnlReporter.report(skuId, from, to)` aggregating snapshots into P&L report
+- [x] Publish `MarginSnapshotTaken` event after each snapshot write
 
 ### Listener Layer
-- [ ] Implement `OrderEventListener` `@EventListener(OrderFulfilled::class)` — write `CapitalOrderRecord`, credit reserve
-- [ ] Implement `ShutdownRuleListener` in catalog module `@EventListener(ShutdownRuleTriggered::class)` — pause/terminate SKU (LISTED/SCALED only)
+- [x] Implement `OrderEventListener` `@EventListener(OrderFulfilled::class)` — write `CapitalOrderRecord`, credit reserve
+- [x] Implement `ShutdownRuleListener` in catalog module `@EventListener(ShutdownRuleTriggered::class)` — pause/terminate SKU (LISTED/SCALED only)
 
 ### Handler Layer
-- [ ] Implement `GET /api/capital/reserve` returning balance, target rate, health status
-- [ ] Implement `GET /api/skus/{id}/pnl` with `from`/`to` query params
-- [ ] Add `ReserveResponse`, `SkuPnlResponse` DTOs
+- [x] Implement `GET /api/capital/reserve` returning balance, target rate, health status
+- [x] Implement `GET /api/skus/{id}/pnl` with `from`/`to` query params
+- [x] Add `ReserveResponse`, `SkuPnlResponse` DTOs
 
 ### Persistence (Common Layer)
-- [ ] Write `V13__capital.sql` migration (reserve_account, margin_snapshots, capital_rule_audit, capital_order_records tables)
-- [ ] Implement `ReserveAccountRepository`
-- [ ] Implement `MarginSnapshotRepository` with queries: findBySkuIdAndDateRange, findConsecutiveBelowThreshold
-- [ ] Implement `CapitalRuleAuditRepository`
-- [ ] Implement `CapitalOrderRecordRepository` with queries: findBySkuIdAndDateRange, countRefundedBySkuIdInWindow, countChargebackedBySkuIdInWindow
+- [x] Write `V13__capital.sql` migration (reserve_account, margin_snapshots, capital_rule_audit, capital_order_records tables)
+- [x] Implement `ReserveAccountRepository`
+- [x] Implement `MarginSnapshotRepository` with queries: findBySkuIdAndDateRange, findConsecutiveBelowThreshold
+- [x] Implement `CapitalRuleAuditRepository`
+- [x] Implement `CapitalOrderRecordRepository` with queries: findBySkuIdAndDateRange, countRefundedBySkuIdInWindow, countChargebackedBySkuIdInWindow
 
 ## Testing Strategy
 
@@ -160,14 +160,14 @@ shared/src/main/kotlin/com/autoshipper/shared/events/
 - E2E test: `ShutdownRuleListener` only pauses LISTED/SCALED SKUs (ignores others)
 
 ### E2E / Integration Tests
-- [ ] Integration test: margin degrading below 30% for 7 days triggers auto-pause via event chain
-- [ ] Integration test: refund rate breach triggers pause within one monitoring cycle
-- [ ] Integration test: chargeback rate breach triggers pause + compliance flag
-- [ ] Integration test: reserve reconciliation corrects balance drift
-- [ ] Unit tests for `ShutdownRuleEngine` (all 4 rules, boundary conditions)
-- [ ] Unit tests for `ReserveAccountService` (credit, reconcile, health status)
-- [ ] Unit tests for `SkuPnlReporter` (aggregation accuracy)
-- [ ] Unit tests for `OrderEventListener` (event → record + credit)
+- [x] Integration test: margin degrading below 30% for 7 days triggers auto-pause via event chain
+- [x] Integration test: refund rate breach triggers pause within one monitoring cycle
+- [x] Integration test: chargeback rate breach triggers pause + compliance flag
+- [x] Integration test: reserve reconciliation corrects balance drift
+- [x] Unit tests for `ShutdownRuleEngine` (all 4 rules, boundary conditions)
+- [x] Unit tests for `ReserveAccountService` (credit, reconcile, health status)
+- [x] Unit tests for `SkuPnlReporter` (aggregation accuracy)
+- [x] Unit tests for `OrderEventListener` (event → record + credit)
 
 ## Rollout Plan
 
