@@ -4,8 +4,11 @@ import com.autoshipper.catalog.domain.SkuState
 import com.autoshipper.catalog.domain.TerminationReason
 import com.autoshipper.shared.events.ShutdownRuleTriggered
 import org.slf4j.LoggerFactory
-import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Propagation
+import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.event.TransactionPhase
+import org.springframework.transaction.event.TransactionalEventListener
 
 @Component
 class ShutdownRuleListener(
@@ -13,7 +16,8 @@ class ShutdownRuleListener(
 ) {
     private val logger = LoggerFactory.getLogger(ShutdownRuleListener::class.java)
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun onShutdownRuleTriggered(event: ShutdownRuleTriggered) {
         logger.warn(
             "Shutdown rule triggered for SKU {}: rule={}, value={}, action={}",

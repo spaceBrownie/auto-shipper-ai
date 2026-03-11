@@ -3,8 +3,11 @@ package com.autoshipper.catalog.domain.service
 import com.autoshipper.catalog.domain.SkuState
 import com.autoshipper.shared.events.VendorSlaBreached
 import org.slf4j.LoggerFactory
-import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Propagation
+import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.event.TransactionPhase
+import org.springframework.transaction.event.TransactionalEventListener
 
 @Component
 class VendorBreachListener(
@@ -12,7 +15,8 @@ class VendorBreachListener(
 ) {
     private val logger = LoggerFactory.getLogger(VendorBreachListener::class.java)
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun onVendorSlaBreached(event: VendorSlaBreached) {
         logger.warn(
             "Vendor SLA breached for vendor {}, affecting {} SKUs. Breach rate: {}",
