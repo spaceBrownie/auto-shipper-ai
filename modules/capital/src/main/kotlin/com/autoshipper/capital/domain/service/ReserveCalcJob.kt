@@ -55,7 +55,9 @@ class ReserveCalcJob(
             reserveAccountRepository.save(account)
         }
 
-        val totalRevenue = allOrders.fold(BigDecimal.ZERO) { acc, o -> acc.add(o.totalAmount) }
+        val totalRevenue = allOrders
+            .filter { !it.refunded }
+            .fold(BigDecimal.ZERO) { acc, o -> acc.add(o.totalAmount) }
         if (totalRevenue > BigDecimal.ZERO) {
             val reservePercent = account.balanceAmount
                 .multiply(BigDecimal(100))
