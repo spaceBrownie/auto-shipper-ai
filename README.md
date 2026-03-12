@@ -15,11 +15,11 @@ Auto Shipper AI is an autonomous commerce engine designed to handle the entire p
 3. **Price dynamically** — set initial price, then react to cost signals (shipping, vendor, CAC, platform fee changes) with auto-adjust, auto-pause, or auto-terminate decisions
 4. **Govern vendors** — register vendors, enforce onboarding checklists, monitor SLA breaches on a 30-day rolling window, compute reliability scores, and auto-suspend vendors that exceed breach thresholds
 5. **Fulfill orders** — route orders to vendors with inventory pre-check, track shipments via carrier APIs (UPS, FedEx, USPS), detect delays with proactive customer alerts, and auto-refund via Stripe on vendor SLA breaches
+6. **Protect capital** — maintain a 10–15% rolling reserve, sweep margins every 6 hours, auto-pause or terminate SKUs that breach profitability thresholds (margin < 30% for 7+ days, refund > 5%, chargeback > 2%), with full audit trail
 
 **Planned (specs written, not yet built):**
 
-6. **Discover demand** — validate willingness to pay before committing to any product
-7. **Protect capital** — maintain a rolling reserve, monitor daily margins, auto-pause or terminate SKUs that breach profitability thresholds
+7. **Discover demand** — validate willingness to pay before committing to any product
 8. **Reallocate intelligently** — scale winners, kill losers, reinvest freed capital into highest-return opportunities
 
 ### Product Flow
@@ -166,6 +166,7 @@ Most e-commerce systems launch first and optimize later. Auto Shipper AI **valid
 | Manual price adjustments | React to cost signals with auto-adjust, pause, or terminate |
 | Hope suppliers deliver on time | Monitor SLA and auto-pause on breach |
 | Manual order tracking | Real-time carrier polling with proactive delay alerts and auto-refunds |
+| Hope margins stay healthy | Sweep margins every 6h, auto-pause on breach, full audit trail |
 | Scale everything equally | Scale winners, kill losers by margin signal *(planned)* |
 | Build inventory → find customers | Validate demand first *(planned)* |
 
@@ -317,6 +318,8 @@ Interactive API docs are available via Swagger UI at **`http://localhost:8080/sw
 | `POST` | `/api/orders` | Create a new order (with inventory pre-check) |
 | `GET` | `/api/orders/{id}` | Get order detail and status |
 | `GET` | `/api/orders/{id}/tracking` | Get shipment tracking details |
+| `GET` | `/api/capital/reserve` | Current reserve balance and health status |
+| `GET` | `/api/capital/skus/{id}/pnl?from=&to=` | SKU-level P&L (revenue, cost, margins, snapshot count) |
 | `GET` | `/actuator/health` | Health check |
 | `GET` | `/actuator/prometheus` | Prometheus metrics |
 
@@ -356,6 +359,7 @@ Migrations live in `modules/app/src/main/resources/db/migration/` and run automa
 | V10 | Fulfillment orchestration (`orders`, `return_records`, `customer_notifications`) |
 | V11 | Add `total_amount` and `total_currency` columns to `orders` |
 | V12 | Add `payment_intent_id` column to `orders` |
+| V13 | Capital protection (`reserve_accounts`, `margin_snapshots`, `capital_order_records`, `capital_rule_audit`) |
 
 ## Feature Requests
 
@@ -371,7 +375,7 @@ Implementation is tracked in `feature-requests/FR-NNN-name/` with a `spec.md`, `
 | FR-006 | Pricing engine | ✅ Complete |
 | FR-007 | Vendor governance | ✅ Complete |
 | FR-008 | Fulfillment orchestration | ✅ Complete |
-| FR-009 | Capital protection | Spec'd |
+| FR-009 | Capital protection | ✅ Complete |
 | FR-010 | Portfolio orchestration | Spec'd |
 | FR-011 | Compliance guards | Spec'd |
 | FR-012 | Frontend dashboard | Spec'd |
