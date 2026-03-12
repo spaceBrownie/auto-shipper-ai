@@ -157,7 +157,6 @@ python3 .claude/skills/feature-request/scripts/validate-phase.py --phase 1 --act
 
 ## Documentation
 
-- **Quick Start:** README.md
 - **Full Guide:** references/workflow-guide.md
 - **Skill Definition:** SKILL.md
 - **Configuration:** references/feature-workflow.yaml

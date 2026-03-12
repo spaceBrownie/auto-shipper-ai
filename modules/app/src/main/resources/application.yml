@@ -146,3 +146,13 @@ stress-test:
   chargeback-rate-percent: 2
   gross-margin-floor-percent: 50
   net-margin-floor-percent: 30
+
+capital:
+  net-margin-floor-percent: 30
+  sustained-days: 7
+  refund-rate-max-percent: 5
+  chargeback-rate-max-percent: 2
+  cac-variance-max-percent: 15
+  cac-variance-days: 14
+  reserve-rate-min-percent: 10
+  reserve-rate-max-percent: 15
