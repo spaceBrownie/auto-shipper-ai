@@ -27,6 +27,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.transaction.support.TransactionTemplate
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -56,6 +57,7 @@ class CapitalIntegrationTest {
     @Autowired lateinit var skuRepository: SkuRepository
     @Autowired lateinit var eventPublisher: ApplicationEventPublisher
     @Autowired lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired lateinit var transactionTemplate: TransactionTemplate
 
     @AfterEach
     fun cleanup() {
@@ -270,15 +272,17 @@ class CapitalIntegrationTest {
         val sku = skuRepository.save(Sku(name = "Ideation SKU", category = "Test"))
         assertEquals("IDEATION", sku.currentStateDiscriminator)
 
-        // Publish ShutdownRuleTriggered event directly
-        eventPublisher.publishEvent(
-            ShutdownRuleTriggered(
-                skuId = SkuId(sku.id),
-                rule = "MARGIN_BREACH",
-                conditionValue = "25.00%",
-                action = "PAUSE"
+        // Publish inside a transaction so the AFTER_COMMIT listener fires
+        transactionTemplate.execute {
+            eventPublisher.publishEvent(
+                ShutdownRuleTriggered(
+                    skuId = SkuId(sku.id),
+                    rule = "MARGIN_BREACH",
+                    conditionValue = "25.00%",
+                    action = "PAUSE"
+                )
             )
-        )
+        }
 
         // Verify SKU state unchanged — still IDEATION
         val updatedSku = skuRepository.findById(sku.id).orElseThrow()
@@ -291,14 +295,17 @@ class CapitalIntegrationTest {
         val sku = createScaledSku("Scaled Shutdown SKU")
         assertEquals("SCALED", sku.currentStateDiscriminator)
 
-        eventPublisher.publishEvent(
-            ShutdownRuleTriggered(
-                skuId = SkuId(sku.id),
-                rule = "REFUND_RATE_BREACH",
-                conditionValue = "6.00%",
-                action = "PAUSE"
+        // Publish inside a transaction so the AFTER_COMMIT listener fires
+        transactionTemplate.execute {
+            eventPublisher.publishEvent(
+                ShutdownRuleTriggered(
+                    skuId = SkuId(sku.id),
+                    rule = "REFUND_RATE_BREACH",
+                    conditionValue = "6.00%",
+                    action = "PAUSE"
+                )
             )
-        )
+        }
 
         val updatedSku = skuRepository.findById(sku.id).orElseThrow()
         assertEquals("PAUSED", updatedSku.currentStateDiscriminator,
