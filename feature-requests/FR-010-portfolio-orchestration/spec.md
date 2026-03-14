@@ -16,7 +16,7 @@ The system must operate as an active portfolio — not a static catalog. Without
 
 ## Success Criteria
 
-- `Experiment` aggregate with budget, validation window, status (`Active`, `Validated`, `Failed`, `Launched`)
+- `Experiment` aggregate with budget, validation window, status (`Active`, `Validated`, `Failed`, `Launched`, `Terminated`)
 - `KillWindowMonitor` scheduled job identifies SKUs with sustained negative signals past 30 days
 - `CapitalReallocator` identifies top risk-adjusted return opportunity and reallocates freed capital
 - `ScalingFlagService` marks SKUs meeting scaling criteria for human review
@@ -29,9 +29,10 @@ The system must operate as an active portfolio — not a static catalog. Without
 ## Non-Functional Requirements
 
 - Kill window monitor runs daily via `@Scheduled`
-- Capital reallocation logged to `capital_reallocation_log` with before/after state
+- Capital reallocation logged to `capital_reallocation_log` with before/after state (skuId, freedCapital, recommendedTargetSkuId, recommendedAt)
 - Portfolio KPIs cached with 5-minute TTL (Caffeine or Redis)
 - Reallocation decisions are advisory in Phase 1 — human-confirmed before executing fund transfers
+- `DemandScanJob` (Google Trends RSS + Reddit + Amazon PA-API) is owned by this module per the solo-operator spec but is explicitly deferred to a follow-on FR — this FR covers experiment lifecycle and capital reallocation only
 
 ## Dependencies
 
