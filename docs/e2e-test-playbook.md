@@ -37,7 +37,7 @@ PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
                  sku_cost_envelopes, sku_stress_test_results, sku_prices, sku_pricing_history,
                  vendors, vendor_sku_assignments, vendor_breach_log,
                  compliance_audit, experiments, kill_recommendations,
-                 capital_reallocation_log, scaling_flags, refund_alerts, discovery_blacklist
+                 priority_ranking_log, scaling_flags, refund_alerts, discovery_blacklist
   CASCADE;
 "
 ```
