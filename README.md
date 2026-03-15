@@ -39,7 +39,6 @@ flowchart TD
         D1 --> D2
         D2 -- No --> KILL0([❌ Terminate Idea])
         D2 -- Yes --> D3
-        D3 --> CG
     end
 
     subgraph CG["🔒 Cost Gate — catalog module"]
@@ -118,9 +117,11 @@ flowchart TD
         CO3([Processor Check])
         CO4([Sourcing Check])
         CO5{All Checks<br/>Passed?}
-        CO1 & CO2 & CO3 & CO4 --> CO5
+        CO1 --> CO5
+        CO2 --> CO5
+        CO3 --> CO5
+        CO4 --> CO5
         CO5 -- No --> KILL4([❌ Terminate SKU<br/>Compliance Violation])
-        CO5 -- Yes --> CG
     end
 
     subgraph PORTFOLIO["📊 Portfolio Engine — portfolio module"]
@@ -129,9 +130,9 @@ flowchart TD
         PO3([Kill Window Monitor<br/>30-day sustained loss])
         PO4([Refund Pattern Analyzer<br/>Systemic detection])
         PO5([Scaling Flag Service])
-        PO1 --> PO2 & PO3
+        PO1 --> PO2
+        PO1 --> PO3
         PO3 --> KILL5([❌ Terminate SKU])
-        PO4 --> FEEDBACK
     end
 
     subgraph FEEDBACK["🔄 Data & Feedback Loop — shared / analytics"]
@@ -141,12 +142,19 @@ flowchart TD
         FB4([Vendor Metrics])
         FB5([Margin Signals])
         FB6([Self-Correction Engine])
-        FB1 & FB2 & FB3 & FB4 & FB5 --> FB6
-        FB6 --> PRICING & CAPITAL & PORTFOLIO
+        FB1 --> FB6
+        FB2 --> FB6
+        FB3 --> FB6
+        FB4 --> FB6
+        FB5 --> FB6
+        FB6 --> PRICING
+        FB6 --> CAPITAL
+        FB6 --> PORTFOLIO
     end
 
     %% Cross-module connections
     D3 --> COMPLIANCE
+    CO5 -- Yes --> CG
     D3 --> VENDOR
     LAUNCH --> FULFILLMENT
     LAUNCH --> PRICING
@@ -154,6 +162,7 @@ flowchart TD
     FULFILLMENT --> FEEDBACK
     VENDOR --> FEEDBACK
     PRICING --> FEEDBACK
+    PO4 --> FEEDBACK
     CAPITAL --> PORTFOLIO
     PORTFOLIO --> DISCOVERY
 
