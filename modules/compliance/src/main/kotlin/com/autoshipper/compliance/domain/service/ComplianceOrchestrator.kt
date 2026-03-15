@@ -10,6 +10,7 @@ import com.autoshipper.shared.events.ComplianceFailed
 import com.autoshipper.shared.events.SkuReadyForComplianceCheck
 import com.autoshipper.shared.identity.SkuId
 import com.autoshipper.shared.identity.VendorId
+import java.util.UUID
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
@@ -65,8 +66,9 @@ class ComplianceOrchestrator(
             runChecksConcurrently(skuId, productName, productDescription, category, vendorId)
         }
 
-        // Write audit records for all checks
-        writeAuditRecords(skuId, results)
+        // Write audit records for all checks — grouped by runId
+        val runId = UUID.randomUUID()
+        writeAuditRecords(skuId, runId, results)
 
         // Determine overall result
         val firstFailure = results.firstOrNull { it.second is ComplianceCheckResult.Failed }
@@ -100,16 +102,18 @@ class ComplianceOrchestrator(
         listOf(ipCheck.await(), claimsCheck.await(), processorCheck.await(), sourcingCheck.await())
     }
 
-    private fun writeAuditRecords(skuId: SkuId, results: List<Pair<String, ComplianceCheckResult>>) {
+    private fun writeAuditRecords(skuId: SkuId, runId: UUID, results: List<Pair<String, ComplianceCheckResult>>) {
         results.forEach { (checkType, result) ->
             val record = when (result) {
                 is ComplianceCheckResult.Cleared -> ComplianceAuditRecord(
                     skuId = skuId.value,
+                    runId = runId,
                     checkType = checkType,
                     result = "CLEARED"
                 )
                 is ComplianceCheckResult.Failed -> ComplianceAuditRecord(
                     skuId = skuId.value,
+                    runId = runId,
                     checkType = checkType,
                     result = "FAILED",
                     reason = result.reason.name,

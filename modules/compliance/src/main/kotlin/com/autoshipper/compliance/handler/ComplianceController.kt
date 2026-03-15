@@ -38,20 +38,24 @@ class ComplianceController(
 
     @GetMapping("/{id}")
     fun getComplianceStatus(@PathVariable id: UUID): ResponseEntity<ComplianceStatusResponse> {
-        val records = auditRepository.findBySkuIdOrderByCheckedAtDesc(id)
+        val allRecords = auditRepository.findBySkuIdOrderByCheckedAtDesc(id)
 
-        if (records.isEmpty()) {
+        if (allRecords.isEmpty()) {
             return ResponseEntity.notFound().build()
         }
 
-        val latestResult = if (records.any { it.result == "FAILED" }) "FAILED" else "CLEARED"
-        val latestReason = records.firstOrNull { it.result == "FAILED" }?.reason
+        // Scope latest result to the most recent check run only
+        val latestRunId = allRecords.first().runId
+        val latestRunRecords = allRecords.filter { it.runId == latestRunId }
+
+        val latestResult = if (latestRunRecords.any { it.result == "FAILED" }) "FAILED" else "CLEARED"
+        val latestReason = latestRunRecords.firstOrNull { it.result == "FAILED" }?.reason
 
         val response = ComplianceStatusResponse(
             skuId = id.toString(),
             latestResult = latestResult,
             latestReason = latestReason,
-            auditHistory = records.map { record ->
+            auditHistory = allRecords.map { record ->
                 AuditEntry(
                     checkType = record.checkType,
                     result = record.result,

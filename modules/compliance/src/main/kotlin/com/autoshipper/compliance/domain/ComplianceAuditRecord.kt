@@ -14,6 +14,9 @@ class ComplianceAuditRecord(
     @Column(name = "sku_id", nullable = false)
     val skuId: UUID,
 
+    @Column(name = "run_id", nullable = false)
+    val runId: UUID,
+
     @Column(name = "check_type", nullable = false)
     val checkType: String,
 
