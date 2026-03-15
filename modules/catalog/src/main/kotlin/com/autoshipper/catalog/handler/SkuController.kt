@@ -36,7 +36,8 @@ class SkuController(
     @GetMapping
     fun list(@RequestParam(required = false) state: String?): ResponseEntity<List<SkuResponse>> {
         val skus = if (state != null) {
-            val skuState = SkuState.fromDiscriminator(state.uppercase())
+            val normalized = state.replace(Regex("([a-z])([A-Z])"), "$1_$2").uppercase()
+            val skuState = SkuState.fromDiscriminator(normalized)
             skuService.findByState(skuState)
         } else {
             skuService.findAll()
