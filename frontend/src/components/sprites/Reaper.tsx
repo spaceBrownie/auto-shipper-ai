@@ -2,32 +2,52 @@ interface ReaperProps {
   size?: number;
 }
 
+// Pixel-art sootball with a tiny scythe and hood
+// Friendly death sprite — red but cute, Miyazaki vibes
 export function Reaper({ size = 32 }: ReaperProps) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 32 32"
+      viewBox="0 0 16 16"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
+      style={{ imageRendering: "pixelated" }}
     >
-      {/* Hood */}
-      <path d="M8 14 Q8 3 16 3 Q24 3 24 14 L22 16 L10 16 Z" fill="var(--danger)" />
-      {/* Face (inside hood) */}
-      <circle cx="16" cy="12" r="4.5" fill="var(--text-primary)" />
-      {/* Eyes — friendly dots */}
-      <circle cx="14.5" cy="11.5" r="0.9" fill="var(--bg-root)" />
-      <circle cx="17.5" cy="11.5" r="0.9" fill="var(--bg-root)" />
-      {/* Friendly smile */}
-      <path d="M14 14 Q16 15.5 18 14" stroke="var(--bg-root)" strokeWidth="0.7" fill="none" strokeLinecap="round" />
-      {/* Body (robe) */}
-      <path d="M10 16 L10 26 Q16 28 22 26 L22 16 Z" fill="var(--danger)" />
-      {/* Feet */}
-      <rect x="11" y="26" width="3" height="2" rx="1" fill="var(--text-secondary)" />
-      <rect x="18" y="26" width="3" height="2" rx="1" fill="var(--text-secondary)" />
-      {/* Tiny scythe */}
-      <line x1="24" y1="8" x2="24" y2="24" stroke="var(--text-secondary)" strokeWidth="1" />
-      <path d="M24 8 Q28 8 28 12 Q27 10 24 10" fill="var(--text-secondary)" />
+      {/* Hood peak */}
+      <rect x="6" y="0" width="4" height="1" fill="#ef4444" />
+      <rect x="5" y="1" width="6" height="1" fill="#ef4444" />
+      {/* Sootball body with hood edges */}
+      <rect x="4" y="2" width="8" height="1" fill="#ef4444" />
+      <rect x="3" y="2" width="1" height="1" fill="#dc2626" />
+      <rect x="12" y="2" width="1" height="1" fill="#dc2626" />
+      <rect x="2" y="3" width="12" height="1" fill="#1a1a2e" />
+      <rect x="1" y="4" width="14" height="1" fill="#1a1a2e" />
+      <rect x="1" y="5" width="14" height="1" fill="#1a1a2e" />
+      <rect x="1" y="6" width="14" height="1" fill="#1a1a2e" />
+      <rect x="1" y="7" width="14" height="1" fill="#1a1a2e" />
+      <rect x="2" y="8" width="12" height="1" fill="#1a1a2e" />
+      <rect x="3" y="9" width="10" height="1" fill="#1a1a2e" />
+      <rect x="4" y="10" width="8" height="1" fill="#1a1a2e" />
+      {/* Eyes — glowing red dots, friendly */}
+      <rect x="4" y="5" width="2" height="2" fill="#FFFFFF" />
+      <rect x="10" y="5" width="2" height="2" fill="#FFFFFF" />
+      <rect x="5" y="5" width="1" height="1" fill="#ef4444" />
+      <rect x="11" y="5" width="1" height="1" fill="#ef4444" />
+      {/* Wavy smile — friendly reaper */}
+      <rect x="6" y="8" width="1" height="1" fill="#ef4444" />
+      <rect x="7" y="9" width="2" height="1" fill="#ef4444" />
+      <rect x="9" y="8" width="1" height="1" fill="#ef4444" />
+      {/* Tiny legs */}
+      <rect x="4" y="11" width="2" height="2" fill="#ef4444" />
+      <rect x="10" y="11" width="2" height="2" fill="#ef4444" />
+      <rect x="4" y="13" width="2" height="1" fill="#dc2626" />
+      <rect x="10" y="13" width="2" height="1" fill="#dc2626" />
+      {/* Pixel scythe */}
+      <rect x="14" y="1" width="1" height="10" fill="#a1a1aa" />
+      <rect x="15" y="1" width="1" height="1" fill="#a1a1aa" />
+      <rect x="15" y="2" width="1" height="2" fill="#d4d4d8" />
+      <rect x="14" y="4" width="1" height="1" fill="#d4d4d8" />
     </svg>
   );
 }
