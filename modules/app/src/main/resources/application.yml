@@ -147,6 +147,10 @@ stress-test:
   gross-margin-floor-percent: 50
   net-margin-floor-percent: 30
 
+compliance:
+  auto-check-enabled: false  # set true in production; false allows manual trigger via POST /api/compliance/skus/{id}/check
+  llm-enabled: false
+
 capital:
   net-margin-floor-percent: 30
   sustained-days: 7
