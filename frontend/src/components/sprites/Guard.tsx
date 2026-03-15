@@ -2,32 +2,51 @@ interface GuardProps {
   size?: number;
 }
 
+// Pixel-art sootball with a shield — bold blue, stern pixel brows
+// The compliance gatekeeper
 export function Guard({ size = 32 }: GuardProps) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 32 32"
+      viewBox="0 0 16 16"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
+      style={{ imageRendering: "pixelated" }}
     >
-      {/* Head */}
-      <circle cx="16" cy="10" r="6" fill="var(--text-primary)" />
-      {/* Stern eyes — flat brows */}
-      <rect x="12" y="8" width="3" height="1" rx="0.5" fill="var(--bg-root)" />
-      <rect x="17" y="8" width="3" height="1" rx="0.5" fill="var(--bg-root)" />
-      <circle cx="13.5" cy="10.5" r="0.8" fill="var(--bg-root)" />
-      <circle cx="18.5" cy="10.5" r="0.8" fill="var(--bg-root)" />
-      {/* Flat mouth */}
-      <line x1="14" y1="13" x2="18" y2="13" stroke="var(--bg-root)" strokeWidth="0.8" strokeLinecap="round" />
-      {/* Body */}
-      <rect x="12" y="16" width="8" height="7" rx="2" fill="var(--info)" />
-      {/* Legs */}
-      <rect x="13" y="23" width="2" height="4" rx="1" fill="var(--text-secondary)" />
-      <rect x="17" y="23" width="2" height="4" rx="1" fill="var(--text-secondary)" />
-      {/* Shield */}
-      <path d="M3 16 L7 14 L11 16 L11 21 Q7 24 3 21 Z" fill="var(--info)" stroke="var(--text-primary)" strokeWidth="0.5" />
-      <path d="M5 17 L7 16 L9 17 L9 20 Q7 22 5 20 Z" fill="var(--text-primary)" />
+      {/* Sootball body — slightly wider, more imposing */}
+      <rect x="4" y="1" width="8" height="1" fill="#1a1a2e" />
+      <rect x="3" y="2" width="10" height="1" fill="#1a1a2e" />
+      <rect x="2" y="3" width="12" height="1" fill="#1a1a2e" />
+      <rect x="1" y="4" width="14" height="1" fill="#1a1a2e" />
+      <rect x="1" y="5" width="14" height="1" fill="#1a1a2e" />
+      <rect x="1" y="6" width="14" height="1" fill="#1a1a2e" />
+      <rect x="1" y="7" width="14" height="1" fill="#1a1a2e" />
+      <rect x="2" y="8" width="12" height="1" fill="#1a1a2e" />
+      <rect x="3" y="9" width="10" height="1" fill="#1a1a2e" />
+      <rect x="4" y="10" width="8" height="1" fill="#1a1a2e" />
+      {/* Angry pixel brows — V shape */}
+      <rect x="3" y="3" width="2" height="1" fill="#60a5fa" />
+      <rect x="5" y="4" width="1" height="1" fill="#60a5fa" />
+      <rect x="11" y="3" width="2" height="1" fill="#60a5fa" />
+      <rect x="10" y="4" width="1" height="1" fill="#60a5fa" />
+      {/* Big stern eyes */}
+      <rect x="4" y="5" width="2" height="2" fill="#FFFFFF" />
+      <rect x="10" y="5" width="2" height="2" fill="#FFFFFF" />
+      <rect x="5" y="6" width="1" height="1" fill="#60a5fa" />
+      <rect x="10" y="6" width="1" height="1" fill="#60a5fa" />
+      {/* Flat mouth — no nonsense */}
+      <rect x="6" y="8" width="4" height="1" fill="#60a5fa" />
+      {/* Tiny legs */}
+      <rect x="4" y="11" width="2" height="2" fill="#60a5fa" />
+      <rect x="10" y="11" width="2" height="2" fill="#60a5fa" />
+      <rect x="4" y="13" width="2" height="1" fill="#3b82f6" />
+      <rect x="10" y="13" width="2" height="1" fill="#3b82f6" />
+      {/* Shield — pixel art */}
+      <rect x="0" y="4" width="1" height="1" fill="#60a5fa" />
+      <rect x="0" y="5" width="1" height="4" fill="#3b82f6" />
+      <rect x="0" y="9" width="1" height="1" fill="#60a5fa" />
+      <rect x="0" y="5" width="1" height="1" fill="#FFFFFF" />
     </svg>
   );
 }

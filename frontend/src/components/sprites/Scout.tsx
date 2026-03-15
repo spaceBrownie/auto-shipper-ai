@@ -2,36 +2,51 @@ interface ScoutProps {
   size?: number;
 }
 
+// Pixel-art sootball with antenna/radar — teal, curious wide eyes
+// The demand signal hunter
 export function Scout({ size = 32 }: ScoutProps) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 32 32"
+      viewBox="0 0 16 16"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
+      style={{ imageRendering: "pixelated" }}
     >
-      {/* Explorer hat */}
-      <ellipse cx="16" cy="6" rx="8" ry="2" fill="#2dd4bf" />
-      <rect x="10" y="2" width="12" height="5" rx="3" fill="#2dd4bf" />
-      {/* Head */}
-      <circle cx="16" cy="12" r="5.5" fill="var(--text-primary)" />
-      {/* Eyes — curious, wide */}
-      <circle cx="14" cy="11.5" r="1.2" fill="var(--bg-root)" />
-      <circle cx="18" cy="11.5" r="1.2" fill="var(--bg-root)" />
-      <circle cx="14.3" cy="11.2" r="0.4" fill="var(--text-primary)" />
-      <circle cx="18.3" cy="11.2" r="0.4" fill="var(--text-primary)" />
-      {/* Smile */}
-      <path d="M14 14.5 Q16 16 18 14.5" stroke="var(--bg-root)" strokeWidth="0.7" fill="none" strokeLinecap="round" />
-      {/* Body */}
-      <rect x="12" y="17.5" width="8" height="6" rx="2" fill="#2dd4bf" />
-      {/* Legs */}
-      <rect x="13" y="23.5" width="2" height="4" rx="1" fill="var(--text-secondary)" />
-      <rect x="17" y="23.5" width="2" height="4" rx="1" fill="var(--text-secondary)" />
-      {/* Binoculars */}
-      <rect x="22" y="17" width="3" height="2.5" rx="1" fill="var(--text-secondary)" />
-      <rect x="25" y="17" width="3" height="2.5" rx="1" fill="var(--text-secondary)" />
-      <line x1="21" y1="19" x2="22" y2="18" stroke="var(--text-secondary)" strokeWidth="0.8" />
+      {/* Antenna — blinks via CSS */}
+      <rect x="7" y="0" width="2" height="1" fill="#2dd4bf" />
+      <rect x="6" y="0" width="1" height="1" fill="#5eead4" className="sprite-blink" />
+      <rect x="9" y="0" width="1" height="1" fill="#5eead4" className="sprite-blink" />
+      {/* Sootball body */}
+      <rect x="4" y="1" width="8" height="1" fill="#1a1a2e" />
+      <rect x="3" y="2" width="10" height="1" fill="#1a1a2e" />
+      <rect x="2" y="3" width="12" height="1" fill="#1a1a2e" />
+      <rect x="1" y="4" width="14" height="1" fill="#1a1a2e" />
+      <rect x="1" y="5" width="14" height="1" fill="#1a1a2e" />
+      <rect x="1" y="6" width="14" height="1" fill="#1a1a2e" />
+      <rect x="1" y="7" width="14" height="1" fill="#1a1a2e" />
+      <rect x="2" y="8" width="12" height="1" fill="#1a1a2e" />
+      <rect x="3" y="9" width="10" height="1" fill="#1a1a2e" />
+      <rect x="4" y="10" width="8" height="1" fill="#1a1a2e" />
+      {/* Big curious eyes — wide and sparkly */}
+      <rect x="3" y="4" width="3" height="3" fill="#FFFFFF" />
+      <rect x="10" y="4" width="3" height="3" fill="#FFFFFF" />
+      <rect x="4" y="5" width="2" height="2" fill="#2dd4bf" />
+      <rect x="10" y="5" width="2" height="2" fill="#2dd4bf" />
+      <rect x="5" y="5" width="1" height="1" fill="#FFFFFF" />
+      <rect x="11" y="5" width="1" height="1" fill="#FFFFFF" />
+      {/* Excited open mouth */}
+      <rect x="7" y="8" width="2" height="1" fill="#2dd4bf" />
+      {/* Tiny legs — bouncy */}
+      <rect x="4" y="11" width="2" height="2" fill="#2dd4bf" />
+      <rect x="10" y="11" width="2" height="2" fill="#2dd4bf" />
+      <rect x="3" y="13" width="2" height="1" fill="#14b8a6" />
+      <rect x="11" y="13" width="2" height="1" fill="#14b8a6" />
+      {/* Radar waves — teal pulses */}
+      <rect x="15" y="3" width="1" height="1" fill="#2dd4bf" opacity="0.6" />
+      <rect x="15" y="5" width="1" height="1" fill="#2dd4bf" opacity="0.4" />
+      <rect x="15" y="7" width="1" height="1" fill="#2dd4bf" opacity="0.2" />
     </svg>
   );
 }
