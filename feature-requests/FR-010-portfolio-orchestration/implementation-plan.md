@@ -5,19 +5,20 @@
 
 ## Technical Design
 
-The `portfolio` module manages `Experiment` aggregates and provides the portfolio-level view across all SKUs. The `KillWindowMonitor` identifies SKUs past their kill window. The `CapitalReallocator` computes risk-adjusted returns and suggests reallocation. All reallocation decisions are advisory in Phase 1 — no automated fund transfers.
+The `portfolio` module manages `Experiment` aggregates and provides the portfolio-level view across all SKUs. An experiment is a **listing hypothesis** — "list this product and see if it sells" — with zero upfront capital. The customer's payment covers all costs; the remainder is profit. The `KillWindowMonitor` identifies SKUs past their kill window. The `PriorityRanker` ranks SKUs by risk-adjusted return to determine which candidates deserve listing priority next. All ranking decisions are advisory in Phase 1.
 
 ```
 portfolio/src/main/kotlin/com/autoshipper/portfolio/
 ├── domain/
-│   ├── Experiment.kt              (aggregate: budget, window, status)
+│   ├── Experiment.kt              (aggregate: hypothesis, window, status)
 │   ├── ExperimentStatus.kt        (enum)
 │   └── KillRecommendation.kt      (advisory record: skuId, daysNegative, avgNetMargin)
 ├── domain/service/
 │   ├── ExperimentService.kt       (CRUD + validation)
 │   ├── KillWindowMonitor.kt       (@Scheduled daily)
 │   ├── ScalingFlagService.kt      (marks high-performing SKUs for human review)
-│   ├── CapitalReallocator.kt      (risk-adjusted return scoring)
+│   ├── PriorityRanker.kt          (risk-adjusted return scoring for listing priority)
+│   ├── RefundPatternAnalyzer.kt   (portfolio-wide refund trend detection)
 │   ├── PortfolioReporter.kt       (KPI aggregation)
 │   ├── MarginSignalProvider.kt    (interface — cross-module boundary)
 │   └── JpaMarginSignalProvider.kt (native query impl against margin_snapshots)
@@ -29,12 +30,13 @@ portfolio/src/main/kotlin/com/autoshipper/portfolio/
 
 ## Architecture Decisions
 
-- **`Experiment` is separate from `Sku`**: An experiment is a hypothesis + budget + window. It gates the creation of a SKU — a SKU is only created after an experiment passes validation. This keeps the catalog clean and free of experiment metadata.
+- **`Experiment` is separate from `Sku`**: An experiment is a listing hypothesis + validation window. It gates the creation of a SKU — a SKU is only created after an experiment passes validation. There is no upfront budget; the system invests only compute time to discover and validate. This keeps the catalog clean and free of experiment metadata.
 - **`KillWindowMonitor` reads from `capital` module's snapshots via interface pattern**: Follows the established `ActiveSkuProvider`/`JpaActiveSkuProvider` pattern from FR-009. A `MarginSignalProvider` interface (owned by the `portfolio` module) with a `JpaMarginSignalProvider` native-query implementation reads from `margin_snapshots` directly — no SQL view, no cross-module Kotlin dependency. This is consistent with how `capital` reads from `skus` and `orders` tables. The SQL view approach was considered but rejected to match the established pattern (see PM-002 for historical context on why SQL views were avoided for cross-module reads).
 - **KillWindowMonitor termination is feature-flagged** (`portfolio.auto-terminate.enabled`, default `false`): See full decision breakdown below.
-- **Capital reallocation is advisory in Phase 1**: `CapitalReallocator` produces a `ReallocationRecommendation` that is surfaced in the dashboard for human approval. No automatic fund movement.
+- **Priority ranking is advisory in Phase 1**: `PriorityRanker` produces a `PriorityRanking` that ranks candidates and active SKUs by risk-adjusted return. Surfaced in dashboard. In Phase 1, the operator confirms which candidates to list next. In Phase 2, the system auto-lists the top-ranked candidates.
 - **Portfolio KPIs cached with Caffeine (5-minute TTL)**: These are read-heavy, write-rarely aggregates. Caching prevents repeated expensive aggregation queries.
-- **`capital_reallocation_log` is append-only**: Reallocation recommendations are logged as advisory records. No fund movement in Phase 1. The table records freedCapital, recommendedTarget, and timestamp for audit trail.
+- **`priority_ranking_log` is append-only**: Rankings are logged for audit trail. The table records skuId, score, rank, and timestamp. No fund movement — the system is zero-capital; the customer's payment covers all costs.
+- **Systemic refund analysis**: Per-SKU refund kill rules (>5% → pause) exist in the capital module, but they don't detect portfolio-wide patterns. If multiple SKUs spike refunds simultaneously, the root cause is systemic (listing quality, shipping partner, storefront UX) not product-specific. `RefundPatternAnalyzer` monitors cross-SKU refund trends and flags systemic issues before they destroy customer trust. Refund patterns also feed back into discovery — categories or suppliers that consistently generate refunds are blacklisted.
 - **`DemandScanJob` is deferred**: The solo-operator spec assigns `DemandScanJob` (Google Trends RSS + Reddit + Amazon PA-API) to the `portfolio` module. It is explicitly out of scope for this FR — demand scanning requires external API adapters that warrant their own FR. This FR covers experiment lifecycle and capital reallocation only.
 
 ## KillWindowMonitor — Termination Recommendation Decision
@@ -86,17 +88,19 @@ The capital module (FR-009) already handles **short-term** kill signals via `Shu
 ## Layer-by-Layer Implementation
 
 ### Domain Layer
-- `Experiment`: id (`ExperimentId`), name, hypothesisDescription, budget (`Money`), validationWindowDays, status, createdAt, launchedSkuId (`SkuId?`)
+- `Experiment`: id (`ExperimentId`), name, hypothesisDescription, sourceSignal (what triggered this experiment — trend data, demand signal, etc.), estimatedMarginPerUnit (`Money?`, projected from discovery scoring), validationWindowDays, status, createdAt, launchedSkuId (`SkuId?`)
 - `ExperimentStatus`: ACTIVE, VALIDATED, FAILED, LAUNCHED, TERMINATED
 - `KillRecommendation`: id, skuId (`SkuId`), daysNegative, avgNetMargin (`BigDecimal`), detectedAt, confirmedAt (nullable), confirmedBy
+- `PriorityRanking`: data class — rankedSkus (list of skuId + score + rank), rankedAt
 
 ### Domain Service
-- `ExperimentService.create(request)`: creates experiment in ACTIVE status
+- `ExperimentService.create(request)`: creates experiment in ACTIVE status — no budget field, just hypothesis + source signal + validation window
 - `ExperimentService.markValidated(experimentId: ExperimentId, skuId: SkuId)`: transitions to VALIDATED, links to SKU
 - `KillWindowMonitor.scan()`: finds SKUs with sustained negative signals past kill window; writes `KillRecommendation`; if `autoTerminateEnabled`, emits `KillWindowBreached`
 - `ScalingFlagService.scan()`: identifies SKUs with ≥3 consecutive margin snapshots above 50% net margin and revenue growth; writes flag for dashboard review (no auto-action)
-- `CapitalReallocator.recommend()`: scores all active SKUs by risk-adjusted return, returns ranked `ReallocationRecommendation`
-- `PortfolioReporter.summary()`: counts, blended margin, capital deployed — cached
+- `PriorityRanker.rank()`: scores all active SKUs and pending candidates by risk-adjusted return (avg net margin × revenue volume / risk factor), returns ranked `PriorityRanking` — determines which candidates should be listed next and which active SKUs deserve increased visibility
+- `RefundPatternAnalyzer.analyze()`: monitors refund rates across the entire portfolio; flags when N+ SKUs spike refunds simultaneously (configurable threshold, default 3+ SKUs with >3% refund rate in same 7-day window); categorizes root cause (listing accuracy, shipping delays, product quality, price competitiveness); feeds blacklist data back to discovery engine
+- `PortfolioReporter.summary()`: counts, blended margin, total profit — cached
 
 ### Handler Layer
 - `GET /api/portfolio/summary`, `GET /api/portfolio/experiments`, `POST /api/portfolio/experiments`
@@ -119,14 +123,15 @@ The capital module (FR-009) already handles **short-term** kill signals via `Shu
 
 ### Domain Layer
 - [ ] Implement `ExperimentStatus` enum with 5 statuses
-- [ ] Implement `Experiment` JPA entity (id: UUID mapped from `ExperimentId`, name, hypothesis, budgetAmount, budgetCurrency, validationWindowDays, status, launchedSkuId)
+- [ ] Implement `Experiment` JPA entity (id: UUID mapped from `ExperimentId`, name, hypothesis, sourceSignal, estimatedMarginPerUnit (nullable), validationWindowDays, status, launchedSkuId)
   - Use `ExperimentId` value class in service/domain layer; map to UUID column via JPA `@Column`
+  - No budget field — zero-capital model; the customer's payment covers all costs
 - [ ] Implement `KillRecommendation` JPA entity (id, skuId, daysNegative, avgNetMargin, detectedAt, confirmedAt nullable)
-- [ ] Implement `ReallocationRecommendation` data class (rankedSkus with risk-adjusted return scores, freedCapital, recommendedTarget)
+- [ ] Implement `PriorityRanking` data class (rankedSkus with risk-adjusted return scores, rankedAt)
 - [ ] Define `PortfolioConfig` `@ConfigurationProperties` (killWindowDays=30, kpiCacheTtlMinutes=5, autoTerminateEnabled=false)
 
 ### Domain Service
-- [ ] Implement `ExperimentService.create(name, hypothesis, budget: Money, windowDays)`
+- [ ] Implement `ExperimentService.create(name, hypothesis, sourceSignal, windowDays, estimatedMarginPerUnit: Money?)`
 - [ ] Implement `ExperimentService.markValidated(experimentId: ExperimentId, skuId: SkuId)` — links experiment to launched SKU
 - [ ] Implement `ExperimentService.markFailed(experimentId: ExperimentId)` — transitions to FAILED
 - [ ] Implement `MarginSignalProvider` interface: `getSkusWithNegativeMarginSince(days: Int): List<SkuId>` and `getAverageNetMargin(skuId: SkuId): BigDecimal`
@@ -136,15 +141,17 @@ The capital module (FR-009) already handles **short-term** kill signals via `Shu
   - Write `KillRecommendation` record for every qualifying SKU (always — audit trail regardless of flag)
   - If `portfolioConfig.autoTerminateEnabled`: publish `KillWindowBreached` via `ApplicationEventPublisher`
 - [ ] Implement `ScalingFlagService` — identifies SKUs meeting scaling criteria (≥3 consecutive snapshots with net margin ≥ 50%); writes flag to `scaling_flags` table for dashboard review (no auto-action in Phase 1)
-- [ ] Implement `CapitalReallocator.recommend()` — score active SKUs by (avg net margin × revenue volume / risk factor)
+- [ ] Implement `PriorityRanker.rank()` — score active SKUs and pending candidates by (avg net margin × revenue volume / risk factor); determines listing priority
+- [ ] Implement `RefundPatternAnalyzer.analyze()` — cross-SKU refund trend detection; flag systemic issues when N+ SKUs spike simultaneously; categorize root cause; maintain category/supplier blacklist for discovery feedback
 - [ ] Implement `PortfolioReporter.summary()` with Caffeine cache (5-minute TTL)
-- [ ] Summary includes: totalExperiments, activeSkus, terminatedSkus, blendedMargin, capitalDeployed
+- [ ] Summary includes: totalExperiments, activeSkus, terminatedSkus, blendedMargin, totalProfit, systemicRefundAlerts
 
 ### Handler Layer
 - [ ] Implement `GET /api/portfolio/summary` returning `PortfolioSummaryResponse`
 - [ ] Implement `GET /api/portfolio/experiments` returning paginated experiment list
 - [ ] Implement `POST /api/portfolio/experiments` creating new experiment
-- [ ] Implement `GET /api/portfolio/reallocation` returning `ReallocationRecommendation`
+- [ ] Implement `GET /api/portfolio/priority-ranking` returning `PriorityRanking`
+- [ ] Implement `GET /api/portfolio/refund-alerts` returning systemic refund alerts
 - [ ] Implement `GET /api/portfolio/kill-recommendations` returning pending `KillRecommendation` records
 - [ ] Implement `POST /api/portfolio/kill-recommendations/{id}/confirm` — manually confirms termination; calls catalog state transition API
 - [ ] Add request/response DTOs for all endpoints
@@ -156,10 +163,12 @@ The capital module (FR-009) already handles **short-term** kill signals via `Shu
 
 ### Persistence (Common Layer)
 - [ ] Write `V14__portfolio.sql` migration:
-  - `experiments`: id, name, hypothesis_description, budget_amount, budget_currency, validation_window_days, status, launched_sku_id, created_at
+  - `experiments`: id, name, hypothesis_description, source_signal, estimated_margin_per_unit (nullable), estimated_margin_currency (nullable), validation_window_days, status, launched_sku_id, created_at
   - `kill_recommendations`: id, sku_id, days_negative, avg_net_margin, detected_at, confirmed_at (nullable)
-  - `capital_reallocation_log`: id, freed_capital_amount, freed_capital_currency, recommended_target_sku_id, recommended_at (advisory log — no fund transfers in Phase 1)
+  - `priority_ranking_log`: id, sku_id, score, rank, ranked_at (audit trail for ranking decisions)
   - `scaling_flags`: id, sku_id, flagged_at, resolved_at (nullable)
+  - `refund_alerts`: id, alert_type (SYSTEMIC, CATEGORY, SUPPLIER), affected_sku_ids (text/json), root_cause_category, refund_rate_avg, detected_at, resolved_at (nullable)
+  - `discovery_blacklist`: id, entity_type (CATEGORY, SUPPLIER), entity_id, reason, blacklisted_at, expires_at (nullable)
 - [ ] Implement `ExperimentRepository`
 - [ ] Implement `KillRecommendationRepository`
 
@@ -169,7 +178,9 @@ The capital module (FR-009) already handles **short-term** kill signals via `Shu
 - Unit test `KillWindowMonitor` — flag ON: qualifying SKU → recommendation written AND `KillWindowBreached` event published
 - Unit test `CatalogKillWindowListener`: `KillWindowBreached` event → SKU terminated with `MARGIN_BELOW_FLOOR`; verify `REQUIRES_NEW` propagation via annotation inspection (same pattern as `PricingDecisionListenerTest`)
 - Unit test `ScalingFlagService`: SKU with 3 consecutive high-margin snapshots → flag written; 2 consecutive → no flag
-- Unit test `CapitalReallocator`: known SKU metrics → correct risk-adjusted ranking
+- Unit test `PriorityRanker`: known SKU metrics → correct risk-adjusted ranking
+- Unit test `RefundPatternAnalyzer`: 3+ SKUs with >3% refund rate in same window → systemic alert; 1 SKU with high refund rate → no systemic alert (per-SKU kill rule handles it)
+- Unit test `RefundPatternAnalyzer`: systemic alert → category added to discovery blacklist
 - Unit test `PortfolioReporter`: correct aggregate counts and blended margin
 - Integration test: experiment created → SKU launched from experiment → experiment status LAUNCHED
 - Integration test (flag ON): `KillWindowBreached` event → `CatalogKillWindowListener` terminates SKU; verify `AFTER_COMMIT` + `REQUIRES_NEW` isolation (recommendation record survives if listener throws — tests PM-005 pattern)
@@ -184,6 +195,7 @@ The capital module (FR-009) already handles **short-term** kill signals via `Shu
 5. Implement `KillWindowMonitor` (flag-aware)
 6. Implement `CatalogKillWindowListener` in catalog module
 7. Implement `ScalingFlagService`
-8. Implement `CapitalReallocator`
-9. Implement `PortfolioReporter` with cache
-10. Add REST handler (including kill-recommendations endpoints)
+8. Implement `PriorityRanker`
+9. Implement `RefundPatternAnalyzer`
+10. Implement `PortfolioReporter` with cache
+11. Add REST handler (including kill-recommendations and refund-alerts endpoints)

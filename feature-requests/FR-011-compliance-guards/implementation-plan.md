@@ -39,14 +39,14 @@ compliance/src/main/kotlin/com/autoshipper/compliance/
 
 ### Domain Layer
 - `ComplianceCheckResult`: sealed class — `Cleared(skuId, checkedAt)` and `Failed(skuId, reason, checkedAt)`
-- `ComplianceFailureReason`: enum — IP_INFRINGEMENT, MISLEADING_CLAIMS, PROCESSOR_PROHIBITED, GRAY_MARKET_SOURCE, DISCLOSURE_VIOLATION
+- `ComplianceFailureReason`: enum — IP_INFRINGEMENT, MISLEADING_CLAIMS, PROCESSOR_PROHIBITED, GRAY_MARKET_SOURCE, RESELLER_SOURCE, DISCLOSURE_VIOLATION
 
 ### Domain Service
 - `ComplianceOrchestrator`: runs 4 checks concurrently, combines results, emits `ComplianceCleared` or `ComplianceFailed`, writes audit record
 - `IpCheckService.check(skuId, productName)`: rule-based or LLM — returns `ComplianceCheckResult`
 - `ClaimsCheckService.check(skuId, productDescription)`: rule-based or LLM
 - `ProcessorCheckService.check(skuId, category)`: validates against Stripe prohibited list (locally cached)
-- `SourcingCheckService.check(skuId, vendorId)`: checks vendor against sanctions list (locally cached, daily refresh)
+- `SourcingCheckService.check(skuId, vendorId)`: checks vendor against sanctions list (locally cached, daily refresh); also validates that the vendor is a **direct supplier** (manufacturer, wholesaler, or authorized distributor) — not a marketplace reseller. The system must never source from intermediaries whose prices already include their own markup (e.g., buying from a TikTok seller at $10 when the original source is $6). This prevents double-markup pricing that leads to uncompetitive prices, refunds, and customer churn.
 
 ### Proxy Layer
 - `ClaudeComplianceAdapter`: calls Claude API for nuanced IP/claims analysis (enabled via config)
@@ -65,7 +65,7 @@ compliance/src/main/kotlin/com/autoshipper/compliance/
 - [ ] Add `kotlinx-coroutines-core` dependency to `modules/compliance/build.gradle.kts` (required for `coroutineScope { async {} }` parallel check execution)
 
 ### Domain Layer
-- [ ] Implement `ComplianceFailureReason` enum with 5 reasons
+- [ ] Implement `ComplianceFailureReason` enum with 6 reasons (IP_INFRINGEMENT, MISLEADING_CLAIMS, PROCESSOR_PROHIBITED, GRAY_MARKET_SOURCE, RESELLER_SOURCE, DISCLOSURE_VIOLATION)
 - [ ] Implement `ComplianceCheckResult` sealed class (`Cleared`, `Failed`)
 - [ ] Implement `ComplianceAuditRecord` JPA entity (skuId, checkType, result, reason, checkedAt, payload)
 
@@ -73,7 +73,7 @@ compliance/src/main/kotlin/com/autoshipper/compliance/
 - [ ] Implement `IpCheckService.check(skuId, productName)` (rule-based: flag known trademarked terms)
 - [ ] Implement `ClaimsCheckService.check(skuId, description)` (rule-based: flag regulated/superlative language patterns)
 - [ ] Implement `ProcessorCheckService.check(skuId, category)` (validate against locally-cached Stripe prohibited categories list)
-- [ ] Implement `SourcingCheckService.check(skuId, vendorId)` (validate vendor against locally-cached sanctions list)
+- [ ] Implement `SourcingCheckService.check(skuId, vendorId)` (validate vendor against locally-cached sanctions list + verify vendor is a direct supplier, not a marketplace reseller — fail with `RESELLER_SOURCE` if vendor type indicates intermediary)
 - [ ] Implement `ComplianceOrchestrator` running all 4 checks concurrently with `coroutineScope { async {} }`
 - [ ] `ComplianceOrchestrator` listens for `SkuReadyForComplianceCheck` only when `compliance.auto-check.enabled=true`; otherwise the same `runChecks(skuId)` method is called by the REST handler directly
 - [ ] Emit `ComplianceCleared` if all checks pass
