@@ -1,6 +1,6 @@
 # Auto Shipper AI
 
-An autonomous, capital-light commerce system that discovers, validates, launches, and scales profitable physical and digital products. The system operates **demand-first**: no production or sourcing before validated demand. The mandate is **durable net profit**, not revenue or growth.
+An autonomous, **zero-capital** commerce system that discovers, validates, launches, and scales profitable physical and digital products. Every product is a listing hypothesis with no upfront cost — the customer's payment covers all costs and the remainder is profit. The system operates **demand-first**: no production or sourcing before validated demand. The mandate is **durable net profit**, not revenue or growth.
 
 ---
 
@@ -16,11 +16,14 @@ Auto Shipper AI is an autonomous commerce engine designed to handle the entire p
 4. **Govern vendors** — register vendors, enforce onboarding checklists, monitor SLA breaches on a 30-day rolling window, compute reliability scores, and auto-suspend vendors that exceed breach thresholds
 5. **Fulfill orders** — route orders to vendors with inventory pre-check, track shipments via carrier APIs (UPS, FedEx, USPS), detect delays with proactive customer alerts, and auto-refund via Stripe on vendor SLA breaches
 6. **Protect capital** — maintain a 10–15% rolling reserve, sweep margins every 6 hours, auto-pause or terminate SKUs that breach profitability thresholds (margin < 30% for 7+ days, refund > 5%, chargeback > 2%), with full audit trail
+7. **Guard compliance** — run 4 concurrent pre-listing checks (IP/trademark, misleading claims, Stripe prohibited categories, sourcing/sanctions) before any SKU can advance past Ideation; auto-terminate on failure, auto-advance on pass
+8. **Orchestrate portfolio** — track listing hypotheses as experiments, monitor kill windows (30-day sustained underperformance), rank SKUs by risk-adjusted return for listing priority, detect systemic refund patterns across the portfolio
 
 **Planned (specs written, not yet built):**
 
-7. **Discover demand** — validate willingness to pay before committing to any product
-8. **Reallocate intelligently** — scale winners, kill losers, reinvest freed capital into highest-return opportunities
+9. **Discover demand** — validate willingness to pay before committing to any product (RAT-12)
+10. **List on platforms** — auto-create product listings on Shopify via platform adapter (RAT-13)
+11. **Drive organic traffic** — automated SEO and content marketing with zero ad spend (RAT-14)
 
 ### Product Flow
 
@@ -109,14 +112,26 @@ flowchart TD
         CA4 -- No --> CA5
     end
 
+    subgraph COMPLIANCE["🛡 Compliance Gate — compliance module"]
+        CO1([IP / Trademark Check])
+        CO2([Claims Check])
+        CO3([Processor Check])
+        CO4([Sourcing Check])
+        CO5{All Checks<br/>Passed?}
+        CO1 & CO2 & CO3 & CO4 --> CO5
+        CO5 -- No --> KILL4([❌ Terminate SKU<br/>Compliance Violation])
+        CO5 -- Yes --> CG
+    end
+
     subgraph PORTFOLIO["📊 Portfolio Engine — portfolio module"]
-        PO1([Experiment Tracker<br/>Monthly test budget])
-        PO2([Scale Winners])
-        PO3([Kill Losers<br/>30-day window])
-        PO4([Branded Vertical<br/>Conversion])
-        PO5([Subscription / Digital Layer])
+        PO1([Experiment Tracker<br/>Listing hypotheses])
+        PO2([Priority Ranker<br/>Risk-adjusted return])
+        PO3([Kill Window Monitor<br/>30-day sustained loss])
+        PO4([Refund Pattern Analyzer<br/>Systemic detection])
+        PO5([Scaling Flag Service])
         PO1 --> PO2 & PO3
-        PO2 --> PO4 --> PO5
+        PO3 --> KILL5([❌ Terminate SKU])
+        PO4 --> FEEDBACK
     end
 
     subgraph FEEDBACK["🔄 Data & Feedback Loop — shared / analytics"]
@@ -131,6 +146,7 @@ flowchart TD
     end
 
     %% Cross-module connections
+    D3 --> COMPLIANCE
     D3 --> VENDOR
     LAUNCH --> FULFILLMENT
     LAUNCH --> PRICING
@@ -148,7 +164,7 @@ flowchart TD
     classDef module fill:#e8f0fe,stroke:#4a6fa5,color:#000
     classDef event fill:#f0e8fe,stroke:#6a4fa5,color:#000
 
-    class KILL0,KILL1,KILL2,KILL3 kill
+    class KILL0,KILL1,KILL2,KILL3,KILL4,KILL5 kill
     class PAUSE1,P5 pause
     class L1,L2,L3 pass
 ```
@@ -167,7 +183,9 @@ Most e-commerce systems launch first and optimize later. Auto Shipper AI **valid
 | Hope suppliers deliver on time | Monitor SLA and auto-pause on breach |
 | Manual order tracking | Real-time carrier polling with proactive delay alerts and auto-refunds |
 | Hope margins stay healthy | Sweep margins every 6h, auto-pause on breach, full audit trail |
-| Scale everything equally | Scale winners, kill losers by margin signal *(planned)* |
+| List first, check compliance later | Hard compliance gate before any SKU advances past Ideation |
+| Watch individual SKU refunds | Detect systemic refund patterns across the entire portfolio |
+| Scale everything equally | Rank by risk-adjusted return; scale winners, kill losers |
 | Build inventory → find customers | Validate demand first *(planned)* |
 
 **Result:** Capital efficiency, lower risk of unsellable inventory, faster failure on unprofitable products.
@@ -261,16 +279,20 @@ The API will be available at `http://localhost:8080`.
 - **Net margin floor: 30%** after stress testing; gross margin target: 50%+
 - **Rolling reserve: 10–15% of revenue** maintained at all times
 - **Automated shutdown triggers:** margin below 30% for 7+ days, refund rate > 5%, chargeback rate > 2%, vendor SLA breach
+- **Compliance gate before listing** — IP, claims, processor, and sourcing checks must all pass before a SKU leaves Ideation
+- **Source from original suppliers only** — never from marketplace resellers; marketplace data is for demand signals only
+- **Kill window: 30 days** — SKUs with sustained negative margin past the kill window are recommended for termination (feature-flagged auto-terminate)
+- **Systemic refund detection** — 3+ SKUs with >3% refund rate in the same 7-day window triggers portfolio-wide alert
 
 ## SKU Lifecycle
 
 ```
-Ideation → ValidationPending → CostGating → StressTesting → Listed → Scaled
-                                                                ↓
-                                                    Paused / Terminated
+Ideation → [Compliance Gate] → ValidationPending → CostGating → StressTesting → Listed → Scaled
+                                                                                   ↓
+                                                                       Paused / Terminated
 ```
 
-Every transition is validated by `SkuStateMachine`, emits a domain event, and is written to the `sku_state_history` audit log. Invalid transitions throw `InvalidSkuTransitionException` — they never silently succeed.
+The compliance gate runs 4 concurrent checks (IP, claims, processor, sourcing) when a SKU is in Ideation. `ComplianceCleared` auto-advances to ValidationPending; `ComplianceFailed` auto-terminates with `COMPLIANCE_VIOLATION`. Every transition is validated by `SkuStateMachine`, emits a domain event, and is written to the `sku_state_history` audit log. Invalid transitions throw `InvalidSkuTransitionException` — they never silently succeed.
 
 ## Order Lifecycle
 
@@ -320,6 +342,17 @@ Interactive API docs are available via Swagger UI at **`http://localhost:8080/sw
 | `GET` | `/api/orders/{id}/tracking` | Get shipment tracking details |
 | `GET` | `/api/capital/reserve` | Current reserve balance and health status |
 | `GET` | `/api/capital/skus/{id}/pnl?from=&to=` | SKU-level P&L (revenue, cost, margins, snapshot count) |
+| `POST` | `/api/compliance/skus/{id}/check` | Trigger compliance check (IP, claims, processor, sourcing) |
+| `GET` | `/api/compliance/skus/{id}` | Compliance status and audit history |
+| `GET` | `/api/portfolio/summary` | Portfolio KPIs (experiments, active SKUs, blended margin, profit) |
+| `GET` | `/api/portfolio/experiments` | List all experiments |
+| `POST` | `/api/portfolio/experiments` | Create a new experiment (listing hypothesis) |
+| `POST` | `/api/portfolio/experiments/{id}/validate` | Validate experiment and link to SKU |
+| `POST` | `/api/portfolio/experiments/{id}/fail` | Mark experiment as failed |
+| `GET` | `/api/portfolio/reallocation` | Priority ranking by risk-adjusted return |
+| `GET` | `/api/portfolio/kill-recommendations` | Pending kill recommendations (30+ day underperformers) |
+| `POST` | `/api/portfolio/kill-recommendations/{id}/confirm` | Confirm kill recommendation |
+| `GET` | `/api/portfolio/refund-alerts` | Portfolio-wide systemic refund alerts |
 | `GET` | `/actuator/health` | Health check |
 | `GET` | `/actuator/prometheus` | Prometheus metrics |
 
@@ -360,6 +393,10 @@ Migrations live in `modules/app/src/main/resources/db/migration/` and run automa
 | V11 | Add `total_amount` and `total_currency` columns to `orders` |
 | V12 | Add `payment_intent_id` column to `orders` |
 | V13 | Capital protection (`reserve_accounts`, `margin_snapshots`, `capital_order_records`, `capital_rule_audit`) |
+| V14 | Portfolio orchestration (`experiments`, `kill_recommendations`, `scaling_flags`, `refund_alerts`, `discovery_blacklist`) |
+| V15 | Compliance guards (`compliance_audit`) |
+| V16 | Portfolio zero-capital fix (remove budget fields, rename to `priority_ranking_log`) |
+| V17 | Compliance audit `run_id` for batch grouping |
 
 ## Feature Requests
 
@@ -376,8 +413,8 @@ Implementation is tracked in `feature-requests/FR-NNN-name/` with a `spec.md`, `
 | FR-007 | Vendor governance | ✅ Complete |
 | FR-008 | Fulfillment orchestration | ✅ Complete |
 | FR-009 | Capital protection | ✅ Complete |
-| FR-010 | Portfolio orchestration | Spec'd |
-| FR-011 | Compliance guards | Spec'd |
+| FR-010 | Portfolio orchestration | ✅ Complete |
+| FR-011 | Compliance guards | ✅ Complete |
 | FR-012 | Frontend dashboard | Spec'd |
 | FR-013 | Project structure refactor | ✅ Complete |
 | FR-014 | Spec architecture audit | ✅ Complete |
