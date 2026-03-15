@@ -41,7 +41,3 @@ The system must operate as an active portfolio — not a static catalog. Without
 - FR-003 (catalog-sku-lifecycle) — SKU state transitions
 - FR-005 (catalog-stress-test) — `LaunchReadySku` is the gate from experiment to launch
 - FR-009 (capital-protection) — monitors capital reserves and margin signals
-
-## Implementation Status
-
-**Implemented** on branch `feat/FR-010-011-portfolio-compliance` (2026-03-15). See `implementation-plan.md` and `summary.md` for details.

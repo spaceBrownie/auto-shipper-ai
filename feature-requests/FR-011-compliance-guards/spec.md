@@ -41,7 +41,3 @@ Long-term viability overrides short-term revenue in every case. The system must 
 - FR-001 (shared-domain-primitives) — `SkuId`, `ComplianceCleared`, `ComplianceFailed`, `SkuReadyForComplianceCheck` events
 - FR-002 (project-bootstrap) — Spring Boot, environment config
 - FR-003 (catalog-sku-lifecycle) — compliance gate integrated into `Ideation → ValidationPending` transition
-
-## Implementation Status
-
-**Implemented** on branch `feat/FR-010-011-portfolio-compliance` (2026-03-15). See `implementation-plan.md` and `summary.md` for details.
