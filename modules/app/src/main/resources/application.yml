@@ -156,3 +156,19 @@ capital:
   cac-variance-days: 14
   reserve-rate-min-percent: 10
   reserve-rate-max-percent: 15
+
+# Portfolio orchestration — experiment lifecycle, kill window monitoring, reallocation
+portfolio:
+  kill-window-days: 30
+  kpi-cache-ttl-minutes: 5
+  # Feature flag: when false (default), KillWindowMonitor writes advisory recommendations only.
+  # When true, it also emits KillWindowBreached events that auto-terminate SKUs.
+  auto-terminate-enabled: false
+
+# Compliance Guards (FR-011)
+# auto-check-enabled=false disables automatic trigger on SKU creation (development use only)
+compliance:
+  llm-enabled: false
+  auto-check-enabled: true
+  sanctions-list-path: classpath:compliance/sanctions-list.txt
+  prohibited-categories-path: classpath:compliance/prohibited-categories.txt

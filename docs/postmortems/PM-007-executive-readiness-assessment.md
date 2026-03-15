@@ -7,7 +7,11 @@
 
 ## Summary
 
-An executive-level assessment was conducted to determine whether the Commerce Engine can operate autonomously — discovering deals, listing profitable products, fulfilling orders, and generating durable profit without human intervention. The defensive layer (margin protection, vendor governance, fulfillment, capital reserves) is complete and autonomous. Three gaps prevent full operational autonomy: no automated deal sourcing, no product listing adapter, and no compliance gate. Key architectural decisions were made for FR-010 and FR-011, and two new Linear tasks (RAT-12, RAT-13) were created for the remaining gaps.
+An executive-level assessment was conducted to determine whether the Commerce Engine can operate autonomously — discovering deals, listing profitable products, fulfilling orders, and generating durable profit without human intervention. The system operates a **zero-capital model**: the operator pays only for infrastructure (~$6-12/mo) and subscriptions (~$45/mo); every product is a listing hypothesis with zero upfront cost; the customer's payment covers all costs and the remainder is profit.
+
+The defensive layer (margin protection, vendor governance, fulfillment, capital reserves) is complete and autonomous. Four gaps prevent full operational autonomy: no automated deal sourcing, no product listing adapter, no compliance gate, and no marketing/SEO automation. Key architectural decisions were made for FR-010 and FR-011, and three new Linear tasks (RAT-12, RAT-13, RAT-14) were created for the remaining gaps.
+
+A follow-up session (same day) refined the business model and identified two additional critical rules: (1) discovery must source from original suppliers only, never resellers; (2) systemic refund patterns across the portfolio must be detected and analyzed, not just per-SKU rates. RAT-5 (FR-016: Discovery) was consolidated into RAT-12 after alignment review found it conflicted with PM-007 decisions.
 
 ## Current State: What's Built
 
@@ -46,7 +50,9 @@ An executive-level assessment was conducted to determine whether the Commerce En
 
 The system cannot discover new product opportunities. SKUs must be created manually via `POST /api/skus`. `DemandScanJob` (Google Trends RSS, Reddit, Amazon PA-API) is specified in the solo-operator spec (§2.4, §4.1) but not implemented. Without this, the pipeline runs dry when the operator steps away.
 
-**Linear task:** [RAT-12](https://linear.app/ratrace/issue/RAT-12) — Blocked by FR-010 (needs `Experiment` entity).
+**Critical rule:** Discovery must source from **original suppliers** (CJ Dropshipping, Printful, Gelato) — never from marketplace resellers. Amazon/TikTok/Google Trends data is used as a *demand signal* only; the product is sourced independently from a direct supplier at true source cost. Buying from a reseller at $10 when the original source is $6 creates double-markup pricing that leads to uncompetitive prices, refunds, and customer churn.
+
+**Linear task:** [RAT-12](https://linear.app/ratrace/issue/RAT-12) — Blocked by FR-010 (needs `Experiment` entity). Consolidates RAT-5 (FR-016), which proposed a misaligned standalone `discovery` module. RAT-5, RAT-8, RAT-10 cancelled.
 
 ### Gap 2: No Product Listing Adapter
 
@@ -59,6 +65,12 @@ The system cannot discover new product opportunities. SKUs must be created manua
 FR-011 (compliance guards) is spec'd and plan is finalized but not implemented. SKUs currently bypass IP/trademark/regulatory checks. This is a legal exposure risk — especially once the platform listing adapter is built and products are auto-published.
 
 **No separate task needed** — FR-011 implementation plan is ready to execute.
+
+### Gap 4: No Marketing/SEO Automation
+
+The zero-capital model requires zero ad spend — all traffic acquisition must be organic. Without automated marketing/SEO, products get listed but nobody sees them. This includes: SEO-optimized product titles/descriptions, content generation (blog posts, buying guides), social media automation (Pinterest, TikTok, Instagram), and platform-native SEO (Amazon backend keywords, Etsy tags).
+
+**Linear task:** [RAT-14](https://linear.app/ratrace/issue/RAT-14) — Blocked by RAT-13 (need listings before optimizing them). Uses discovery data from RAT-12 for trending keywords and Claude API infrastructure from FR-011.
 
 ## Architectural Decisions Made
 
@@ -120,6 +132,50 @@ Three options were evaluated:
 
 **Note:** `VendorSlaBreachRefunder` in the fulfillment module predates PM-005 and still uses plain `@EventListener` + `@Transactional`. Should be updated eventually but is not blocking.
 
+### AD-8: Zero-Capital Business Model (All Modules)
+
+**Decision:** The system operates with zero upfront capital per product. An experiment is a **listing hypothesis** — "list this product and see if it sells." The customer's payment covers all costs (sourcing, shipping, handling, platform fees, processing fees); the remainder is profit.
+
+**Impact on FR-010:**
+- `Experiment` entity has no `budget` field — replaced with `sourceSignal` and `estimatedMarginPerUnit`
+- `CapitalReallocator` renamed to `PriorityRanker` — ranks candidates by risk-adjusted return for listing priority, not fund transfers
+- `ReallocationRecommendation` renamed to `PriorityRanking`
+- `capital_reallocation_log` renamed to `priority_ranking_log`
+
+**Operator costs (fixed):** Infrastructure (~$6-12/mo VPS or Mac mini) + Shopify ($39/mo) + SaleHoo ($5.60/mo) + buffer (~$15/mo) ≈ $60-75/mo total.
+
+### AD-9: Source-Level Pricing Rule (Discovery + Compliance)
+
+**Decision:** The discovery engine must always source from the **original manufacturer or supplier**, never from marketplace resellers.
+
+**Rationale:** If a product sells for $10 on TikTok (which is $6 product + $2 shipping + $2 seller markup), buying from the TikTok seller at $10 and reselling at $12 means the customer overpays for a double-marked-up product. This leads to poor value perception, refunds, negative reviews, and permanent customer loss. The system uses marketplace data (Amazon, TikTok, Google Trends) as *demand signals* only — then sources the product independently from a direct supplier (CJ Dropshipping, Printful, Gelato) at true source cost.
+
+**Implementation:**
+- RAT-12 (`DemandScanJob`): Phase 1 data sources are supplier APIs (CJ) for sourcing, marketplace APIs (Amazon PA-API, Google Trends) for demand signals only
+- FR-011 (`SourcingCheckService`): validates vendor is a direct supplier, not a reseller; `RESELLER_SOURCE` added to `ComplianceFailureReason` enum
+- Cost envelope's `supplierUnitCost` must always reflect original source cost
+
+### AD-10: Systemic Refund Pattern Analysis (FR-010)
+
+**Decision:** Add `RefundPatternAnalyzer` to the portfolio module. Per-SKU refund kill rules (>5% → pause) are necessary but not sufficient. When multiple SKUs spike refunds simultaneously, the root cause is systemic — not product-specific.
+
+**Rationale:** Mass refunds across the portfolio indicate listing quality issues, shipping partner failures, or storefront UX problems. Treating each SKU independently misses the pattern and allows systemic problems to destroy customer trust at scale. First-time buyers with a bad experience never come back.
+
+**Implementation:**
+- `RefundPatternAnalyzer` monitors refund trends across the entire portfolio
+- Flags when 3+ SKUs exceed 3% refund rate in the same 7-day window → systemic alert
+- Categorizes root causes: listing accuracy, shipping delays, product quality, price competitiveness
+- Feeds blacklist data back to discovery: categories/suppliers that consistently generate refunds are excluded from `DemandScanJob` scoring
+- Tables: `refund_alerts`, `discovery_blacklist`
+
+### AD-11: RAT-5 Consolidation into RAT-12
+
+**Decision:** RAT-5 (FR-016: Discovery & Demand Signal Ingestion) cancelled and consolidated into RAT-12.
+
+**Rationale:** RAT-5 (created 2026-03-07) proposed a standalone `discovery` module with `CandidateProduct` entities feeding directly into the catalog cost gate. This conflicted with PM-007 decisions in five ways: (1) spec §2.4 assigns discovery to `portfolio` module, not a separate module; (2) output should be `Experiment` records via `ExperimentService`, not standalone entities; (3) blocking relationships were reversed (RAT-5 claimed to block FR-010; actually RAT-12 is blocked BY FR-010); (4) RAT-5 claimed to block FR-009 which is already implemented; (5) Flyway V13 conflict (already taken by `capital.sql`).
+
+**Preserved from RAT-5:** pgvector for dedup/similarity search, CJ Dropshipping as a data source, composite scoring engine (demand/margin/competition), structured rejection logging. Sub-tasks RAT-8 and RAT-10 also cancelled.
+
 ## Build Order
 
 ```
@@ -134,12 +190,20 @@ Three options were evaluated:
      │  RAT-12          │     │  RAT-13          │
      │  DemandScanJob   │     │  Platform        │
      │  (deal sourcing) │     │  Listing Adapter  │
-     └─────────────────┘     └─────────────────┘
+     └─────────────────┘     └────────┬────────┘
+                                      │
+                                      ▼
+                             ┌─────────────────┐
+                             │  RAT-14          │
+                             │  Marketing/SEO   │
+                             │  (organic, $0)   │
+                             └─────────────────┘
 ```
 
 - FR-010 and FR-011 are independent — can be built in parallel
 - RAT-12 blocked by FR-010: needs `Experiment` entity and `ExperimentService`
 - RAT-13 blocked by FR-011: compliance gate must exist before auto-publishing to Shopify
+- RAT-14 blocked by RAT-13: need listings before optimizing them for organic traffic
 
 ## Final Assessment
 
@@ -148,14 +212,20 @@ Three options were evaluated:
 The defensive layer is production-grade and fully autonomous. Any SKU that is already listed will be monitored, margin-protected, auto-paused on breach, auto-refunded on vendor failure, and price-adjusted on cost changes.
 
 The system **cannot yet sustain itself** because it cannot:
-1. Discover new product opportunities automatically
-2. Publish products to a storefront automatically
-3. Run compliance checks before listing
+1. Discover new product opportunities automatically (RAT-12)
+2. Publish products to a storefront automatically (RAT-13)
+3. Run compliance checks before listing (FR-011)
+4. Drive organic traffic to listings without ad spend (RAT-14)
 
-Once FR-010, FR-011, RAT-12, and RAT-13 are complete, the loop closes:
+Once FR-010, FR-011, RAT-12, RAT-13, and RAT-14 are complete, the full autonomous loop closes:
 
 ```
-discover → validate → cost gate → stress test → compliance → list → monitor → kill/scale → reallocate → repeat
+discover → source (direct supplier only) → cost gate → stress test → comply → list → SEO/market → sell → fulfill → profit → monitor → kill/scale → repeat
 ```
+
+**Critical constraints baked into the loop:**
+- Source-level pricing: always source from original supplier, never resellers (AD-9)
+- Systemic refund detection: portfolio-wide pattern analysis, not just per-SKU (AD-10)
+- Zero capital: customer payment covers all costs; profit flows to bank account (AD-8)
 
 At that point, the answer to "can the owner step away for twelve months?" changes from **no** to **yes, with the auto-terminate flag enabled**.

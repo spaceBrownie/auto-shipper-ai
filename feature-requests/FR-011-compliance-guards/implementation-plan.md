@@ -58,28 +58,28 @@ compliance/src/main/kotlin/com/autoshipper/compliance/
 ## Task Breakdown
 
 ### Shared Module (prerequisite)
-- [ ] Add `SkuReadyForComplianceCheck` event to `modules/shared/src/main/kotlin/com/autoshipper/shared/events/` (skuId, productName, productDescription, category, vendorId, occurredAt)
-- [ ] Update `ComplianceFailed` event in `modules/shared/src/main/kotlin/com/autoshipper/shared/events/ComplianceFailed.kt`: change `reason: String` → `reason: ComplianceFailureReason` — requires `ComplianceFailureReason` to be defined in `shared` (move enum there) or keep in `compliance` and use `.name` string serialisation. Recommended: keep enum in `compliance` and store `.name` in the event for now (avoids shared coupling to compliance internals)
+- [x] Add `SkuReadyForComplianceCheck` event to `modules/shared/src/main/kotlin/com/autoshipper/shared/events/` (skuId, productName, productDescription, category, vendorId, occurredAt)
+- [x] Update `ComplianceFailed` event in `modules/shared/src/main/kotlin/com/autoshipper/shared/events/ComplianceFailed.kt`: change `reason: String` → `reason: ComplianceFailureReason` — requires `ComplianceFailureReason` to be defined in `shared` (move enum there) or keep in `compliance` and use `.name` string serialisation. Recommended: keep enum in `compliance` and store `.name` in the event for now (avoids shared coupling to compliance internals)
 
 ### Config Layer (prerequisite)
-- [ ] Add `kotlinx-coroutines-core` dependency to `modules/compliance/build.gradle.kts` (required for `coroutineScope { async {} }` parallel check execution)
+- [x] Add `kotlinx-coroutines-core` dependency to `modules/compliance/build.gradle.kts` (required for `coroutineScope { async {} }` parallel check execution)
 
 ### Domain Layer
-- [ ] Implement `ComplianceFailureReason` enum with 5 reasons
-- [ ] Implement `ComplianceCheckResult` sealed class (`Cleared`, `Failed`)
-- [ ] Implement `ComplianceAuditRecord` JPA entity (skuId, checkType, result, reason, checkedAt, payload)
+- [x] Implement `ComplianceFailureReason` enum with 5 reasons
+- [x] Implement `ComplianceCheckResult` sealed class (`Cleared`, `Failed`)
+- [x] Implement `ComplianceAuditRecord` JPA entity (skuId, checkType, result, reason, checkedAt, payload)
 
 ### Domain Service
-- [ ] Implement `IpCheckService.check(skuId, productName)` (rule-based: flag known trademarked terms)
-- [ ] Implement `ClaimsCheckService.check(skuId, description)` (rule-based: flag regulated/superlative language patterns)
-- [ ] Implement `ProcessorCheckService.check(skuId, category)` (validate against locally-cached Stripe prohibited categories list)
-- [ ] Implement `SourcingCheckService.check(skuId, vendorId)` (validate vendor against locally-cached sanctions list)
-- [ ] Implement `ComplianceOrchestrator` running all 4 checks concurrently with `coroutineScope { async {} }`
-- [ ] `ComplianceOrchestrator` listens for `SkuReadyForComplianceCheck` only when `compliance.auto-check.enabled=true`; otherwise the same `runChecks(skuId)` method is called by the REST handler directly
-- [ ] Emit `ComplianceCleared` if all checks pass
-- [ ] Emit `ComplianceFailed` with reason if any check fails
-- [ ] Write audit record for every check run (both pass and fail)
-- [ ] Implement `CatalogComplianceListener` in `modules/catalog` — **MANDATORY: use the established double-annotation pattern from PM-005**:
+- [x] Implement `IpCheckService.check(skuId, productName)` (rule-based: flag known trademarked terms)
+- [x] Implement `ClaimsCheckService.check(skuId, description)` (rule-based: flag regulated/superlative language patterns)
+- [x] Implement `ProcessorCheckService.check(skuId, category)` (validate against locally-cached Stripe prohibited categories list)
+- [x] Implement `SourcingCheckService.check(skuId, vendorId)` (validate vendor against locally-cached sanctions list)
+- [x] Implement `ComplianceOrchestrator` running all 4 checks concurrently with `coroutineScope { async {} }`
+- [x] `ComplianceOrchestrator` listens for `SkuReadyForComplianceCheck` only when `compliance.auto-check.enabled=true`; otherwise the same `runChecks(skuId)` method is called by the REST handler directly
+- [x] Emit `ComplianceCleared` if all checks pass
+- [x] Emit `ComplianceFailed` with reason if any check fails
+- [x] Write audit record for every check run (both pass and fail)
+- [x] Implement `CatalogComplianceListener` in `modules/catalog` — **MANDATORY: use the established double-annotation pattern from PM-005**:
   ```kotlin
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -95,21 +95,21 @@ compliance/src/main/kotlin/com/autoshipper/compliance/
   - Note: `POST /api/skus/{id}/state` currently allows manual state transitions as a development escape hatch. Once `CatalogComplianceListener` is wired, evaluate whether to restrict or remove the manual transition to `VALIDATION_PENDING` so the compliance gate cannot be bypassed in production.
 
 ### Proxy Layer
-- [ ] Implement `ClaudeComplianceAdapter` calling Claude API for IP/claims analysis (toggled by `compliance.llm.enabled`)
-- [ ] Implement `SanctionsListCache` loading from local file, refreshing daily at midnight
+- [x] Implement `ClaudeComplianceAdapter` calling Claude API for IP/claims analysis (toggled by `compliance.llm.enabled`)
+- [x] Implement `SanctionsListCache` loading from local file, refreshing daily at midnight
 
 ### Handler Layer
-- [ ] Implement `POST /api/compliance/skus/{id}/check` — manual trigger; calls `ComplianceOrchestrator.runChecks(skuId)` directly
-- [ ] Implement `GET /api/compliance/skus/{id}` — returning latest `ComplianceCheckResult` and full audit history
-- [ ] Add `ComplianceStatusResponse` DTO (latestResult, auditHistory: List<AuditEntry>)
+- [x] Implement `POST /api/compliance/skus/{id}/check` — manual trigger; calls `ComplianceOrchestrator.runChecks(skuId)` directly
+- [x] Implement `GET /api/compliance/skus/{id}` — returning latest `ComplianceCheckResult` and full audit history
+- [x] Add `ComplianceStatusResponse` DTO (latestResult, auditHistory: List<AuditEntry>)
 
 ### Config Layer
-- [ ] Define `ComplianceConfig` `@ConfigurationProperties` (`llm.enabled`, `auto-check.enabled=true`, `sanctions-list.path`, `prohibited-categories.path`)
-- [ ] Add compliance config to `application.yml` with comment: `auto-check.enabled=false` disables automatic trigger on SKU creation (development use only)
+- [x] Define `ComplianceConfig` `@ConfigurationProperties` (`llm.enabled`, `auto-check.enabled=true`, `sanctions-list.path`, `prohibited-categories.path`)
+- [x] Add compliance config to `application.yml` with comment: `auto-check.enabled=false` disables automatic trigger on SKU creation (development use only)
 
 ### Persistence (Common Layer)
-- [ ] Write `V15__compliance.sql` migration (compliance_audit table)
-- [ ] Implement `ComplianceAuditRepository`
+- [x] Write `V15__compliance.sql` migration (compliance_audit table)
+- [x] Implement `ComplianceAuditRepository`
 
 ## Testing Strategy
 

@@ -9,8 +9,9 @@
 | Scope | Single operator, personal use, non-SaaS |
 | Tech Stack | Kotlin + Spring Boot + Docker Compose |
 | Target Deploy | Single VPS ($6–12/mo) or local machine |
-| Monthly Budget | ~$80–100/mo total (platforms + infrastructure) |
-| Status | Draft v1.1 — Post-Implementation Audit |
+| Monthly Budget | ~$60–75/mo total (platforms + infrastructure) |
+| Capital Model | Zero-capital — no upfront spend per product; customer payment covers all costs |
+| Status | Draft v1.2 — Zero-Capital Model + Sourcing Rules |
 
 ---
 
@@ -20,14 +21,18 @@ This document specifies the design, architecture, and implementation plan for an
 
 ### 1.1 What This System Does
 
-- Discovers demand signals from free public data sources (Google Trends, Reddit, Amazon PA-API)
+- Discovers demand signals from free public data sources (Google Trends, Reddit, Amazon PA-API) — uses marketplace data as **demand signals only**, then sources products independently from direct suppliers
+- Sources products exclusively from **original suppliers** (manufacturers, wholesalers, authorized distributors) — never from marketplace resellers whose prices already include their own markup
 - Validates willingness to pay before committing to any product
 - Enforces a mandatory cost gate — no SKU is listed until all 13 cost components are verified and stress-tested
 - Lists products across Shopify, Amazon, Etsy, and TikTok Shop via API
+- Drives organic traffic via automated SEO and content marketing — zero ad spend
 - Routes fulfillment through CJ Dropshipping, Printful, Printify, or Gelato with zero manual steps
-- Monitors margins, vendor SLAs, refund rates, and CAC continuously via scheduled jobs
+- Monitors margins, vendor SLAs, refund rates (per-SKU and portfolio-wide systemic patterns), and CAC continuously via scheduled jobs
 - Auto-pauses or terminates SKUs when thresholds are breached — no human intervention required
-- Reallocates capital toward highest-performing SKUs automatically
+- Prioritizes highest-performing SKUs for increased visibility and listing prominence
+
+> **Zero-capital model:** Every product is a listing hypothesis with no upfront cost. The customer's payment covers sourcing, shipping, handling, platform fees, and processing fees. The remainder is profit that flows directly to the operator's bank account. The only operator costs are infrastructure (~$6-12/mo) and subscriptions (~$45/mo).
 
 ### 1.2 What This System Is Not
 
@@ -54,8 +59,8 @@ Does **not** require:
 | Deploy to production | SKU listed on platforms |
 | Production monitoring | Margin signals, refund rates, SLA checks |
 | Automatic rollback | SKU auto-pause or terminate |
-| Canary deployment | Small-budget experiment before scaling |
-| Resource autoscaler | Capital reallocation to winning SKUs |
+| Canary deployment | Listing hypothesis — list and see if it sells (zero cost) |
+| Resource autoscaler | Priority ranking — winners get visibility, losers get killed |
 
 ---
 
@@ -111,7 +116,7 @@ All modules live under the `modules/` directory. The entry point is `modules/app
 | `fulfillment` | `modules/fulfillment` | Order routing, tracking, auto-refund triggers | `Order`, `FulfillmentRoute`, `TrackingEvent` |
 | `capital` | `modules/capital` | Reserve management, margin dashboards, kill rules | `ReserveAccount`, `MarginSnapshot`, `KillRule` |
 | `compliance` | `modules/compliance` | IP/trademark checks, FTC rule enforcement | `TrademarkCheck`, `FtcComplianceRecord` |
-| `portfolio` | `modules/portfolio` | Experiment tracker, scale/kill orchestration | `Experiment`, `AllocationDecision` |
+| `portfolio` | `modules/portfolio` | Experiment tracker, scale/kill orchestration, priority ranking, refund pattern analysis | `Experiment`, `PriorityRanking`, `RefundPatternAnalyzer` |
 
 ### 2.4 Scheduled Jobs — Replacing Kafka
 
@@ -270,7 +275,9 @@ data class Money(val amount: BigDecimal, val currency: Currency) {
 
 ## 4. API Integrations — Solo Budget
 
-### 4.1 Monthly Budget Allocation (~$99.59/mo total)
+### 4.1 Monthly Budget Allocation (~$60–75/mo total)
+
+> **Note:** This is the operator's only cost. All per-product costs (sourcing, shipping, handling, fees) are covered by the customer's payment. The system generates profit, not expenses.
 
 | Service | Purpose | Cost | Module |
 |---|---|---|---|
@@ -358,6 +365,7 @@ All thresholds are read from environment variables at job execution time. No red
 | CAC variance | > 15% from baseline | Rolling 14 days | Trigger pricing engine re-run |
 | Carrier rate spike | > 20% | Immediate | Recalculate or pause |
 | Rolling reserve | < 10% of revenue | Monthly | Block new launches until restored |
+| **Systemic refund spike** | **3+ SKUs > 3% refund rate** | **Same 7-day window** | **Portfolio-wide alert; root cause analysis; category/supplier blacklist** |
 
 ---
 
@@ -385,7 +393,7 @@ All thresholds are read from environment variables at job execution time. No red
 | `orders` | id, sku_id, platform, supplier_order_id, status, tracking | fulfillment | Planned |
 | `margin_snapshots` | sku_id, date, gross_margin, net_margin, cac, refund_rate | capital | Planned |
 | `reserve_account` | date, revenue, reserve_amount, reserve_pct | capital | Planned |
-| `experiments` | id, sku_id, budget, start_date, end_date, verdict | portfolio | Planned |
+| `experiments` | id, name, hypothesis, source_signal, estimated_margin_per_unit, validation_window_days, status, launched_sku_id | portfolio | Planned |
 | `pricing_signals` | sku_id, signal_type, delta_pct, received_at, applied | pricing | Planned |
 
 All schema changes managed via Flyway in `modules/app/src/main/resources/db/migration/`.
@@ -404,7 +412,7 @@ Served at `localhost:3000`. No login screen, no user management, no role system.
 | Cost Gate Runner | Input product idea; run full cost gate + stress test | Approve to launch, reject to kill |
 | Vendor Scorecard | Vendors with SLA performance and breach history | Pause vendor, view SKU impact |
 | Margin Monitor | 90-day rolling margin chart per SKU and total portfolio | Drill into component breakdown |
-| Experiment Tracker | Active experiments with budget consumed and verdict | Kill or scale |
+| Experiment Tracker | Active listing hypotheses with validation window and verdict | Kill or scale |
 | Capital Overview | Reserve balance, 30-day revenue, SKU-level P&L | View reserve health |
 | Demand Signals | Latest `DemandScanJob` output — trending categories | Initiate new product validation |
 | Kill Log | History of auto-terminated and paused SKUs with reasons | Learn from patterns |
@@ -488,12 +496,18 @@ The `PlatformAdapter` and `CarrierRateProvider` interfaces already abstract coun
 
 ## 11. Operating Philosophy
 
-> **You are not optimizing for revenue. You are optimizing for:**  
-> Durable net profit · Capital efficiency · Low volatility · Automated resilience
+> **You are not optimizing for revenue. You are optimizing for:**
+> Durable net profit · Zero capital risk · Low volatility · Automated resilience
 
-**The system does the work.** Your job is to review kill logs, approve new product validations, and occasionally update thresholds. If you are manually processing orders, something is wrong.
+**Zero capital, always.** The operator never spends money on individual products. The customer's payment covers everything — sourcing, shipping, handling, fees. What's left is profit. The only fixed costs are infrastructure and subscriptions (~$60-75/mo). If the system is asking you to spend money on a product, something is wrong.
+
+**Source from the origin, never resellers.** Marketplace data (Amazon, TikTok, Google) tells you what people want. Supplier APIs (CJ, Printful, Gelato) tell you where to source it. Never conflate the two. Buying from a reseller at their marked-up price and reselling at a further markup creates uncompetitive pricing, refunds, and customer churn.
+
+**The system does the work.** Your job is to review kill logs, approve new product validations, and occasionally update thresholds. If you are manually processing orders, sourcing products, or writing listings, something is wrong.
 
 **Protect margin before revenue.** A $0 revenue month with $0 loss is better than a $10,000 revenue month with $3,000 in losses. The stress test exists so you never learn this lesson the expensive way.
+
+**Watch for systemic patterns, not just individual failures.** One SKU with high refunds is a product problem. Five SKUs with high refunds simultaneously is a systemic problem — listing quality, shipping partner, or storefront UX. The `RefundPatternAnalyzer` catches what per-SKU kill rules miss.
 
 **The domain model is the moat.** Your proprietary margin benchmarks, vendor reliability data, and demand signals compound into an advantage no competitor can replicate by reading this document.
 
@@ -504,6 +518,23 @@ The `PlatformAdapter` and `CarrierRateProvider` interfaces already abstract coun
 ---
 
 ## Changelog
+
+### v1.2 — Zero-Capital Model + Sourcing Rules (2026-03-14)
+
+Refined business model based on executive readiness assessment (PM-007). Key clarification: the system is zero-capital per product — customer payment covers all costs. Added source-level pricing rules and systemic refund detection.
+
+| Section | Change | Rationale |
+|---|---|---|
+| Metadata | Monthly budget $80-100 → $60-75; added "Capital Model: Zero-capital" | Reflects actual operator costs; no per-product capital |
+| Metadata | Status → "Draft v1.2 — Zero-Capital Model + Sourcing Rules" | Version bump |
+| 1.1 | Added zero-capital model callout, source-level pricing rule, organic marketing, systemic refund monitoring | Core business model clarification |
+| 1.3 | "Small-budget experiment" → "Listing hypothesis — zero cost"; "Capital reallocation" → "Priority ranking" | No budgets in zero-capital model |
+| 2.3 | Updated portfolio module key types (`AllocationDecision` → `PriorityRanking`, `RefundPatternAnalyzer`) | Reflects renamed concepts |
+| 4.1 | Budget $99.59 → $60-75/mo; added note that per-product costs are covered by customer payment | Zero-capital model |
+| 5.2 | Added systemic refund spike rule (3+ SKUs > 3% in same 7-day window) | Portfolio-wide pattern detection |
+| 6.2 | Updated `experiments` table fields (removed budget, added source_signal, estimated_margin_per_unit) | Zero-capital model |
+| 7.1 | Updated Experiment Tracker view description (removed "budget consumed") | Zero-capital model |
+| 11 | Added zero-capital principle, source-level pricing rule, systemic pattern detection | Operating philosophy alignment |
 
 ### v1.1 — Post-Implementation Audit (2026-03-03)
 

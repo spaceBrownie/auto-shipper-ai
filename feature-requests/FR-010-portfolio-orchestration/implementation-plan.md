@@ -105,10 +105,10 @@ The capital module (FR-009) already handles **short-term** kill signals via `Shu
 ## Task Breakdown
 
 ### Shared Module (prerequisite)
-- [ ] Add `KillWindowBreached` event to `modules/shared/src/main/kotlin/com/autoshipper/shared/events/` (skuId: SkuId, daysNegative: Int, avgNetMargin: BigDecimal, occurredAt: Instant) — only emitted when `portfolio.auto-terminate.enabled=true`
+- [x] Add `KillWindowBreached` event to `modules/shared/src/main/kotlin/com/autoshipper/shared/events/` (skuId: SkuId, daysNegative: Int, avgNetMargin: BigDecimal, occurredAt: Instant) — only emitted when `portfolio.auto-terminate.enabled=true`
 
 ### Catalog Module (prerequisite — only needed when flag enabled)
-- [ ] Implement `CatalogKillWindowListener` in `modules/catalog` — **MANDATORY: PM-005 double-annotation pattern**:
+- [x] Implement `CatalogKillWindowListener` in `modules/catalog` — **MANDATORY: PM-005 double-annotation pattern**:
   ```kotlin
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -118,50 +118,50 @@ The capital module (FR-009) already handles **short-term** kill signals via `Shu
   ```
 
 ### Domain Layer
-- [ ] Implement `ExperimentStatus` enum with 5 statuses
-- [ ] Implement `Experiment` JPA entity (id: UUID mapped from `ExperimentId`, name, hypothesis, budgetAmount, budgetCurrency, validationWindowDays, status, launchedSkuId)
+- [x] Implement `ExperimentStatus` enum with 5 statuses
+- [x] Implement `Experiment` JPA entity (id: UUID mapped from `ExperimentId`, name, hypothesis, budgetAmount, budgetCurrency, validationWindowDays, status, launchedSkuId)
   - Use `ExperimentId` value class in service/domain layer; map to UUID column via JPA `@Column`
-- [ ] Implement `KillRecommendation` JPA entity (id, skuId, daysNegative, avgNetMargin, detectedAt, confirmedAt nullable)
-- [ ] Implement `ReallocationRecommendation` data class (rankedSkus with risk-adjusted return scores, freedCapital, recommendedTarget)
-- [ ] Define `PortfolioConfig` `@ConfigurationProperties` (killWindowDays=30, kpiCacheTtlMinutes=5, autoTerminateEnabled=false)
+- [x] Implement `KillRecommendation` JPA entity (id, skuId, daysNegative, avgNetMargin, detectedAt, confirmedAt nullable)
+- [x] Implement `ReallocationRecommendation` data class (rankedSkus with risk-adjusted return scores, freedCapital, recommendedTarget)
+- [x] Define `PortfolioConfig` `@ConfigurationProperties` (killWindowDays=30, kpiCacheTtlMinutes=5, autoTerminateEnabled=false)
 
 ### Domain Service
-- [ ] Implement `ExperimentService.create(name, hypothesis, budget: Money, windowDays)`
-- [ ] Implement `ExperimentService.markValidated(experimentId: ExperimentId, skuId: SkuId)` — links experiment to launched SKU
-- [ ] Implement `ExperimentService.markFailed(experimentId: ExperimentId)` — transitions to FAILED
-- [ ] Implement `MarginSignalProvider` interface: `getSkusWithNegativeMarginSince(days: Int): List<SkuId>` and `getAverageNetMargin(skuId: SkuId): BigDecimal`
-- [ ] Implement `JpaMarginSignalProvider` with `@PersistenceContext EntityManager` native queries against `margin_snapshots` table (same pattern as `JpaActiveSkuProvider` in capital — no cross-module Kotlin dependency)
-- [ ] Implement `KillWindowMonitor` `@Scheduled(cron = "0 0 1 * * *")` (1am daily):
+- [x] Implement `ExperimentService.create(name, hypothesis, budget: Money, windowDays)`
+- [x] Implement `ExperimentService.markValidated(experimentId: ExperimentId, skuId: SkuId)` — links experiment to launched SKU
+- [x] Implement `ExperimentService.markFailed(experimentId: ExperimentId)` — transitions to FAILED
+- [x] Implement `MarginSignalProvider` interface: `getSkusWithNegativeMarginSince(days: Int): List<SkuId>` and `getAverageNetMargin(skuId: SkuId): BigDecimal`
+- [x] Implement `JpaMarginSignalProvider` with `@PersistenceContext EntityManager` native queries against `margin_snapshots` table (same pattern as `JpaActiveSkuProvider` in capital — no cross-module Kotlin dependency)
+- [x] Implement `KillWindowMonitor` `@Scheduled(cron = "0 0 1 * * *")` (1am daily):
   - Use `MarginSignalProvider` to find SKUs with net_margin < 0 for > killWindowDays consecutive days
   - Write `KillRecommendation` record for every qualifying SKU (always — audit trail regardless of flag)
   - If `portfolioConfig.autoTerminateEnabled`: publish `KillWindowBreached` via `ApplicationEventPublisher`
-- [ ] Implement `ScalingFlagService` — identifies SKUs meeting scaling criteria (≥3 consecutive snapshots with net margin ≥ 50%); writes flag to `scaling_flags` table for dashboard review (no auto-action in Phase 1)
-- [ ] Implement `CapitalReallocator.recommend()` — score active SKUs by (avg net margin × revenue volume / risk factor)
-- [ ] Implement `PortfolioReporter.summary()` with Caffeine cache (5-minute TTL)
-- [ ] Summary includes: totalExperiments, activeSkus, terminatedSkus, blendedMargin, capitalDeployed
+- [x] Implement `ScalingFlagService` — identifies SKUs meeting scaling criteria (≥3 consecutive snapshots with net margin ≥ 50%); writes flag to `scaling_flags` table for dashboard review (no auto-action in Phase 1)
+- [x] Implement `CapitalReallocator.recommend()` — score active SKUs by (avg net margin × revenue volume / risk factor)
+- [x] Implement `PortfolioReporter.summary()` with Caffeine cache (5-minute TTL)
+- [x] Summary includes: totalExperiments, activeSkus, terminatedSkus, blendedMargin, capitalDeployed
 
 ### Handler Layer
-- [ ] Implement `GET /api/portfolio/summary` returning `PortfolioSummaryResponse`
-- [ ] Implement `GET /api/portfolio/experiments` returning paginated experiment list
-- [ ] Implement `POST /api/portfolio/experiments` creating new experiment
-- [ ] Implement `GET /api/portfolio/reallocation` returning `ReallocationRecommendation`
-- [ ] Implement `GET /api/portfolio/kill-recommendations` returning pending `KillRecommendation` records
-- [ ] Implement `POST /api/portfolio/kill-recommendations/{id}/confirm` — manually confirms termination; calls catalog state transition API
-- [ ] Add request/response DTOs for all endpoints
+- [x] Implement `GET /api/portfolio/summary` returning `PortfolioSummaryResponse`
+- [x] Implement `GET /api/portfolio/experiments` returning paginated experiment list
+- [x] Implement `POST /api/portfolio/experiments` creating new experiment
+- [x] Implement `GET /api/portfolio/reallocation` returning `ReallocationRecommendation`
+- [x] Implement `GET /api/portfolio/kill-recommendations` returning pending `KillRecommendation` records
+- [x] Implement `POST /api/portfolio/kill-recommendations/{id}/confirm` — manually confirms termination; calls catalog state transition API
+- [x] Add request/response DTOs for all endpoints
 
 ### Config Layer
-- [ ] Configure Caffeine cache bean for portfolio KPIs in `PortfolioConfig`
-- [ ] Add `spring.cache.type=caffeine` and TTL settings to `application.yml`
-- [ ] Add `portfolio.auto-terminate.enabled=false` to `application.yml` with comment explaining the flag
+- [x] Configure Caffeine cache bean for portfolio KPIs in `PortfolioConfig`
+- [x] Add `spring.cache.type=caffeine` and TTL settings to `application.yml`
+- [x] Add `portfolio.auto-terminate.enabled=false` to `application.yml` with comment explaining the flag
 
 ### Persistence (Common Layer)
-- [ ] Write `V14__portfolio.sql` migration:
+- [x] Write `V14__portfolio.sql` migration:
   - `experiments`: id, name, hypothesis_description, budget_amount, budget_currency, validation_window_days, status, launched_sku_id, created_at
   - `kill_recommendations`: id, sku_id, days_negative, avg_net_margin, detected_at, confirmed_at (nullable)
   - `capital_reallocation_log`: id, freed_capital_amount, freed_capital_currency, recommended_target_sku_id, recommended_at (advisory log — no fund transfers in Phase 1)
   - `scaling_flags`: id, sku_id, flagged_at, resolved_at (nullable)
-- [ ] Implement `ExperimentRepository`
-- [ ] Implement `KillRecommendationRepository`
+- [x] Implement `ExperimentRepository`
+- [x] Implement `KillRecommendationRepository`
 
 ## Testing Strategy
 

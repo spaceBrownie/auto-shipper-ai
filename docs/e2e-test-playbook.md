@@ -1,9 +1,9 @@
 # E2E Test Playbook
 
-End-to-end manual test script for the full SKU lifecycle through capital protection.
-Covers: SKU creation, state machine, cost gate, stress test, pricing, orders, reserve management, margin monitoring, and automated shutdown rules.
+End-to-end manual test script for the full SKU lifecycle through capital protection, compliance guards, and portfolio orchestration.
+Covers: SKU creation, compliance checks, state machine, cost gate, stress test, pricing, orders, reserve management, margin monitoring, automated shutdown rules, portfolio experiments, kill window monitoring, and priority ranking.
 
-**Last validated:** 2026-03-12 on branch `feat/FR-009-capital-protection`
+**Last validated:** 2026-03-15 on branch `feat/FR-010-011-portfolio-compliance`
 
 ---
 
@@ -34,8 +34,10 @@ If re-running the playbook, truncate all tables first:
 PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
   TRUNCATE TABLE capital_rule_audit, margin_snapshots, capital_order_records,
                  reserve_accounts, sku_state_history, orders, skus,
-                 sku_cost_envelopes, stress_test_results, sku_prices, sku_pricing_history,
-                 vendors, vendor_sku_assignments, vendor_breach_log
+                 sku_cost_envelopes, sku_stress_test_results, sku_prices, sku_pricing_history,
+                 vendors, vendor_sku_assignments, vendor_breach_log,
+                 compliance_audit, experiments, kill_recommendations,
+                 priority_ranking_log, scaling_flags, refund_alerts, discovery_blacklist
   CASCADE;
 "
 ```
@@ -63,19 +65,75 @@ Save the `id` — all subsequent commands use it:
 SKU_ID="<id from response>"
 ```
 
-### 1.2 Advance: IDEATION to VALIDATION_PENDING
+### 1.2 Compliance Check (FR-011 gate)
+
+Run compliance checks on the SKU while it's in `IDEATION`. This tests all 4 check services (IP, claims, processor, sourcing) running concurrently.
+
+**Passing case** — "E2E Test SKU" in "Electronics" should clear all checks:
 
 ```bash
-curl -s -X POST "http://localhost:8080/api/skus/$SKU_ID/state" \
+curl -s -X POST "http://localhost:8080/api/compliance/skus/$SKU_ID/check" \
   -H "Content-Type: application/json" \
-  -d '{"state":"VALIDATION_PENDING"}' | python3 -m json.tool
+  -d '{"productDescription":"High-quality wireless Bluetooth speaker with 20-hour battery life"}' | python3 -m json.tool
 ```
 
 | Field | Expected |
 |---|---|
-| `currentState` | `VALIDATION_PENDING` |
+| `latestResult` | `CLEARED` |
+| `auditHistory` | 4 entries, all with `result: "CLEARED"` |
+| HTTP status | 200 |
+
+**Side effect:** `ComplianceCleared` event fires → `CatalogComplianceListener` auto-transitions SKU to `VALIDATION_PENDING`. Verify:
+```bash
+curl -s "http://localhost:8080/api/skus/$SKU_ID" | python3 -m json.tool
+# currentState → "VALIDATION_PENDING"
+```
+
+**Checkpoint:** If SKU is still in `IDEATION`, the `CatalogComplianceListener` AFTER_COMMIT + REQUIRES_NEW pattern is broken.
+
+### 1.2b Compliance Check — Failing Case (optional, separate SKU)
+
+To test the failure path, create a separate SKU with a trademarked name:
+
+```bash
+# Create SKU with trademarked name
+curl -s -X POST http://localhost:8080/api/skus \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Nike Air Max Clone","category":"Footwear"}' | python3 -m json.tool
+
+FAIL_SKU_ID="<id from response>"
+
+# Run compliance — should fail IP check
+curl -s -X POST "http://localhost:8080/api/compliance/skus/$FAIL_SKU_ID/check" \
+  -H "Content-Type: application/json" \
+  -d '{"productDescription":"Athletic shoes"}' | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `latestResult` | `FAILED` |
+| `latestReason` | `IP_INFRINGEMENT` |
+
+**Side effect:** `ComplianceFailed` event → SKU terminated with `COMPLIANCE_VIOLATION`.
+```bash
+curl -s "http://localhost:8080/api/skus/$FAIL_SKU_ID" | python3 -m json.tool
+# currentState → "TERMINATED", terminationReason → "COMPLIANCE_VIOLATION"
+```
+
+### 1.2c Verify Compliance Audit History
+
+```bash
+curl -s "http://localhost:8080/api/compliance/skus/$SKU_ID" | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `auditHistory` length | 4 (one per check type) |
+| Each entry `checkType` | `IP_CHECK`, `CLAIMS_CHECK`, `PROCESSOR_CHECK`, `SOURCING_CHECK` |
 
 ### 1.3 Advance: VALIDATION_PENDING to COST_GATING
+
+**Note:** If step 1.2 auto-advanced the SKU to `VALIDATION_PENDING` via the compliance listener, skip the manual transition below and go straight to 1.3.
 
 ```bash
 curl -s -X POST "http://localhost:8080/api/skus/$SKU_ID/state" \
@@ -403,6 +461,190 @@ For chargeback breach, use `chargebacked = true` for 3 of 100 orders (3% > 2% th
 
 ---
 
+## Phase 6: Portfolio Orchestration (FR-010)
+
+This phase tests experiment tracking, portfolio KPIs, priority ranking, kill window monitoring, and refund pattern analysis.
+
+### 6.1 Create an Experiment
+
+```bash
+curl -s -X POST "http://localhost:8080/api/portfolio/experiments" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Bluetooth Speaker Hypothesis",
+    "hypothesis": "Wireless speakers in the $150-200 range have high demand with 50%+ margins",
+    "sourceSignal": "Google Trends",
+    "validationWindowDays": 30
+  }' | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `status` | `ACTIVE` |
+| `validationWindowDays` | `30` |
+| HTTP status | `201` |
+
+Save the experiment `id`:
+```bash
+EXPERIMENT_ID="<id from response>"
+```
+
+### 6.2 Validate Experiment (Link to SKU)
+
+```bash
+curl -s -X POST "http://localhost:8080/api/portfolio/experiments/$EXPERIMENT_ID/validate" \
+  -H "Content-Type: application/json" \
+  -d "{\"skuId\": \"$SKU_ID\"}" | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `status` | `VALIDATED` |
+| `launchedSkuId` | `$SKU_ID` |
+
+### 6.3 Portfolio Summary
+
+```bash
+curl -s "http://localhost:8080/api/portfolio/summary" | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `totalExperiments` | `≥ 1` |
+| `activeExperiments` | `0` (the one we created was validated) |
+| HTTP status | `200` |
+
+### 6.4 Priority Ranking (Reallocation)
+
+```bash
+curl -s "http://localhost:8080/api/portfolio/reallocation" | python3 -m json.tool
+```
+
+Returns a list of SKUs ranked by risk-adjusted return. With margin snapshot data from Phase 4:
+
+| Field | Expected |
+|---|---|
+| HTTP status | `200` |
+| Response | Array of ranking entries with `skuId`, `avgNetMargin`, `riskAdjustedReturn` |
+
+### 6.5 Kill Recommendations (Empty — No Qualifying SKUs Yet)
+
+```bash
+curl -s "http://localhost:8080/api/portfolio/kill-recommendations" | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| HTTP status | `200` |
+| Response | `[]` (empty — kill window monitor hasn't run yet, or no SKU has 30+ days negative) |
+
+### 6.6 Refund Pattern Analysis
+
+```bash
+curl -s "http://localhost:8080/api/portfolio/refund-alerts" | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| HTTP status | `200` |
+| `elevatedSkuCount` | `0` (unless refund data from Phase 5 is present) |
+
+### 6.7 Fail an Experiment
+
+```bash
+# Create another experiment to fail
+curl -s -X POST "http://localhost:8080/api/portfolio/experiments" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Failed Hypothesis Test",
+    "hypothesis": "Testing fail path",
+    "sourceSignal": "Google Trends",
+    "validationWindowDays": 14
+  }' | python3 -m json.tool
+
+FAIL_EXP_ID="<id from response>"
+
+curl -s -X POST "http://localhost:8080/api/portfolio/experiments/$FAIL_EXP_ID/fail" | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `status` | `FAILED` |
+
+### 6.8 List All Experiments
+
+```bash
+curl -s "http://localhost:8080/api/portfolio/experiments" | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| Response length | `≥ 2` |
+| Statuses | Mix of `VALIDATED`, `FAILED` |
+
+---
+
+## Phase 7: Kill Window Monitor (Long-Term Termination)
+
+This tests the kill window monitor — the complement to capital's short-term shutdown rules. Capital pauses SKUs after 7 days of bad margins; the kill window monitor terminates them after 30+ days.
+
+### 7.1 Insert 31 Days of Negative Margin Snapshots
+
+Use a separate SKU for this test (the Phase 4 SKU may already be PAUSED/TERMINATED):
+
+```bash
+# Create and fast-track a new SKU to LISTED via DB
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
+  INSERT INTO skus (id, name, category, current_state, version, created_at, updated_at)
+  VALUES (gen_random_uuid(), 'Kill Window Test SKU', 'Gadgets', 'LISTED', 0, NOW(), NOW())
+  RETURNING id;
+"
+KILL_SKU_ID="<id from response>"
+
+# Insert 31 days of negative margin (net_margin < 0)
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
+  INSERT INTO margin_snapshots (id, sku_id, snapshot_date, gross_margin, net_margin, revenue_amount, revenue_currency, total_cost_amount, total_cost_currency, refund_rate, chargeback_rate, cac_variance)
+  SELECT gen_random_uuid(), '$KILL_SKU_ID'::uuid,
+         (CURRENT_DATE - (i || ' days')::interval)::date,
+         20.00, -5.00,
+         500.00, 'USD',
+         525.00, 'USD',
+         0.01, 0.005, 0.05
+  FROM generate_series(0, 30) AS s(i);
+"
+```
+
+### 7.2 Verify Kill Recommendation
+
+The `KillWindowMonitor` runs daily at 1 AM. To test immediately, restart the app or wait for the next scheduled run. After it runs:
+
+```bash
+curl -s "http://localhost:8080/api/portfolio/kill-recommendations" | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| Response | Array containing entry with `skuId: $KILL_SKU_ID` |
+| `daysNegative` | `≥ 31` |
+
+**Note:** With `portfolio.auto-terminate.enabled=false` (default), the monitor only writes a recommendation — it does NOT terminate the SKU. To test auto-termination, set `portfolio.auto-terminate.enabled=true` in `application.yml` and restart.
+
+### 7.3 Manual Kill Confirmation (Flag OFF)
+
+```bash
+KILL_REC_ID="<id from kill-recommendations response>"
+
+curl -s -X POST "http://localhost:8080/api/portfolio/kill-recommendations/$KILL_REC_ID/confirm" | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `confirmedAt` | Non-null timestamp |
+
+**Note:** This endpoint confirms the recommendation record but does NOT currently trigger the SKU termination via catalog. To fully close the loop, the operator would call `POST /api/skus/$KILL_SKU_ID/state` with `{"state":"TERMINATED"}` separately.
+
+---
+
 ## Quick Reference: All Endpoints Used
 
 | Method | Path | Purpose |
@@ -414,12 +656,23 @@ For chargeback breach, use `chargebacked = true` for 3 of 100 orders (3% > 2% th
 | `POST` | `/api/skus/{id}/verify-costs` | Cost gate verification |
 | `POST` | `/api/skus/{id}/stress-test` | Stress test (`{"estimatedPriceAmount":..., "currency":"USD"}`) |
 | `GET` | `/api/skus/{id}/pricing` | Pricing data |
+| `POST` | `/api/compliance/skus/{id}/check` | Trigger compliance check (FR-011) |
+| `GET` | `/api/compliance/skus/{id}` | Compliance status + audit history |
 | `POST` | `/api/vendors` | Create vendor |
 | `PATCH` | `/api/vendors/{id}/checklist` | Update onboarding checklist |
 | `POST` | `/api/vendors/{id}/activate` | Activate vendor |
 | `POST` | `/api/orders` | Create order |
 | `GET` | `/api/capital/reserve` | Reserve balance + health |
 | `GET` | `/api/capital/skus/{id}/pnl?from=&to=` | SKU P&L report |
+| `GET` | `/api/portfolio/summary` | Portfolio KPIs (FR-010) |
+| `GET` | `/api/portfolio/experiments` | List experiments |
+| `POST` | `/api/portfolio/experiments` | Create experiment |
+| `POST` | `/api/portfolio/experiments/{id}/validate` | Validate experiment, link to SKU |
+| `POST` | `/api/portfolio/experiments/{id}/fail` | Mark experiment as failed |
+| `GET` | `/api/portfolio/reallocation` | Priority ranking by risk-adjusted return |
+| `GET` | `/api/portfolio/kill-recommendations` | Pending kill recommendations |
+| `POST` | `/api/portfolio/kill-recommendations/{id}/confirm` | Confirm kill recommendation |
+| `GET` | `/api/portfolio/refund-alerts` | Portfolio-wide refund pattern alerts |
 
 ---
 
@@ -430,6 +683,9 @@ For chargeback breach, use `chargebacked = true` for 3 of 100 orders (3% > 2% th
 | No REST endpoints for order state transitions (`routeToVendor`, `markShipped`, `markDelivered`) | Cannot test `OrderEventListener` AFTER_COMMIT chain via HTTP | Update order status via DB; manually insert `capital_order_records` |
 | No REST endpoint to trigger `MarginSweepJob` on demand | Must restart app to trigger sweep | Restart the application; sweep fires immediately on startup |
 | `MarginSweepSkuProcessor` estimates cost as `revenue * 0.50` | P&L cost figures are approximations, not from cost envelope | Acceptable for Phase 1; will use real cost envelope data later |
+| No REST endpoint to trigger `KillWindowMonitor` on demand | Must restart app or wait for 1 AM cron | Restart the application; or insert qualifying data and check after next scheduled run |
+| Kill recommendation confirm does not auto-terminate SKU | Manual step needed after confirming recommendation | Call `POST /api/skus/{id}/state` with `TERMINATED` after confirming |
+| Compliance `SourcingCheckService` needs vendor data not in Sku entity | `vendorId` must be passed manually in the request body | Provide `vendorId` in `ManualCheckRequest` or use auto-check via `SkuReadyForComplianceCheck` event |
 
 ---
 
@@ -442,7 +698,11 @@ These are the cross-module event listener patterns that must hold for the system
 | `PricingInitializer` | `SkuStateChanged` | `AFTER_COMMIT` + `REQUIRES_NEW` | Pricing never persisted (PM-001) |
 | `ShutdownRuleListener` | `ShutdownRuleTriggered` | `AFTER_COMMIT` + `REQUIRES_NEW` | SKU never auto-paused (PM-005) |
 | `VendorBreachListener` | `VendorSlaBreached` | `AFTER_COMMIT` + `REQUIRES_NEW` | SKU never paused on SLA breach (PM-005) |
-| `OrderEventListener` | `OrderFulfilled` | `AFTER_COMMIT` + `REQUIRES_NEW` | Reserve never credited; fulfillment tx at risk (this PR) |
+| `OrderEventListener` | `OrderFulfilled` | `AFTER_COMMIT` + `REQUIRES_NEW` | Reserve never credited; fulfillment tx at risk |
 | `PricingDecisionListener` | `PricingDecision` | `AFTER_COMMIT` + `REQUIRES_NEW` | Price sync / state transition lost |
+| `CatalogComplianceListener` | `ComplianceCleared` | `AFTER_COMMIT` + `REQUIRES_NEW` | SKU stays in IDEATION after compliance passes (FR-011) |
+| `CatalogComplianceListener` | `ComplianceFailed` | `AFTER_COMMIT` + `REQUIRES_NEW` | SKU not terminated on compliance failure (FR-011) |
+| `CatalogKillWindowListener` | `KillWindowBreached` | `AFTER_COMMIT` + `REQUIRES_NEW` | SKU not auto-terminated after kill window breach (FR-010) |
+| `ComplianceOrchestrator` | `SkuReadyForComplianceCheck` | `AFTER_COMMIT` + `REQUIRES_NEW` | Compliance check never triggered on SKU creation (FR-011) |
 
 **Rule:** Any `@TransactionalEventListener(AFTER_COMMIT)` handler that writes to the database **must** use `@Transactional(propagation = Propagation.REQUIRES_NEW)`. Without it, JPA operations silently succeed but are never flushed.
