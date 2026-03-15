@@ -4,7 +4,10 @@ import com.autoshipper.catalog.domain.SkuState
 import com.autoshipper.catalog.domain.service.SkuService
 import com.autoshipper.catalog.handler.dto.CreateSkuRequest
 import com.autoshipper.catalog.handler.dto.SkuResponse
+import com.autoshipper.catalog.handler.dto.SkuStateHistoryResponse
 import com.autoshipper.catalog.handler.dto.TransitionSkuRequest
+import com.autoshipper.catalog.persistence.SkuStateHistory
+import com.autoshipper.catalog.persistence.SkuStateHistoryRepository
 import com.autoshipper.shared.identity.SkuId
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -13,7 +16,10 @@ import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/skus")
-class SkuController(private val skuService: SkuService) {
+class SkuController(
+    private val skuService: SkuService,
+    private val skuStateHistoryRepository: SkuStateHistoryRepository
+) {
 
     @PostMapping
     fun create(@Valid @RequestBody request: CreateSkuRequest): ResponseEntity<SkuResponse> {
@@ -47,4 +53,17 @@ class SkuController(private val skuService: SkuService) {
         val sku = skuService.transition(SkuId.of(id), targetState)
         return ResponseEntity.ok(SkuResponse.from(sku))
     }
+
+    @GetMapping("/{id}/state-history")
+    fun getStateHistory(@PathVariable id: String): ResponseEntity<List<SkuStateHistoryResponse>> {
+        val skuId = SkuId.of(id)
+        val history = skuStateHistoryRepository.findBySkuIdOrderByTransitionedAtAsc(skuId.value)
+        return ResponseEntity.ok(history.map { it.toResponse() })
+    }
+
+    private fun SkuStateHistory.toResponse(): SkuStateHistoryResponse = SkuStateHistoryResponse(
+        fromState = fromState,
+        toState = toState,
+        transitionedAt = transitionedAt.toString()
+    )
 }

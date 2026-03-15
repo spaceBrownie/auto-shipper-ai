@@ -412,61 +412,61 @@ interface SkuStateHistoryEntry {
 ## Task Breakdown
 
 ### Config Layer
-- [ ] Initialize Vite + React + TypeScript project in `frontend/`
-- [ ] Install and configure Tailwind CSS
-- [ ] Install and configure shadcn/ui (`npx shadcn-ui@latest init`)
-- [ ] Install shadcn/ui components: Button, Card, Table, Badge, Input, Select, Tabs, NavigationMenu, Skeleton, Separator, DropdownMenu, Dialog, Form, Label, Textarea, Progress, Toast, Toaster
-- [ ] Install TanStack Query (`@tanstack/react-query`, `@tanstack/react-query-devtools`)
-- [ ] Install React Router v6 (`react-router-dom`)
-- [ ] Install Recharts
-- [ ] Configure `vite.config.ts` with API proxy to `http://localhost:8080`
-- [ ] Enable TypeScript strict mode in `tsconfig.json`
+- [x] Initialize Vite + React + TypeScript project in `frontend/`
+- [x] Install and configure Tailwind CSS
+- [x] Install and configure shadcn/ui (`npx shadcn@latest init`)
+- [x] Install shadcn/ui components: Button, Card, Table, Badge, Input, Select, Tabs, Skeleton, Separator, DropdownMenu, Dialog, Label, Textarea, Progress, Sonner
+- [x] Install TanStack Query (`@tanstack/react-query`, `@tanstack/react-query-devtools`)
+- [x] Install React Router v6 (`react-router-dom`)
+- [x] Install Recharts
+- [x] Configure `vite.config.ts` with API proxy to `http://localhost:8080`
+- [x] Enable TypeScript strict mode in `tsconfig.json`
 
 ### Backend API Layer
-- [ ] Add CORS configuration to Spring Boot backend (WebMvcConfigurer allowing `http://localhost:5173`)
-- [ ] Add `GET /api/capital/skus/{id}/margin-history` endpoint to CapitalController
-- [ ] Add `GET /api/skus/{id}/state-history` endpoint to SkuController
-- [ ] Add `MarginSnapshotResponse` DTO
-- [ ] Add `SkuStateHistoryResponse` DTO
+- [x] Add CORS configuration to Spring Boot backend (WebMvcConfigurer allowing `http://localhost:5173`)
+- [x] Add `GET /api/capital/skus/{id}/margin-history` endpoint to CapitalController
+- [x] Add `GET /api/skus/{id}/state-history` endpoint to SkuController
+- [x] Add `MarginSnapshotResponse` DTO
+- [x] Add `SkuStateHistoryResponse` DTO
 
 ### API / Proxy Layer (frontend)
-- [ ] Implement `src/api/client.ts` — fetch wrapper with base URL, error toast, JSON parsing
-- [ ] Implement `src/api/types.ts` — all TypeScript interfaces matching backend DTOs
-- [ ] Implement `src/api/skus.ts` — hooks: `useSkus`, `useSku`, `useSkuStateHistory`, `useVerifyCosts`, `useRunStressTest`, `useTransitionSku`
-- [ ] Implement `src/api/pricing.ts` — hooks: `useSkuPricing`
-- [ ] Implement `src/api/vendors.ts` — hooks: `useVendors`, `useVendor`, `useComputeVendorScore`, `useRegisterVendor`, `useUpdateChecklist`, `useActivateVendor`
-- [ ] Implement `src/api/capital.ts` — hooks: `useCapitalReserve`, `useSkuPnl`, `useMarginHistory`
-- [ ] Implement `src/api/portfolio.ts` — hooks: `usePortfolioSummary`, `useExperiments`, `useCreateExperiment`, `useValidateExperiment`, `useFailExperiment`, `usePriorityRanking`, `useKillRecommendations`, `useConfirmKill`, `useRefundAlerts`
-- [ ] Implement `src/api/compliance.ts` — hooks: `useComplianceStatus`, `useRunComplianceCheck`
-- [ ] Implement `src/api/orders.ts` — hooks: `useOrder`, `useOrderTracking`
+- [x] Implement `src/api/client.ts` — fetch wrapper with base URL, error toast, JSON parsing
+- [x] Implement `src/api/types.ts` — all TypeScript interfaces matching backend DTOs
+- [x] Implement `src/api/skus.ts` — hooks: `useSkus`, `useSku`, `useSkuStateHistory`, `useVerifyCosts`, `useRunStressTest`, `useTransitionSku`
+- [x] Implement `src/api/pricing.ts` — hooks: `useSkuPricing`
+- [x] Implement `src/api/vendors.ts` — hooks: `useVendors`, `useVendor`, `useComputeVendorScore`, `useRegisterVendor`, `useUpdateChecklist`, `useActivateVendor`
+- [x] Implement `src/api/capital.ts` — hooks: `useCapitalReserve`, `useSkuPnl`, `useMarginHistory`
+- [x] Implement `src/api/portfolio.ts` — hooks: `usePortfolioSummary`, `useExperiments`, `useCreateExperiment`, `useValidateExperiment`, `useFailExperiment`, `usePriorityRanking`, `useKillRecommendations`, `useConfirmKill`, `useRefundAlerts`
+- [x] Implement `src/api/compliance.ts` — hooks: `useComplianceStatus`, `useRunComplianceCheck`
+- [x] Implement `src/api/orders.ts` — hooks: `useOrder`, `useOrderTracking`
 
 ### Common Components
-- [ ] Implement `AppShell` layout component (sidebar + main content area)
-- [ ] Implement `Sidebar` navigation with links for all 9 views
-- [ ] Implement `StatusBadge` component (SKU states, experiment statuses, compliance results)
-- [ ] Implement `KpiCard` component (label, value, optional trend)
-- [ ] Implement `DataTable` reusable component (sortable, filterable)
-- [ ] Implement `MarginTrendChart` using Recharts LineChart (with 50%/30% reference lines)
-- [ ] Implement `ReserveGauge` component (balance vs threshold)
-- [ ] Implement `VendorScoreBar` component (0–100 progress bar)
-- [ ] Implement `CostBreakdownTable` component (13 cost components + total)
-- [ ] Implement `StressTestResultCard` component (pass/fail + stressed amounts)
-- [ ] Implement `src/lib/formatters.ts` (money, percentage, date formatting utilities)
-- [ ] Add loading skeleton states for all data-fetching components
-- [ ] Add error boundary and empty state handling
+- [x] Implement `AppShell` layout component (sidebar + main content area)
+- [x] Implement `Sidebar` navigation with links for all 9 views
+- [x] Implement `StatusBadge` component (SKU states, experiment statuses, compliance results)
+- [x] Implement `KpiCard` component (label, value, optional trend)
+- [x] Implement `DataTable` reusable component (sortable, filterable)
+- [x] Implement `MarginTrendChart` using Recharts ComposedChart (with 50%/30% reference lines)
+- [x] Implement `ReserveGauge` component (balance vs threshold)
+- [x] Implement `VendorScoreBar` component (0–100 progress bar)
+- [x] Implement `CostBreakdownTable` component (13 cost components + total)
+- [x] Implement `StressTestResultCard` component (pass/fail + stressed amounts)
+- [x] Implement `src/lib/formatters.ts` (money, percentage, date formatting utilities)
+- [x] Add loading skeleton states for all data-fetching components
+- [x] Add error boundary and empty state handling
 
 ### Handler / Page Layer
-- [ ] Implement `App.tsx` with `createBrowserRouter` and route definitions
-- [ ] Implement `SkuPortfolioPage` — SKU table with state filter, actions
-- [ ] Implement `SkuDetailPage` — tabbed view (overview, cost, stress test, pricing, P&L, compliance)
-- [ ] Implement `CostGateRunnerPage` — multi-step form (select SKU → verify costs → stress test → approve/reject)
-- [ ] Implement `VendorScorecardPage` — vendor table with score breakdown
-- [ ] Implement `MarginMonitorPage` — portfolio margin + per-SKU 90-day chart
-- [ ] Implement `ExperimentTrackerPage` — experiment table with countdown, create form
-- [ ] Implement `CapitalOverviewPage` — reserve gauge, P&L table, priority ranking, refund alerts
-- [ ] Implement `DemandSignalsPage` — placeholder with explanation
-- [ ] Implement `KillLogPage` — terminated SKUs + confirmed kills with reasons
-- [ ] Implement `ComplianceStatusPage` — per-SKU audit trail with manual check trigger
+- [x] Implement `App.tsx` with `createBrowserRouter` and route definitions
+- [x] Implement `SkuPortfolioPage` — SKU table with state filter, actions
+- [x] Implement `SkuDetailPage` — tabbed view (overview, cost, stress test, pricing, P&L, compliance)
+- [x] Implement `CostGateRunnerPage` — multi-step form (select SKU → verify costs → stress test → approve/reject)
+- [x] Implement `VendorScorecardPage` — vendor table with score breakdown
+- [x] Implement `MarginMonitorPage` — portfolio margin + per-SKU 90-day chart
+- [x] Implement `ExperimentTrackerPage` — experiment table with countdown, create form
+- [x] Implement `CapitalOverviewPage` — reserve gauge, P&L table, priority ranking, refund alerts
+- [x] Implement `DemandSignalsPage` — placeholder with explanation
+- [x] Implement `KillLogPage` — terminated SKUs + confirmed kills with reasons
+- [x] Implement `ComplianceStatusPage` — per-SKU audit trail with manual check trigger
 
 ## Testing Strategy
 
