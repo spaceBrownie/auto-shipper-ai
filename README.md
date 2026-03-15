@@ -207,16 +207,21 @@ Modular monolith with bounded contexts, structured to promote independent servic
 
 ```
 auto-shipper-ai/
-└── modules/
-    ├── shared/          # Money, Percentage, domain IDs, domain events
-    ├── catalog/         # SKU lifecycle, cost gate, stress test, state machine
-    ├── pricing/         # Dynamic pricing engine, cost signal processing
-    ├── vendor/          # Vendor registry, SLA monitoring, reliability scoring
-    ├── fulfillment/     # Order routing, carrier integration, tracking, delay alerts
-    ├── capital/         # Reserve management, margin dashboards, kill-rule execution
-    ├── compliance/      # IP checks, regulatory guards, processor rule validation
-    ├── portfolio/       # Experiment tracking, scale/kill orchestration, reinvestment
-    └── app/             # Spring Boot entry point, Flyway migrations, config
+├── modules/
+│   ├── shared/          # Money, Percentage, domain IDs, domain events
+│   ├── catalog/         # SKU lifecycle, cost gate, stress test, state machine
+│   ├── pricing/         # Dynamic pricing engine, cost signal processing
+│   ├── vendor/          # Vendor registry, SLA monitoring, reliability scoring
+│   ├── fulfillment/     # Order routing, carrier integration, tracking, delay alerts
+│   ├── capital/         # Reserve management, margin dashboards, kill-rule execution
+│   ├── compliance/      # IP checks, regulatory guards, processor rule validation
+│   ├── portfolio/       # Experiment tracking, scale/kill orchestration, reinvestment
+│   └── app/             # Spring Boot entry point, Flyway migrations, config
+└── frontend/            # React + Vite + TypeScript operations dashboard
+    ├── src/api/         # TanStack Query hooks (30 hooks across 7 modules)
+    ├── src/pages/       # 9 dashboard views + SKU detail page
+    ├── src/components/  # Reusable UI (charts, gauges, sprites, layout)
+    └── src/lib/         # Utilities (formatters, konami easter egg)
 ```
 
 ## Tech Stack
@@ -229,13 +234,14 @@ auto-shipper-ai/
 | Events | Spring `ApplicationEventPublisher` |
 | Scheduling | Spring `@Scheduled` |
 | Observability | Micrometer + Prometheus |
-| Frontend | React + Vite + shadcn/ui *(planned)* |
+| Frontend | React + Vite + TypeScript + shadcn/ui + TanStack Query + Recharts |
 
 ## Prerequisites
 
 - Java 21 (Temurin recommended)
 - PostgreSQL 16 running on `localhost:5432`
 - Gradle 8.8 (wrapper included — no local install required)
+- Node.js 18+ and npm (for the frontend dashboard)
 
 ## Local Setup
 
@@ -261,7 +267,7 @@ Edit `.env` with your credentials (use a `.env` file that's not committed to git
 - Leave external API keys empty for now (required for Phase 2+)
 - **Do not commit `.env`** — it's in `.gitignore`
 
-**3. Build and run:**
+**3. Build and run the backend:**
 
 ```bash
 ./gradlew build          # compile + test
@@ -270,15 +276,32 @@ Edit `.env` with your credentials (use a `.env` file that's not committed to git
 
 The API will be available at `http://localhost:8080`.
 
+**4. Start the frontend dashboard:**
+
+```bash
+cd frontend
+npm install              # install dependencies (one-time)
+npm run dev              # start dev server with hot reload
+```
+
+The dashboard will be available at `http://localhost:5173`. The Vite dev server proxies all `/api/*` requests to the backend at `localhost:8080`.
+
 ## Build Commands
 
 ```bash
+# Backend
 ./gradlew build              # full build + all tests
 ./gradlew build -x test      # compile only, skip tests
 ./gradlew :shared:test       # shared module unit tests only
 ./gradlew :app:test          # integration tests (requires PostgreSQL)
 ./gradlew bootRun            # run the application
 ./gradlew flywayMigrate      # run database migrations manually
+
+# Frontend
+cd frontend
+npm install                  # install dependencies
+npm run dev                  # dev server (http://localhost:5173)
+npm run build                # production build (outputs to dist/)
 ```
 
 ## Key Business Rules
@@ -351,6 +374,8 @@ Interactive API docs are available via Swagger UI at **`http://localhost:8080/sw
 | `GET` | `/api/orders/{id}/tracking` | Get shipment tracking details |
 | `GET` | `/api/capital/reserve` | Current reserve balance and health status |
 | `GET` | `/api/capital/skus/{id}/pnl?from=&to=` | SKU-level P&L (revenue, cost, margins, snapshot count) |
+| `GET` | `/api/capital/skus/{id}/margin-history?from=&to=` | Daily margin snapshots for chart rendering |
+| `GET` | `/api/skus/{id}/state-history` | SKU state transition history |
 | `POST` | `/api/compliance/skus/{id}/check` | Trigger compliance check (IP, claims, processor, sourcing) |
 | `GET` | `/api/compliance/skus/{id}` | Compliance status and audit history |
 | `GET` | `/api/portfolio/summary` | Portfolio KPIs (experiments, active SKUs, blended margin, profit) |
@@ -424,7 +449,30 @@ Implementation is tracked in `feature-requests/FR-NNN-name/` with a `spec.md`, `
 | FR-009 | Capital protection | ✅ Complete |
 | FR-010 | Portfolio orchestration | ✅ Complete |
 | FR-011 | Compliance guards | ✅ Complete |
-| FR-012 | Frontend dashboard | Spec'd |
+| FR-012 | Frontend dashboard | ✅ Complete |
 | FR-013 | Project structure refactor | ✅ Complete |
 | FR-014 | Spec architecture audit | ✅ Complete |
 | FR-015 | Validate State Machine | ✅ Complete |
+
+## Frontend Dashboard
+
+The operations dashboard (`frontend/`) provides real-time visibility into the commerce engine. It implements all 8 views from the solo-operator spec Section 7.1 plus a compliance view.
+
+| View | Route | Purpose |
+|---|---|---|
+| SKU Portfolio | `/skus` | All SKUs with state filter, pause/terminate actions |
+| SKU Detail | `/skus/:id` | 6-tab view: overview, cost breakdown, stress test, pricing, P&L, compliance |
+| Cost Gate Runner | `/cost-gate` | 4-step form to verify costs and stress test a product idea |
+| Margin Monitor | `/margin` | 90-day margin trend charts per SKU with 50%/30% floor reference lines |
+| Experiment Tracker | `/experiments` | Listing hypotheses with validation window countdown |
+| Capital Overview | `/capital` | Reserve gauge, priority ranking, refund alerts, SKU-level P&L |
+| Demand Signals | `/demand` | Placeholder (DemandScanJob not yet implemented) |
+| Kill Log | `/kill-log` | Terminated SKUs with reasons, pending kill recommendations |
+| Compliance Status | `/compliance` | Per-SKU audit trail, manual compliance check trigger |
+| Vendor Scorecard | `/vendors` | Vendor table with reliability scores and SLA breach history |
+
+### Design System — "The Engine Room"
+
+The dashboard uses a warm dark theme with an amber accent, designed for extended monitoring sessions. Three typefaces: **Bricolage Grotesque** (headings), **Onest** (body), **Martian Mono** (all numerical data). See `feature-requests/FR-012-frontend-dashboard/design-system.md` for the full spec.
+
+Five crew sprites (Shipper, Analyst, Guard, Scout, Reaper) appear in empty states and react to system events. Easter eggs: Konami code (rainbow engine pulse bar) and "Ship It" (click the sidebar Shipper sprite 5 times).
