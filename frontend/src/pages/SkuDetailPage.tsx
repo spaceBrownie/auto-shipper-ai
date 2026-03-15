@@ -338,7 +338,7 @@ function PricingTab({ skuId }: { skuId: string }) {
   const chartData = pricing.history.map((entry: PricingHistoryEntry) => ({
     date: entry.recordedAt,
     grossMargin: entry.marginPercent,
-    netMargin: entry.marginPercent * 0.8,
+    netMargin: entry.marginPercent,
   }));
 
   return (
@@ -376,7 +376,7 @@ function PricingTab({ skuId }: { skuId: string }) {
               marginBottom: 16,
             }}
           >
-            Margin Trend
+            Pricing Margin History
           </h3>
           <MarginTrendChart data={chartData} height={260} />
         </div>
