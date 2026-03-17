@@ -1,5 +1,4 @@
 import {
-  Line,
   XAxis,
   YAxis,
   Tooltip,
@@ -102,27 +101,16 @@ export function MarginTrendChart({ data, height = 300 }: MarginTrendChartProps) 
           type="monotone"
           dataKey="grossMargin"
           fill="url(#grossFill)"
-          stroke="none"
-        />
-        <Area
-          type="monotone"
-          dataKey="netMargin"
-          fill="url(#netFill)"
-          stroke="none"
-        />
-
-        <Line
-          type="monotone"
-          dataKey="grossMargin"
           stroke="#34d399"
           strokeWidth={2}
           dot={false}
           activeDot={{ r: 3, fill: "#34d399" }}
           strokeLinecap="round"
         />
-        <Line
+        <Area
           type="monotone"
           dataKey="netMargin"
+          fill="url(#netFill)"
           stroke="#e5a00d"
           strokeWidth={2}
           dot={false}
