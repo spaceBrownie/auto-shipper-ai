@@ -240,7 +240,7 @@ auto-shipper-ai/
 
 - Java 21 (Temurin recommended)
 - PostgreSQL 16 running on `localhost:5432`
-- Gradle 8.8 (wrapper included — no local install required)
+- Gradle 8.12 (wrapper included — no local install required)
 - Node.js 18+ and npm (for the frontend dashboard)
 
 ## Local Setup
@@ -295,7 +295,13 @@ The dashboard will be available at `http://localhost:5173`. The Vite dev server 
 ./gradlew :shared:test       # shared module unit tests only
 ./gradlew :app:test          # integration tests (requires PostgreSQL)
 ./gradlew bootRun            # run the application
-./gradlew flywayMigrate      # run database migrations manually
+./gradlew flywayMigrate      # run database migrations
+./gradlew flywayInfo         # show migration status
+./gradlew flywayRepair       # repair checksum mismatches
+./gradlew flywayValidate     # validate migrations
+
+# Target a specific database (e.g. test DB)
+DB_URL=jdbc:postgresql://localhost:5432/autoshipper_test ./gradlew flywayMigrate
 
 # Frontend
 cd frontend

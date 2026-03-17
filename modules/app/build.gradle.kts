@@ -5,6 +5,14 @@ plugins {
     kotlin("plugin.spring")
     kotlin("plugin.jpa")
     id("org.springframework.boot")
+    id("org.flywaydb.flyway")
+}
+
+flyway {
+    url = System.getenv("DB_URL") ?: "jdbc:postgresql://localhost:5432/autoshipper"
+    user = System.getenv("DB_USERNAME") ?: "autoshipper"
+    password = System.getenv("DB_PASSWORD") ?: "autoshipper"
+    locations = arrayOf("classpath:db/migration")
 }
 
 dependencies {
