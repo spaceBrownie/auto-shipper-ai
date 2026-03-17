@@ -789,7 +789,7 @@ function ComplianceTab({ skuId }: { skuId: string }) {
 export default function SkuDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { data: sku, isLoading } = useSku(id!);
+  const { data: sku, isLoading, isError } = useSku(id!);
   const {
     data: stateHistory,
     isLoading: historyLoading,
@@ -811,7 +811,7 @@ export default function SkuDetailPage() {
     );
   }
 
-  if (!sku) {
+  if (isError || !sku) {
     return (
       <div>
         <Button
@@ -835,10 +835,12 @@ export default function SkuDetailPage() {
           style={{
             fontFamily: "'Onest', sans-serif",
             fontSize: 14,
-            color: "var(--text-secondary)",
+            color: isError ? "var(--danger)" : "var(--text-secondary)",
           }}
         >
-          SKU not found.
+          {isError
+            ? "Failed to load SKU details. Check that the backend is running and try again."
+            : "SKU not found."}
         </p>
       </div>
     );

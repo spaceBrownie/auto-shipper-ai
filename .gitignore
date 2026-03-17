@@ -66,6 +66,11 @@ app/build/reports/
 
 # Claude Code internals (don't commit session state)
 .claude/projects/
+.claude/worktrees/
+.claude/skills/*-workspace/
+
+# MCP config (local, contains machine-specific paths)
+.mcp.json
 
 # Kotlin compiler
 .kotlin/

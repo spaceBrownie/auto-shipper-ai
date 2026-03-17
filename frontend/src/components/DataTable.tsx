@@ -19,12 +19,14 @@ interface DataTableProps<T> {
   columns: Column<T>[];
   data: T[];
   onRowClick?: (row: T) => void;
+  rowKey?: string;
 }
 
 export function DataTable<T extends Record<string, any>>({
   columns,
   data,
   onRowClick,
+  rowKey = "id",
 }: DataTableProps<T>) {
   return (
     <Table>
@@ -51,7 +53,7 @@ export function DataTable<T extends Record<string, any>>({
       <TableBody>
         {data.map((row, i) => (
           <TableRow
-            key={i}
+            key={row[rowKey] ?? i}
             onClick={() => onRowClick?.(row)}
             className="transition-colors duration-150"
             style={{
