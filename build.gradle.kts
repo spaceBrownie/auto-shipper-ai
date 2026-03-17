@@ -1,11 +1,18 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
+buildscript {
+    dependencies {
+        classpath("org.flywaydb:flyway-database-postgresql:11.8.2")
+    }
+}
+
 plugins {
     kotlin("jvm") version "2.2.21" apply false
     kotlin("plugin.spring") version "2.2.21" apply false
     kotlin("plugin.jpa") version "2.2.21" apply false
     id("org.springframework.boot") version "3.3.4" apply false
+    id("org.flywaydb.flyway") version "11.8.2" apply false
 }
 
 allprojects {

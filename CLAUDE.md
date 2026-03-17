@@ -66,20 +66,26 @@ Backward-induction: validated willingness-to-pay → fit cost envelope inside pr
 ## Build & Test Commands
 
 ```bash
-# Build (once project is initialized)
-./gradlew build        # or: mvn clean package
+# Build
+./gradlew build
 
 # Run tests
-./gradlew test         # or: mvn test
+./gradlew test
 
 # Run a single test class
 ./gradlew test --tests "com.example.catalog.StressTestSpec"
 
 # Run application
-./gradlew bootRun      # or: mvn spring-boot:run
+./gradlew bootRun
 
 # Database migrations
-./gradlew flywayMigrate
+./gradlew flywayMigrate      # run migrations
+./gradlew flywayInfo         # show migration status
+./gradlew flywayRepair       # repair checksum mismatches
+./gradlew flywayValidate     # validate migrations
+
+# Target test database
+DB_URL=jdbc:postgresql://localhost:5432/autoshipper_test ./gradlew flywayMigrate
 
 # Frontend (once initialized)
 cd frontend && npm install && npm run dev
