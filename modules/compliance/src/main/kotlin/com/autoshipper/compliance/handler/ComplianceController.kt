@@ -41,7 +41,12 @@ class ComplianceController(
         val allRecords = auditRepository.findBySkuIdOrderByCheckedAtDesc(id)
 
         if (allRecords.isEmpty()) {
-            return ResponseEntity.notFound().build()
+            return ResponseEntity.ok(ComplianceStatusResponse(
+                skuId = id.toString(),
+                latestResult = null,
+                latestReason = null,
+                auditHistory = emptyList()
+            ))
         }
 
         // Scope latest result to the most recent check run only

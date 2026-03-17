@@ -4,7 +4,7 @@ import java.time.Instant
 
 data class ComplianceStatusResponse(
     val skuId: String,
-    val latestResult: String,
+    val latestResult: String?,
     val latestReason: String?,
     val auditHistory: List<AuditEntry>
 )

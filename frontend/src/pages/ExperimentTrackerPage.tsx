@@ -200,17 +200,19 @@ export default function ExperimentTrackerPage() {
         </h1>
 
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger>
-            <Button
-              style={{
-                backgroundColor: "var(--accent)",
-                color: "var(--bg-root)",
-                fontFamily: "'Onest', sans-serif",
-                fontWeight: 600,
-              }}
-            >
-              Create Experiment
-            </Button>
+          <DialogTrigger
+            render={
+              <Button
+                style={{
+                  backgroundColor: "var(--accent)",
+                  color: "var(--bg-root)",
+                  fontFamily: "'Onest', sans-serif",
+                  fontWeight: 600,
+                }}
+              />
+            }
+          >
+            Create Experiment
           </DialogTrigger>
           <DialogContent
             style={{

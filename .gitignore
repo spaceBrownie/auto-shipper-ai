@@ -66,3 +66,9 @@ app/build/reports/
 
 # Claude Code internals (don't commit session state)
 .claude/projects/
+
+# Kotlin compiler
+.kotlin/
+
+# Playwright MCP
+.playwright-mcp/
