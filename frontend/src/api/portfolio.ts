@@ -8,6 +8,9 @@ import type {
   RefundAlertResponse,
   CreateExperimentRequest,
   ValidateExperimentRequest,
+  DemandScanStatusResponse,
+  DemandCandidateResponse,
+  CandidateRejectionResponse,
 } from "@/api/types";
 
 // ---------------------------------------------------------------------------
@@ -53,6 +56,30 @@ export function useRefundAlerts() {
     queryKey: ["portfolio", "refund-alerts"],
     queryFn: () =>
       apiGet<RefundAlertResponse>("/api/portfolio/refund-alerts"),
+  });
+}
+
+export function useDemandScanStatus() {
+  return useQuery({
+    queryKey: ["portfolio", "demand-scan", "status"],
+    queryFn: () =>
+      apiGet<DemandScanStatusResponse>("/api/portfolio/demand-scan/status"),
+  });
+}
+
+export function useDemandCandidates() {
+  return useQuery({
+    queryKey: ["portfolio", "demand-scan", "candidates"],
+    queryFn: () =>
+      apiGet<DemandCandidateResponse[]>("/api/portfolio/demand-scan/candidates"),
+  });
+}
+
+export function useDemandRejections() {
+  return useQuery({
+    queryKey: ["portfolio", "demand-scan", "rejections"],
+    queryFn: () =>
+      apiGet<CandidateRejectionResponse[]>("/api/portfolio/demand-scan/rejections"),
   });
 }
 
@@ -117,6 +144,19 @@ export function useConfirmKill() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["portfolio", "kill-recommendations"],
+      });
+    },
+  });
+}
+
+export function useTriggerDemandScan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiPost<{ message: string }>("/api/portfolio/demand-scan/trigger"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["portfolio", "demand-scan"],
       });
     },
   });
