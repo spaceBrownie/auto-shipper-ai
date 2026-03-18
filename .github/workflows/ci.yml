@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: autoshipper_test
+          POSTGRES_USER: autoshipper
+          POSTGRES_PASSWORD: autoshipper
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Build and test
+        env:
+          TEST_DB_URL: jdbc:postgresql://localhost:5432/autoshipper_test
+          TEST_DB_USERNAME: autoshipper
+          TEST_DB_PASSWORD: autoshipper
+        run: ./gradlew build
+
+      - name: Verify integration test counts
+        if: always()
+        run: |
+          # Parse JUnit XML reports to ensure integration tests actually executed.
+          # Prevents silent-skip regressions (PM-004, PM-006, RAT-18).
+
+          REPORT_DIR="modules/app/build/test-results/test"
+
+          if [ ! -d "$REPORT_DIR" ]; then
+            echo "FAIL: Test report directory not found at $REPORT_DIR"
+            exit 1
+          fi
+
+          check_test_count() {
+            local class_name="$1"
+            local min_expected="$2"
+            local file
+
+            file=$(find "$REPORT_DIR" -name "TEST-${class_name}.xml" 2>/dev/null | head -1)
+
+            if [ -z "$file" ]; then
+              echo "FAIL: No test report found for $class_name"
+              return 1
+            fi
+
+            local tests
+            tests=$(sed -n 's/.*tests="\([0-9]*\)".*/\1/p' "$file" | head -1)
+            local skipped
+            skipped=$(sed -n 's/.*skipped="\([0-9]*\)".*/\1/p' "$file" | head -1)
+            skipped=${skipped:-0}
+            local executed=$((tests - skipped))
+
+            if [ "$executed" -lt "$min_expected" ]; then
+              echo "FAIL: $class_name — expected >= $min_expected tests executed, got $executed (tests=$tests, skipped=$skipped)"
+              return 1
+            else
+              echo "OK: $class_name — $executed tests executed (expected >= $min_expected)"
+              return 0
+            fi
+          }
+
+          FAILURES=0
+
+          # Integration test count gates:
+          # CapitalIntegrationTest: 6 tests
+          # MarginSweepIntegrationTest: 4 tests
+          # VendorBreachIntegrationTest: 4 tests
+          # VendorEndpointIntegrationTest: 8 tests
+          # AutoShipperApplicationTest: 1 test (context load)
+          check_test_count "com.autoshipper.capital.CapitalIntegrationTest" 6 || FAILURES=$((FAILURES + 1))
+          check_test_count "com.autoshipper.capital.MarginSweepIntegrationTest" 4 || FAILURES=$((FAILURES + 1))
+          check_test_count "com.autoshipper.vendor.VendorBreachIntegrationTest" 4 || FAILURES=$((FAILURES + 1))
+          check_test_count "com.autoshipper.vendor.VendorEndpointIntegrationTest" 8 || FAILURES=$((FAILURES + 1))
+          check_test_count "com.autoshipper.AutoShipperApplicationTest" 1 || FAILURES=$((FAILURES + 1))
+
+          if [ "$FAILURES" -gt 0 ]; then
+            echo ""
+            echo "FAIL: $FAILURES integration test count gate(s) failed."
+            echo "If you added/removed tests, update the expected counts in .github/workflows/ci.yml"
+            exit 1
+          fi
+
+          echo ""
+          echo "All integration test count gates passed."

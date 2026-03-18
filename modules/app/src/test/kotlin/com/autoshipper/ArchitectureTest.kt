@@ -54,20 +54,22 @@ class ArchitectureTest {
     }
 
     /**
-     * Rule 2: No @Testcontainers(disabledWithoutDocker = true) in test code.
+     * Rule 2: No @Testcontainers annotation in test code.
      *
-     * This silently skips the entire test class when Docker is unavailable, hiding
-     * real failures in CI environments where Docker is expected to be present.
+     * All integration tests use the running PostgreSQL instance configured in
+     * application-test.yml. Testcontainers dependencies have been removed (RAT-18).
+     * Using @Testcontainers would cause compilation errors and, historically,
+     * silently skipped tests due to Docker API incompatibilities (PM-004, PM-006).
      *
-     * Violations found by: PM-006
+     * Violations found by: PM-004, PM-006, RAT-18
      */
     @Test
-    fun `test classes must not use disabledWithoutDocker`() {
+    fun `test classes must not use Testcontainers annotation`() {
         val rule = ArchRuleDefinition.classes()
-            .should(notHaveDisabledWithoutDocker())
+            .should(notUseTestcontainers())
             .because(
-                "PM-006: @Testcontainers(disabledWithoutDocker = true) silently skips tests " +
-                "when Docker is unavailable. Use plain @Testcontainers instead."
+                "RAT-18: All integration tests use the running Postgres from application-test.yml. " +
+                "@Testcontainers has been removed — do not reintroduce it."
             )
 
         rule.check(testClasses)
@@ -135,30 +137,23 @@ class ArchitectureTest {
         }
     }
 
-    private fun notHaveDisabledWithoutDocker(): ArchCondition<com.tngtech.archunit.core.domain.JavaClass> {
+    private fun notUseTestcontainers(): ArchCondition<com.tngtech.archunit.core.domain.JavaClass> {
         return object : ArchCondition<com.tngtech.archunit.core.domain.JavaClass>(
-            "not use @Testcontainers(disabledWithoutDocker = true)"
+            "not use @Testcontainers annotation"
         ) {
             override fun check(
                 javaClass: com.tngtech.archunit.core.domain.JavaClass,
                 events: ConditionEvents
             ) {
-                val testcontainersAnnotation = javaClass.annotations
-                    .firstOrNull { it.rawType.name == "org.testcontainers.junit.jupiter.Testcontainers" }
-                    ?: return
+                val hasTestcontainers = javaClass.annotations
+                    .any { it.rawType.name == "org.testcontainers.junit.jupiter.Testcontainers" }
 
-                val disabledWithoutDocker = try {
-                    testcontainersAnnotation.get("disabledWithoutDocker").orElse(false)
-                } catch (e: Exception) {
-                    false
-                }
-
-                if (disabledWithoutDocker == true) {
+                if (hasTestcontainers) {
                     events.add(
                         SimpleConditionEvent.violated(
                             javaClass,
-                            "${javaClass.name} uses @Testcontainers(disabledWithoutDocker = true). " +
-                            "Use plain @Testcontainers instead — disabledWithoutDocker silently skips tests."
+                            "${javaClass.name} uses @Testcontainers. " +
+                            "Use the running Postgres from application-test.yml instead (RAT-18)."
                         )
                     )
                 }
