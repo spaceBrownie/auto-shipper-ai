@@ -326,8 +326,8 @@ The 4-phase workflow is not bureaucracy — it's a structural guarantee against 
 
 ## Prevention
 
-- [ ] Re-implement FR-011 using `/feature-request` 4-phase workflow on a new branch
-- [ ] Close vibe-coded PR without merging after new implementation is complete
+- [x] Re-implement FR-011 using `/feature-request` 4-phase workflow on a new branch *(Done in PM-009/PM-010 session)*
+- [x] Close vibe-coded PR without merging after new implementation is complete *(Superseded by structured re-implementation)*
 - [ ] Add "vibe coding" as an anti-pattern to project documentation — reference this PM
 - [ ] Add integration test requirement to the feature-request skill's Phase 4 completion check
 - [ ] Add a `/feature-request` preflight check that validates all plan-specified preconditions (e.g., "does the field this event references actually exist in the entity?") before Phase 4 starts

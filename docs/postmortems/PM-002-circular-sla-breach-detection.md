@@ -152,9 +152,9 @@ No data corruption since the stub returns 0s (same effective behavior as the cir
 
 ## Prevention
 
-- [ ] **Audit all consumers when fixing a data-source issue**: When a data source is found to be circular or accumulating incorrectly, grep for all references to the repository/table and fix every consumer — not just the one that was reported
+- [x] **Audit all consumers when fixing a data-source issue**: When a data source is found to be circular or accumulating incorrectly, grep for all references to the repository/table and fix every consumer — not just the one that was reported *(RAT-17: CLAUDE.md Testing Conventions)*
 - [ ] **Add integration test for SLA monitor with real DB**: A test that inserts fulfillment records, runs the monitor, and asserts breach detection should catch circular dependencies since no mock bypasses the real data flow
 - [ ] **Spec review checklist item**: When a service reads data, verify the write path exists and is owned by the correct module — add "data source ownership" as a required section in implementation plans
 - [ ] **Cross-reference FR dependencies before implementation**: When an FR spec lists dependencies on other FRs, explicitly document which module owns each data source the current FR needs, and use interfaces (not concrete tables) for data not yet available
 - [ ] **Flag mock-only coverage in domain services**: Services that only have unit tests with mocked repositories should be flagged for integration test coverage — especially scheduled jobs and monitors where the data flow is the core logic
-- [ ] **Time-window by default for all accumulating queries**: Any query that counts rows without a time bound should be flagged during review — unbounded counts on append-only tables are a code smell for unrecoverable state
+- [x] **Time-window by default for all accumulating queries**: Any query that counts rows without a time bound should be flagged during review — unbounded counts on append-only tables are a code smell for unrecoverable state *(RAT-17: CLAUDE.md Testing Conventions)*

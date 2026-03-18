@@ -114,5 +114,5 @@ All four bugs were caught before merge. No data loss, no production impact. Bug 
 - [ ] Add a re-check compliance scenario to the E2E playbook: fail → re-check → verify CLEARED (already added in this PR)
 - [ ] When spawning implementation agents, explicitly state which document takes precedence when spec and implementation plan conflict
 - [ ] After any migration that renames a table or column, grep the entire repo for the old name
-- [ ] Add the `kotlin("plugin.jpa")` requirement to CLAUDE.md under Critical Engineering Constraints for any module that defines `@Entity` classes
+- [x] Add the `kotlin("plugin.jpa")` requirement to CLAUDE.md under Critical Engineering Constraints for any module that defines `@Entity` classes *(RAT-17: CLAUDE.md constraint #10)*
 - [ ] Document the parallel worktree agent pattern limitations (no recursive sub-agents, no runtime verification) in the feature-request skill's Phase 4 instructions

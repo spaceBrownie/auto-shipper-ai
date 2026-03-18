@@ -251,7 +251,7 @@ All four bugs were caught during automated PR review before merge to `main`. No 
 - [ ] Add a lint rule or code review checklist item: no `BigDecimal.ZERO` or placeholder `Money` values in production service code — flag as `TODO` or `require()` guard
 - [ ] For future FRs, trace data dependencies backward from every consumer during Phase 3 planning: if a service needs data, the aggregate must carry it
 - [ ] Review all external API adapter implementations against their actual API contracts (Stripe, carrier APIs) — verify required parameters are present
-- [ ] Establish an architectural guideline: all domain aggregates with lifecycle states must use an explicit transition map (following the `SkuStateMachine` / `Order.VALID_TRANSITIONS` pattern)
+- [x] Establish an architectural guideline: all domain aggregates with lifecycle states must use an explicit transition map (following the `SkuStateMachine` / `Order.VALID_TRANSITIONS` pattern) *(RAT-17: CLAUDE.md constraint #7)*
 - [ ] Consider adding a `@NonZero` or similar validation annotation for Money fields used in payment operations
-- [ ] In refund-related tests, assert exact amounts rather than using `any<Money>()` matchers — verify the refund amount matches the order's payment amount
-- [ ] All external API adapters that build form-encoded or URL-interpolated request bodies must URL-encode user-supplied values — add this as a standard for proxy-layer code and consider a shared utility or linter rule to catch raw string interpolation in HTTP body construction
+- [x] In refund-related tests, assert exact amounts rather than using `any<Money>()` matchers — verify the refund amount matches the order's payment amount *(RAT-17: CLAUDE.md Testing Conventions)*
+- [x] All external API adapters that build form-encoded or URL-interpolated request bodies must URL-encode user-supplied values — add this as a standard for proxy-layer code and consider a shared utility or linter rule to catch raw string interpolation in HTTP body construction *(RAT-17: CLAUDE.md constraint #12)*

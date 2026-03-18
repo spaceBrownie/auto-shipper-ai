@@ -79,7 +79,7 @@ This was caught during development/integration testing before reaching productio
 
 ## Prevention
 
-- [ ] Establish a project convention: all `@TransactionalEventListener(AFTER_COMMIT)` handlers that perform writes must be annotated with `@Transactional(propagation = Propagation.REQUIRES_NEW)`. Document this in CLAUDE.md under Critical Engineering Constraints.
+- [x] Establish a project convention: all `@TransactionalEventListener(AFTER_COMMIT)` handlers that perform writes must be annotated with `@Transactional(propagation = Propagation.REQUIRES_NEW)`. Document this in CLAUDE.md under Critical Engineering Constraints. *(RAT-17: CLAUDE.md constraint #6)*
 - [ ] Add an integration test that transitions a SKU to `LISTED` and asserts that a `SkuPriceEntity` exists in the database afterward. This would have caught the silent persistence failure immediately.
-- [ ] Consider adding a custom `ArchUnit` or lint rule that flags `@TransactionalEventListener(phase = AFTER_COMMIT)` methods that lack `@Transactional(propagation = REQUIRES_NEW)`, making the constraint structural rather than conventional.
+- [x] Consider adding a custom `ArchUnit` or lint rule that flags `@TransactionalEventListener(phase = AFTER_COMMIT)` methods that lack `@Transactional(propagation = REQUIRES_NEW)`, making the constraint structural rather than conventional. *(RAT-17: ArchitectureTest Rule 1)*
 - [ ] Add a post-persist verification log in `PricingInitializer` that reads back the saved entity and confirms it exists, providing an early warning if the write was silently dropped.

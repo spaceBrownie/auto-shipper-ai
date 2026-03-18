@@ -122,8 +122,8 @@ Alternatively, upgrade Spring Boot from 3.3.4 to 3.4.x+ which ships with a newer
 
 ## Prevention
 
-- [ ] **Override Testcontainers BOM** to a version compatible with Docker API 1.53 (e.g., 1.21.0+) — or upgrade Spring Boot to 3.4.x+
-- [ ] **Add CI assertion for integration test count.** After the test run, parse JUnit XML reports and fail if `tests - skipped < N` (where N is the expected minimum integration test count). This prevents silent-skip regressions.
-- [ ] **Replace `disabledWithoutDocker = true` with explicit failure.** Consider `@Testcontainers(disabledWithoutDocker = false)` so Docker unavailability causes a test failure, not a silent skip. In CI, Docker should always be available; locally, developers should see the failure and know to start Docker.
-- [ ] **Pin Docker Desktop version in dev setup docs.** Document the minimum/maximum compatible Docker Desktop version, or add a pre-test check script that validates `docker version --format '{{.Server.APIVersion}}'` against a supported range.
-- [ ] **Consider adding a Gradle task** that runs `docker info` before the test phase and fails fast with a clear message if Docker is unavailable or incompatible, rather than letting Testcontainers discover the problem per-test-class.
+- [x] **Override Testcontainers BOM** to a version compatible with Docker API 1.53 (e.g., 1.21.0+) — or upgrade Spring Boot to 3.4.x+ *(RAT-18: Testcontainers removed entirely — all tests use running Postgres via application-test.yml)*
+- [x] **Add CI assertion for integration test count.** After the test run, parse JUnit XML reports and fail if `tests - skipped < N` (where N is the expected minimum integration test count). This prevents silent-skip regressions. *(RAT-18: .github/workflows/ci.yml with per-class test count assertions)*
+- [x] **Replace `disabledWithoutDocker = true` with explicit failure.** Consider `@Testcontainers(disabledWithoutDocker = false)` so Docker unavailability causes a test failure, not a silent skip. In CI, Docker should always be available; locally, developers should see the failure and know to start Docker. *(RAT-17/18: removed Testcontainers entirely; ArchUnit Rule 2 bans @Testcontainers)*
+- [x] **Pin Docker Desktop version in dev setup docs.** *(RAT-18: no longer needed — Testcontainers removed, tests use running Postgres)*
+- [x] **Consider adding a Gradle task** that runs `docker info` before the test phase and fails fast with a clear message if Docker is unavailable or incompatible. *(RAT-18: no longer needed — Testcontainers removed)*

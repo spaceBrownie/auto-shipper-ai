@@ -109,7 +109,7 @@ This ensures:
 
 ## Prevention
 
-- [ ] Document the `@TransactionalEventListener(AFTER_COMMIT)` + `@Transactional(REQUIRES_NEW)` pattern in `CLAUDE.md` under Critical Engineering Constraints as constraint #6
-- [ ] Add an ArchUnit test that flags any `@TransactionalEventListener(phase = AFTER_COMMIT)` method missing `@Transactional(propagation = REQUIRES_NEW)` — make the constraint structural
+- [x] Document the `@TransactionalEventListener(AFTER_COMMIT)` + `@Transactional(REQUIRES_NEW)` pattern in `CLAUDE.md` under Critical Engineering Constraints as constraint #6 *(RAT-17: CLAUDE.md constraint #6)*
+- [x] Add an ArchUnit test that flags any `@TransactionalEventListener(phase = AFTER_COMMIT)` method missing `@Transactional(propagation = REQUIRES_NEW)` — make the constraint structural *(RAT-17: ArchitectureTest Rule 1)*
 - [ ] Add a failure-path integration test: mock `SkuService.transition()` to throw for one SKU in a multi-SKU sweep, and verify that (a) the snapshot is still persisted and (b) other SKUs are still processed
 - [ ] Audit remaining `@EventListener` usages (`OrderEventListener`, `PricingEngine`) to verify they don't need the same treatment — `OrderEventListener` uses explicit `@Transactional` which is acceptable for same-module listeners that should rollback together

@@ -171,12 +171,12 @@ With this fix, `reservePercent = (non_refunded × rate × 100) / non_refunded = 
 
 ## Prevention
 
-- [ ] **Ban `@Testcontainers(disabledWithoutDocker = true)` in integration tests.** Use the running Postgres from `application-test.yml` instead. Tests that silently skip are worse than tests that fail — they give false confidence. Consider a detekt rule or grep-based CI check.
-- [ ] **Add CI check that verifies integration test count.** Assert that `CapitalIntegrationTest` reports exactly 6 executed tests (not 0 skipped). A test count regression means something is being silently skipped.
-- [ ] **Add a codebase-wide lint rule: any `@TransactionalEventListener(AFTER_COMMIT)` handler that writes to the database must have `@Transactional(propagation = REQUIRES_NEW)`.** This was PM-001 Action Item #4 and PM-005 prevention item — still not automated.
+- [x] **Ban `@Testcontainers(disabledWithoutDocker = true)` in integration tests.** Use the running Postgres from `application-test.yml` instead. Tests that silently skip are worse than tests that fail — they give false confidence. Consider a detekt rule or grep-based CI check. *(RAT-17/18: Testcontainers removed entirely; ArchUnit Rule 2 bans @Testcontainers)*
+- [x] **Add CI check that verifies integration test count.** Assert that `CapitalIntegrationTest` reports exactly 6 executed tests (not 0 skipped). A test count regression means something is being silently skipped. *(RAT-18: .github/workflows/ci.yml with per-class assertions)*
+- [x] **Add a codebase-wide lint rule: any `@TransactionalEventListener(AFTER_COMMIT)` handler that writes to the database must have `@Transactional(propagation = REQUIRES_NEW)`.** This was PM-001 Action Item #4 and PM-005 prevention item — still not automated. *(RAT-17: ArchitectureTest Rule 1)*
 - [ ] **Audit cross-module listener categorization.** The PM-005 postmortem's prevention section listed `OrderEventListener` as same-module. Re-audit by checking: does the event originate from a different module than the listener? If yes, it must use `AFTER_COMMIT` + `REQUIRES_NEW`.
 - [ ] **Add REST endpoints for order state transitions** (`POST /api/orders/{id}/confirm`, `/ship`, `/deliver`) to enable full E2E testing of the `OrderFulfilled` → `OrderEventListener` AFTER_COMMIT chain via HTTP.
-- [ ] **Document the `TransactionTemplate` test pattern.** When testing `@TransactionalEventListener(AFTER_COMMIT)` listeners directly (not through a `@Transactional` service method), events must be published inside a `TransactionTemplate.execute {}` block. Add this to the project's testing conventions.
+- [x] **Document the `TransactionTemplate` test pattern.** When testing `@TransactionalEventListener(AFTER_COMMIT)` listeners directly (not through a `@Transactional` service method), events must be published inside a `TransactionTemplate.execute {}` block. Add this to the project's testing conventions. *(RAT-17: CLAUDE.md Testing Conventions)*
 - [ ] **Add unit test for `ReserveCalcJob` with mixed refunded/non-refunded orders.** Verify that the reserve percentage check uses only non-refunded revenue as the denominator. A test with e.g. 9 non-refunded + 1 refunded order at 10% reserve rate should produce exactly 10% (not 9%).
 
 ## Related Documents
