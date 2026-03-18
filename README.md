@@ -18,10 +18,10 @@ Auto Shipper AI is an autonomous commerce engine designed to handle the entire p
 6. **Protect capital** — maintain a 10–15% rolling reserve, sweep margins every 6 hours, auto-pause or terminate SKUs that breach profitability thresholds (margin < 30% for 7+ days, refund > 5%, chargeback > 2%), with full audit trail
 7. **Guard compliance** — run 4 concurrent pre-listing checks (IP/trademark, misleading claims, Stripe prohibited categories, sourcing/sanctions) before any SKU can advance past Ideation; auto-terminate on failure, auto-advance on pass
 8. **Orchestrate portfolio** — track listing hypotheses as experiments, monitor kill windows (30-day sustained underperformance), rank SKUs by risk-adjusted return for listing priority, detect systemic refund patterns across the portfolio
+9. **Discover demand** — daily scheduled scan ingests demand signals from CJ Dropshipping, Google Trends RSS, and Amazon Creators API; scores candidates on demand, margin potential, and competition; deduplicates via pg_trgm trigram similarity; auto-creates experiments for passing candidates
 
 **Planned (specs written, not yet built):**
 
-9. **Discover demand** — validate willingness to pay before committing to any product (RAT-12)
 10. **List on platforms** — auto-create product listings on Shopify via platform adapter (RAT-13)
 11. **Drive organic traffic** — automated SEO and content marketing with zero ad spend (RAT-14)
 
@@ -195,7 +195,7 @@ Most e-commerce systems launch first and optimize later. Auto Shipper AI **valid
 | List first, check compliance later | Hard compliance gate before any SKU advances past Ideation |
 | Watch individual SKU refunds | Detect systemic refund patterns across the entire portfolio |
 | Scale everything equally | Rank by risk-adjusted return; scale winners, kill losers |
-| Build inventory → find customers | Validate demand first *(planned)* |
+| Build inventory → find customers | Scan 3 demand sources daily, score candidates, auto-create experiments |
 
 **Result:** Capital efficiency, lower risk of unsellable inventory, faster failure on unprofitable products.
 
@@ -393,6 +393,10 @@ Interactive API docs are available via Swagger UI at **`http://localhost:8080/sw
 | `GET` | `/api/portfolio/kill-recommendations` | Pending kill recommendations (30+ day underperformers) |
 | `POST` | `/api/portfolio/kill-recommendations/{id}/confirm` | Confirm kill recommendation |
 | `GET` | `/api/portfolio/refund-alerts` | Portfolio-wide systemic refund alerts |
+| `GET` | `/api/portfolio/demand-scan/status` | Last demand scan run summary |
+| `GET` | `/api/portfolio/demand-scan/candidates` | Scored candidates from latest scan |
+| `GET` | `/api/portfolio/demand-scan/rejections` | Rejections from latest scan with reasons |
+| `POST` | `/api/portfolio/demand-scan/trigger` | Manually trigger a demand scan |
 | `GET` | `/actuator/health` | Health check |
 | `GET` | `/actuator/prometheus` | Prometheus metrics |
 
@@ -411,6 +415,10 @@ See `.env.example` for all available configuration. Key variables:
 | `UPS_API_KEY` | UPS carrier rates and shipment tracking |
 | `FEDEX_API_KEY` | FedEx carrier rates and shipment tracking |
 | `USPS_API_KEY` | USPS carrier rates and shipment tracking |
+| `CJ_ACCESS_TOKEN` | CJ Dropshipping product search (demand scan) |
+| `AMAZON_CREDENTIAL_ID` | Amazon Creators API OAuth credential ID (demand scan) |
+| `AMAZON_CREDENTIAL_SECRET` | Amazon Creators API OAuth credential secret (demand scan) |
+| `AMAZON_PARTNER_TAG` | Amazon Associates partner tag (demand scan) |
 
 **Never commit `.env` to version control.** It is listed in `.gitignore`.
 
@@ -437,6 +445,7 @@ Migrations live in `modules/app/src/main/resources/db/migration/` and run automa
 | V15 | Compliance guards (`compliance_audit`) |
 | V16 | Portfolio zero-capital fix (remove budget fields, rename to `priority_ranking_log`) |
 | V17 | Compliance audit `run_id` for batch grouping |
+| V18 | Demand scan (`demand_scan_runs`, `demand_candidates`, `candidate_rejections`, pg_trgm) |
 
 ## Feature Requests
 
@@ -459,6 +468,7 @@ Implementation is tracked in `feature-requests/FR-NNN-name/` with a `spec.md`, `
 | FR-013 | Project structure refactor | ✅ Complete |
 | FR-014 | Spec architecture audit | ✅ Complete |
 | FR-015 | Validate State Machine | ✅ Complete |
+| FR-016 | Demand scan job | ✅ Complete |
 
 ## Frontend Dashboard
 
@@ -472,7 +482,7 @@ The operations dashboard (`frontend/`) provides real-time visibility into the co
 | Margin Monitor | `/margin` | 90-day margin trend charts per SKU with 50%/30% floor reference lines |
 | Experiment Tracker | `/experiments` | Listing hypotheses with validation window countdown |
 | Capital Overview | `/capital` | Reserve gauge, priority ranking, refund alerts, SKU-level P&L |
-| Demand Signals | `/demand` | Placeholder (DemandScanJob not yet implemented) |
+| Demand Signals | `/demand` | Scan status, scored candidates table, rejections view, manual trigger |
 | Kill Log | `/kill-log` | Terminated SKUs with reasons, pending kill recommendations |
 | Compliance Status | `/compliance` | Per-SKU audit trail, manual compliance check trigger |
 | Vendor Scorecard | `/vendors` | Vendor table with reliability scores and SLA breach history |
