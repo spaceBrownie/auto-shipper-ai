@@ -165,6 +165,36 @@ portfolio:
   # When true, it also emits KillWindowBreached events that auto-terminate SKUs.
   auto-terminate-enabled: false
 
+# Demand Scan Job (FR-016) — autonomous deal sourcing
+demand-scan:
+  enabled: true
+  cooldown-hours: 20
+  validation-window-days: 30
+  scoring-weights:
+    demand: 0.4
+    margin-potential: 0.35
+    competition: 0.25
+  scoring-threshold: 0.6
+  dedup-similarity-threshold: 0.7
+
+# API keys for demand signal providers
+cj-dropshipping:
+  api:
+    base-url: ${CJ_API_BASE_URL:https://developers.cjdropshipping.com/api2.0/v1}
+    access-token: ${CJ_ACCESS_TOKEN:}
+
+amazon-creators:
+  api:
+    base-url: ${AMAZON_CREATORS_API_BASE_URL:https://api.amazon.com}
+    credential-id: ${AMAZON_CREDENTIAL_ID:}
+    credential-secret: ${AMAZON_CREDENTIAL_SECRET:}
+    partner-tag: ${AMAZON_PARTNER_TAG:}
+    marketplace: ${AMAZON_MARKETPLACE:www.amazon.com}
+
+google-trends:
+  rss:
+    geo: ${GOOGLE_TRENDS_GEO:US}
+
 # Compliance Guards (FR-011)
 # auto-check-enabled=false disables automatic trigger on SKU creation (development use only)
 compliance:

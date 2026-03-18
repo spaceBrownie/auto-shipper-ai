@@ -1,9 +1,9 @@
 # E2E Test Playbook
 
 End-to-end manual test script for the full SKU lifecycle through capital protection, compliance guards, and portfolio orchestration.
-Covers: SKU creation, compliance checks, state machine, cost gate, stress test, pricing, orders, reserve management, margin monitoring, automated shutdown rules, portfolio experiments, kill window monitoring, and priority ranking.
+Covers: SKU creation, compliance checks, state machine, cost gate, stress test, pricing, orders, reserve management, margin monitoring, automated shutdown rules, portfolio experiments, kill window monitoring, priority ranking, and demand scan job.
 
-**Last validated:** 2026-03-15 on branch `feat/FR-010-011-portfolio-compliance`
+**Last validated:** 2026-03-18 on branch `feat/FR-016-demand-scan-job`
 
 ---
 
@@ -37,7 +37,8 @@ PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
                  sku_cost_envelopes, sku_stress_test_results, sku_prices, sku_pricing_history,
                  vendors, vendor_sku_assignments, vendor_breach_log,
                  compliance_audit, experiments, kill_recommendations,
-                 priority_ranking_log, scaling_flags, refund_alerts, discovery_blacklist
+                 priority_ranking_log, scaling_flags, refund_alerts, discovery_blacklist,
+                 demand_candidates, candidate_rejections, demand_scan_runs
   CASCADE;
 "
 ```
@@ -645,6 +646,159 @@ curl -s -X POST "http://localhost:8080/api/portfolio/kill-recommendations/$KILL_
 
 ---
 
+## Phase 8: Demand Scan Job (FR-016)
+
+This phase tests the autonomous demand signal pipeline: scan trigger, candidate scoring, experiment creation, deduplication, and idempotency.
+
+### 8.1 Verify Empty State (Before Scan)
+
+```bash
+curl -s http://localhost:8080/api/portfolio/demand-scan/status | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `lastRunId` | `null` |
+| `lastRunStatus` | `null` |
+| `candidatesFound` | `0` |
+
+```bash
+curl -s http://localhost:8080/api/portfolio/demand-scan/candidates | python3 -m json.tool
+# Expected: []
+
+curl -s http://localhost:8080/api/portfolio/demand-scan/rejections | python3 -m json.tool
+# Expected: []
+```
+
+### 8.2 Trigger Demand Scan
+
+```bash
+curl -s -X POST http://localhost:8080/api/portfolio/demand-scan/trigger | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `message` | `"Demand scan triggered successfully"` |
+| HTTP status | `200` |
+
+### 8.3 Verify Scan Status
+
+```bash
+curl -s http://localhost:8080/api/portfolio/demand-scan/status | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `lastRunStatus` | `COMPLETED` |
+| `sourcesQueried` | `3` (CJ, Google Trends, Amazon — all stubs in local profile) |
+| `candidatesFound` | `≥ 5` (dedup may reduce from 10 raw) |
+| `experimentsCreated` | `≥ 1` (candidates above 0.6 threshold) |
+| `rejections` | `≥ 1` (candidates below 0.6 threshold) |
+
+### 8.4 Verify Scored Candidates
+
+```bash
+curl -s http://localhost:8080/api/portfolio/demand-scan/candidates | python3 -m json.tool
+```
+
+| Check | Expected |
+|---|---|
+| Response is non-empty array | Yes |
+| Each entry has `demandScore`, `marginPotentialScore`, `competitionScore`, `compositeScore` | All present, 0-1 range |
+| Entries with `passed: true` | Have `compositeScore >= 0.6` |
+| Entries with `passed: false` | Have `compositeScore < 0.6` |
+| `sourceType` values | Mix of `CJ_DROPSHIPPING`, `GOOGLE_TRENDS`, `AMAZON_CREATORS_API` |
+
+### 8.5 Verify Rejections
+
+```bash
+curl -s http://localhost:8080/api/portfolio/demand-scan/rejections | python3 -m json.tool
+```
+
+| Check | Expected |
+|---|---|
+| Response is non-empty array | Yes |
+| Each entry has `rejectionReason` | `"Below scoring threshold"` |
+| Each entry has dimension scores | Present |
+
+### 8.6 Verify Experiments Created
+
+Passing candidates should have created `Experiment` records automatically:
+
+```bash
+curl -s http://localhost:8080/api/portfolio/experiments | python3 -m json.tool
+```
+
+| Check | Expected |
+|---|---|
+| Experiments with `sourceSignal` starting with `GOOGLE_TRENDS:` or `AMAZON_CREATORS_API:` | Present |
+| `status` | `ACTIVE` |
+| `validationWindowDays` | `30` |
+| `hypothesis` | Contains `"Demand signal detected via"` |
+
+### 8.7 Verify Cooldown / Idempotency
+
+Trigger the scan again immediately — it should be silently skipped (within 20h cooldown):
+
+```bash
+curl -s -X POST http://localhost:8080/api/portfolio/demand-scan/trigger | python3 -m json.tool
+# Expected: {"message": "Demand scan triggered successfully"} (returns OK but no new run)
+```
+
+```bash
+# Verify only 1 scan run exists
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
+  "SELECT COUNT(*) FROM demand_scan_runs;"
+```
+
+| Expected | `1` (cooldown prevented second run) |
+|---|---|
+
+### 8.8 Verify Blacklist Filtering (Optional)
+
+Add a blacklist entry, clear scan data, and re-trigger to verify filtering:
+
+```bash
+# Add blacklist entry
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
+  INSERT INTO discovery_blacklist (id, keyword, reason, added_at)
+  VALUES (gen_random_uuid(), 'electronics', 'High refund rate in category', NOW());
+"
+
+# Clear previous scan data so cooldown doesn't block
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
+  TRUNCATE demand_candidates, candidate_rejections, demand_scan_runs CASCADE;
+"
+
+# Trigger scan
+curl -s -X POST http://localhost:8080/api/portfolio/demand-scan/trigger | python3 -m json.tool
+
+# Verify no Electronics candidates passed
+curl -s http://localhost:8080/api/portfolio/demand-scan/candidates | python3 -c "
+import sys, json
+candidates = json.load(sys.stdin)
+electronics = [c for c in candidates if 'electronics' in c['category'].lower()]
+print(f'Electronics candidates: {len(electronics)} (expected: 0)')
+"
+```
+
+### 8.9 Verify pg_trgm Dedup (Optional)
+
+Check that trigram similarity dedup is working at the database level:
+
+```bash
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
+  SELECT product_name, similarity(product_name, 'Silicone Collapsible Water Bottle')
+  FROM demand_candidates
+  WHERE similarity(product_name, 'Silicone Collapsible Water Bottle') > 0.3
+  ORDER BY similarity DESC;
+"
+```
+
+Expected: Both "Silicone Collapsible Water Bottle" (CJ) and "Collapsible Silicone Water Bottle 600ml" (Amazon) should appear with similarity > 0.3, validating the trigram index.
+
+---
+
 ## Quick Reference: All Endpoints Used
 
 | Method | Path | Purpose |
@@ -673,6 +827,10 @@ curl -s -X POST "http://localhost:8080/api/portfolio/kill-recommendations/$KILL_
 | `GET` | `/api/portfolio/kill-recommendations` | Pending kill recommendations |
 | `POST` | `/api/portfolio/kill-recommendations/{id}/confirm` | Confirm kill recommendation |
 | `GET` | `/api/portfolio/refund-alerts` | Portfolio-wide refund pattern alerts |
+| `GET` | `/api/portfolio/demand-scan/status` | Last scan run summary (FR-016) |
+| `GET` | `/api/portfolio/demand-scan/candidates` | Scored candidates from latest run (FR-016) |
+| `GET` | `/api/portfolio/demand-scan/rejections` | Rejections from latest run (FR-016) |
+| `POST` | `/api/portfolio/demand-scan/trigger` | Manually trigger demand scan (FR-016) |
 
 ---
 

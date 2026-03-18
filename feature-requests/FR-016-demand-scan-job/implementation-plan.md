@@ -218,58 +218,58 @@ Wire up `DemandSignalsPage.tsx` with real data:
 ## Task Breakdown
 
 ### Database Layer
-- [ ] Create Flyway migration V18 — pg_trgm extension, demand_scan_runs, demand_candidates, candidate_rejections tables with indexes
+- [x] Create Flyway migration V18 — pg_trgm extension, demand_scan_runs, demand_candidates, candidate_rejections tables with indexes
 
 ### Domain Layer — Types & Interfaces
-- [ ] Create `DemandSignalProvider` interface
-- [ ] Create `RawCandidate` data class
-- [ ] Create `ScoredCandidate` data class
+- [x] Create `DemandSignalProvider` interface
+- [x] Create `RawCandidate` data class
+- [x] Create `ScoredCandidate` data class
 
 ### Domain Layer — Entities
-- [ ] Create `DemandCandidate` JPA entity
-- [ ] Create `CandidateRejection` JPA entity
-- [ ] Create `DemandScanRun` JPA entity
-- [ ] Create `DiscoveryBlacklistEntry` JPA entity
+- [x] Create `DemandCandidate` JPA entity
+- [x] Create `CandidateRejection` JPA entity
+- [x] Create `DemandScanRun` JPA entity
+- [x] Create `DiscoveryBlacklistEntry` JPA entity
 
 ### Persistence Layer
-- [ ] Create `DemandCandidateRepository` with native trigram similarity query
-- [ ] Create `CandidateRejectionRepository`
-- [ ] Create `DemandScanRunRepository`
-- [ ] Create `DiscoveryBlacklistRepository`
+- [x] Create `DemandCandidateRepository` with native trigram similarity query
+- [x] Create `CandidateRejectionRepository`
+- [x] Create `DemandScanRunRepository`
+- [x] Create `DiscoveryBlacklistRepository`
 
 ### Domain Layer — Services
-- [ ] Implement `CandidateScoringService` (scoring logic, weights, thresholds)
-- [ ] Implement `CandidateDeduplicationService` (pg_trgm similarity check)
-- [ ] Implement `DemandScanJob` (scheduled orchestrator, full pipeline)
+- [x] Implement `CandidateScoringService` (scoring logic, weights, thresholds)
+- [x] Implement `CandidateDeduplicationService` (pg_trgm similarity check)
+- [x] Implement `DemandScanJob` (scheduled orchestrator, full pipeline)
 
 ### Config Layer
-- [ ] Create `DemandScanConfig` configuration properties class
-- [ ] Add `demand-scan` section to `application.yml`
+- [x] Create `DemandScanConfig` configuration properties class
+- [x] Add `demand-scan` section to `application.yml`
 
 ### Proxy Layer — Stub Providers
-- [ ] Implement `StubCjDropshippingProvider` (`@Profile("local")`)
-- [ ] Implement `StubGoogleTrendsProvider` (`@Profile("local")`)
-- [ ] Implement `StubAmazonCreatorsApiProvider` (`@Profile("local")`)
+- [x] Implement `StubCjDropshippingProvider` (`@Profile("local")`)
+- [x] Implement `StubGoogleTrendsProvider` (`@Profile("local")`)
+- [x] Implement `StubAmazonCreatorsApiProvider` (`@Profile("local")`)
 
 ### Proxy Layer — Real Providers
-- [ ] Implement `CjDropshippingAdapter` (`@Profile("!local")`) — see API Reference §1
-- [ ] Implement `GoogleTrendsAdapter` (`@Profile("!local")`) — see API Reference §3
-- [ ] Implement `AmazonCreatorsApiAdapter` (`@Profile("!local")`) — see API Reference §2
+- [x] Implement `CjDropshippingAdapter` (`@Profile("!local")`) — see API Reference §1
+- [x] Implement `GoogleTrendsAdapter` (`@Profile("!local")`) — see API Reference §3
+- [x] Implement `AmazonCreatorsApiAdapter` (`@Profile("!local")`) — see API Reference §2
 
 ### Handler Layer
-- [ ] Add demand scan REST endpoints (status, candidates, rejections, trigger)
-- [ ] Add request/response DTOs for demand scan endpoints
+- [x] Add demand scan REST endpoints (status, candidates, rejections, trigger)
+- [x] Add request/response DTOs for demand scan endpoints
 
 ### Frontend Layer
-- [ ] Add TypeScript types for demand scan responses in `types.ts`
-- [ ] Add API hooks in `portfolio.ts` (useDemandScanStatus, useDemandCandidates, useDemandRejections, useTriggerDemandScan)
-- [ ] Rewrite `DemandSignalsPage.tsx` with scan status, candidates table, rejections view, and manual trigger
+- [x] Add TypeScript types for demand scan responses in `types.ts`
+- [x] Add API hooks in `portfolio.ts` (useDemandScanStatus, useDemandCandidates, useDemandRejections, useTriggerDemandScan)
+- [x] Rewrite `DemandSignalsPage.tsx` with scan status, candidates table, rejections view, and manual trigger
 
 ### Testing
-- [ ] Unit tests for `CandidateScoringService` (edge cases, threshold boundaries, weight configurations)
-- [ ] Unit tests for `CandidateDeduplicationService`
-- [ ] Unit tests for `DemandScanJob` (orchestration logic, source failure handling, idempotency)
-- [ ] Unit tests for stub providers (verify realistic output structure)
+- [x] Unit tests for `CandidateScoringService` (edge cases, threshold boundaries, weight configurations)
+- [x] Unit tests for `CandidateDeduplicationService`
+- [x] Unit tests for `DemandScanJob` (orchestration logic, source failure handling, idempotency)
+- [x] Unit tests for stub providers (verify realistic output structure)
 
 ## Testing Strategy
 

@@ -274,6 +274,52 @@ export interface RefundAlertResponse {
 }
 
 // ──────────────────────────────────────────────
+// Demand Scan (FR-016)
+// ──────────────────────────────────────────────
+
+export interface DemandScanStatusResponse {
+  lastRunId: string | null;
+  lastRunStartedAt: string | null;
+  lastRunCompletedAt: string | null;
+  lastRunStatus: string | null;
+  sourcesQueried: number;
+  candidatesFound: number;
+  experimentsCreated: number;
+  rejections: number;
+}
+
+export interface DemandCandidateResponse {
+  id: string;
+  productName: string;
+  category: string;
+  description: string | null;
+  sourceType: string;
+  supplierUnitCost: number | null;
+  supplierCostCurrency: string | null;
+  estimatedSellingPrice: number | null;
+  sellingPriceCurrency: string | null;
+  demandScore: number;
+  marginPotentialScore: number;
+  competitionScore: number;
+  compositeScore: number;
+  passed: boolean;
+  createdAt: string;
+}
+
+export interface CandidateRejectionResponse {
+  id: string;
+  productName: string;
+  category: string;
+  sourceType: string;
+  rejectionReason: string;
+  demandScore: number | null;
+  marginPotentialScore: number | null;
+  competitionScore: number | null;
+  compositeScore: number | null;
+  createdAt: string;
+}
+
+// ──────────────────────────────────────────────
 // Compliance
 // ──────────────────────────────────────────────
 
