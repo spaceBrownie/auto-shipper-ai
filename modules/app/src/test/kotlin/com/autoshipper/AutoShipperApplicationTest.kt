@@ -11,7 +11,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Testcontainers(disabledWithoutDocker = true)
+@Testcontainers
 class AutoShipperApplicationTest {
     companion object {
         @Container
