@@ -30,6 +30,9 @@ class GoogleTrendsAdapter(
         try {
             val factory = DocumentBuilderFactory.newInstance()
             factory.isNamespaceAware = true
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false)
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
             val builder = factory.newDocumentBuilder()
             val document = builder.parse(URI(feedUrl).toURL().openStream())
 

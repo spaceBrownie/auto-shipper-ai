@@ -19,6 +19,7 @@ import com.autoshipper.shared.money.Currency
 import com.autoshipper.shared.money.Money
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -285,5 +286,23 @@ class DemandScanJobTest {
         assertEquals(2, finalSave.candidatesFound)
         assertEquals(1, finalSave.experimentsCreated)
         assertEquals(1, finalSave.rejections)
+    }
+
+    @Test
+    fun `scan run failure status is persisted when exception occurs`() {
+        whenever(provider1.fetch()).thenReturn(listOf(buildCandidate("Product A")))
+        whenever(provider2.fetch()).thenReturn(emptyList())
+        whenever(deduplicationService.filterDuplicates(any())).thenAnswer { it.arguments[0] }
+        whenever(scoringService.score(any<List<RawCandidate>>())).thenThrow(
+            RuntimeException("Scoring engine exploded")
+        )
+
+        assertThrows(RuntimeException::class.java) { job.run() }
+
+        val captor = org.mockito.ArgumentCaptor.forClass(DemandScanRun::class.java)
+        verify(scanRunRepository, times(2)).save(captor.capture())
+
+        val failureSave = captor.allValues.last()
+        assertEquals("FAILED", failureSave.status)
     }
 }

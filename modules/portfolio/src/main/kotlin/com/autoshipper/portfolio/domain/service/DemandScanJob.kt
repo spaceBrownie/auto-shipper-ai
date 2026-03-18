@@ -17,7 +17,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
 import java.time.Instant
 
@@ -37,7 +36,6 @@ class DemandScanJob(
     private val logger = LoggerFactory.getLogger(DemandScanJob::class.java)
 
     @Scheduled(cron = "0 0 3 * * *")
-    @Transactional
     fun run() {
         if (!config.enabled) {
             logger.info("DemandScanJob is disabled, skipping")
