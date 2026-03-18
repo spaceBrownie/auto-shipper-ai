@@ -2,7 +2,6 @@ package com.autoshipper.vendor
 
 import com.autoshipper.catalog.domain.Sku
 import com.autoshipper.catalog.domain.SkuState
-import com.autoshipper.catalog.domain.SkuStateMachine
 import com.autoshipper.catalog.persistence.SkuRepository
 import com.autoshipper.shared.events.VendorSlaBreached
 import com.autoshipper.shared.identity.SkuId
@@ -16,60 +15,52 @@ import com.autoshipper.vendor.domain.VendorStatus
 import com.autoshipper.vendor.persistence.VendorBreachLogRepository
 import com.autoshipper.vendor.persistence.VendorRepository
 import com.autoshipper.vendor.persistence.VendorSkuAssignmentRepository
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
-import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 import java.math.BigDecimal
 
+/**
+ * Integration tests for vendor breach event handling.
+ *
+ * NOT @Transactional — VendorBreachListener uses @TransactionalEventListener(phase = AFTER_COMMIT),
+ * which only fires after the transaction commits. A @Transactional test never commits,
+ * so the listener would never fire and assertions on SKU state changes would be false positives.
+ *
+ * Uses the running PostgreSQL instance configured in application-test.yml.
+ * Migrated from Testcontainers and fixed @Transactional false-positive bug (RAT-18, PM-006 pattern).
+ */
 @SpringBootTest
 @ActiveProfiles("test")
-@Testcontainers
-@Transactional
 class VendorBreachIntegrationTest {
 
-    companion object {
-        @Container
-        @JvmStatic
-        val postgres = PostgreSQLContainer("postgres:16-alpine")
-            .withDatabaseName("autoshipper_test")
-            .withUsername("autoshipper")
-            .withPassword("autoshipper")
+    @Autowired lateinit var vendorRepository: VendorRepository
+    @Autowired lateinit var skuRepository: SkuRepository
+    @Autowired lateinit var assignmentRepository: VendorSkuAssignmentRepository
+    @Autowired lateinit var breachLogRepository: VendorBreachLogRepository
+    @Autowired lateinit var eventPublisher: ApplicationEventPublisher
+    @Autowired lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired lateinit var transactionTemplate: TransactionTemplate
 
-        @JvmStatic
-        @DynamicPropertySource
-        fun configureDatasource(registry: DynamicPropertyRegistry) {
-            registry.add("spring.datasource.url", postgres::getJdbcUrl)
-            registry.add("spring.datasource.username", postgres::getUsername)
-            registry.add("spring.datasource.password", postgres::getPassword)
-            registry.add("spring.flyway.url", postgres::getJdbcUrl)
-            registry.add("spring.flyway.user", postgres::getUsername)
-            registry.add("spring.flyway.password", postgres::getPassword)
-        }
+    @AfterEach
+    fun cleanup() {
+        jdbcTemplate.execute("TRUNCATE TABLE vendor_breach_log, vendor_sku_assignments, vendors, sku_state_history, skus CASCADE")
     }
 
-    @Autowired
-    lateinit var vendorRepository: VendorRepository
-
-    @Autowired
-    lateinit var skuRepository: SkuRepository
-
-    @Autowired
-    lateinit var assignmentRepository: VendorSkuAssignmentRepository
-
-    @Autowired
-    lateinit var breachLogRepository: VendorBreachLogRepository
-
-    @Autowired
-    lateinit var eventPublisher: ApplicationEventPublisher
+    private fun createListedSku(name: String = "Test Product"): Sku {
+        val sku = skuRepository.save(Sku(name = name, category = "Electronics"))
+        sku.applyTransition(SkuState.ValidationPending)
+        sku.applyTransition(SkuState.CostGating)
+        sku.applyTransition(SkuState.StressTesting)
+        sku.applyTransition(SkuState.Listed)
+        return skuRepository.save(sku)
+    }
 
     @Test
     fun `VendorSlaBreached event auto-pauses linked SKUs in Listed state`() {
@@ -89,28 +80,24 @@ class VendorBreachIntegrationTest {
             )
         )
 
-        // Create a SKU in Listed state (need to walk through state machine)
-        val sku = skuRepository.save(Sku(name = "Test Product", category = "Electronics"))
-        // Walk through valid transitions to reach Listed
-        sku.applyTransition(SkuState.ValidationPending)
-        sku.applyTransition(SkuState.CostGating)
-        sku.applyTransition(SkuState.StressTesting)
-        sku.applyTransition(SkuState.Listed)
-        skuRepository.save(sku)
+        // Create a SKU in Listed state
+        val sku = createListedSku()
 
         // Link vendor to SKU
         assignmentRepository.save(
             VendorSkuAssignment(vendorId = vendor.id, skuId = sku.id)
         )
 
-        // Publish VendorSlaBreached event
-        eventPublisher.publishEvent(
-            VendorSlaBreached(
-                vendorId = VendorId(vendor.id),
-                skuIds = listOf(SkuId(sku.id)),
-                breachRate = Percentage.of(15.0)
+        // Publish inside a transaction so the AFTER_COMMIT listener fires after commit
+        transactionTemplate.execute {
+            eventPublisher.publishEvent(
+                VendorSlaBreached(
+                    vendorId = VendorId(vendor.id),
+                    skuIds = listOf(SkuId(sku.id)),
+                    breachRate = Percentage.of(15.0)
+                )
             )
-        )
+        }
 
         // Verify SKU was auto-paused
         val updatedSku = skuRepository.findById(sku.id).orElseThrow()
@@ -135,32 +122,23 @@ class VendorBreachIntegrationTest {
         )
 
         // Create two SKUs in Listed state
-        val sku1 = skuRepository.save(Sku(name = "Product A", category = "Electronics"))
-        sku1.applyTransition(SkuState.ValidationPending)
-        sku1.applyTransition(SkuState.CostGating)
-        sku1.applyTransition(SkuState.StressTesting)
-        sku1.applyTransition(SkuState.Listed)
-        skuRepository.save(sku1)
-
-        val sku2 = skuRepository.save(Sku(name = "Product B", category = "Home"))
-        sku2.applyTransition(SkuState.ValidationPending)
-        sku2.applyTransition(SkuState.CostGating)
-        sku2.applyTransition(SkuState.StressTesting)
-        sku2.applyTransition(SkuState.Listed)
-        skuRepository.save(sku2)
+        val sku1 = createListedSku("Product A")
+        val sku2 = createListedSku("Product B")
 
         // Link both SKUs to vendor
         assignmentRepository.save(VendorSkuAssignment(vendorId = vendor.id, skuId = sku1.id))
         assignmentRepository.save(VendorSkuAssignment(vendorId = vendor.id, skuId = sku2.id))
 
-        // Publish breach event
-        eventPublisher.publishEvent(
-            VendorSlaBreached(
-                vendorId = VendorId(vendor.id),
-                skuIds = listOf(SkuId(sku1.id), SkuId(sku2.id)),
-                breachRate = Percentage.of(20.0)
+        // Publish inside a transaction so the AFTER_COMMIT listener fires after commit
+        transactionTemplate.execute {
+            eventPublisher.publishEvent(
+                VendorSlaBreached(
+                    vendorId = VendorId(vendor.id),
+                    skuIds = listOf(SkuId(sku1.id), SkuId(sku2.id)),
+                    breachRate = Percentage.of(20.0)
+                )
             )
-        )
+        }
 
         // Both SKUs should be paused
         val updated1 = skuRepository.findById(sku1.id).orElseThrow()

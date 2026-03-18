@@ -39,18 +39,12 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.springframework.boot:spring-boot-testcontainers")
-    testImplementation("org.testcontainers:junit-jupiter")
-    testImplementation("org.testcontainers:postgresql")
     testImplementation("com.tngtech.archunit:archunit-junit5:1.3.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.test {
     useJUnitPlatform()
-    // Pin Docker API version for Testcontainers compatibility (PM-004)
-    environment("DOCKER_API_VERSION", "1.44")
-    systemProperty("com.github.dockerjava.api.model.RemoteApiVersion", "1.44")
 }
 
 tasks.named<BootRun>("bootRun") {
