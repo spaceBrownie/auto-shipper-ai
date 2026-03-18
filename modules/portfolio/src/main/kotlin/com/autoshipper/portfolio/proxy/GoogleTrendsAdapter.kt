@@ -2,6 +2,7 @@ package com.autoshipper.portfolio.proxy
 
 import com.autoshipper.portfolio.domain.DemandSignalProvider
 import com.autoshipper.portfolio.domain.RawCandidate
+import com.autoshipper.shared.xml.SecureXmlFactory
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Profile
@@ -9,7 +10,6 @@ import org.springframework.stereotype.Component
 import org.w3c.dom.Element
 import org.w3c.dom.NodeList
 import java.net.URI
-import javax.xml.parsers.DocumentBuilderFactory
 
 @Component
 @Profile("!local")
@@ -28,12 +28,7 @@ class GoogleTrendsAdapter(
         val candidates = mutableListOf<RawCandidate>()
 
         try {
-            val factory = DocumentBuilderFactory.newInstance()
-            factory.isNamespaceAware = true
-            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-            factory.setFeature("http://xml.org/sax/features/external-general-entities", false)
-            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
-            val builder = factory.newDocumentBuilder()
+            val builder = SecureXmlFactory.newDocumentBuilder()
             val document = builder.parse(URI(feedUrl).toURL().openStream())
 
             val items: NodeList = document.getElementsByTagName("item")

@@ -43,6 +43,13 @@ These are non-negotiable and must be enforced structurally (by types), not by co
 3. **No hardcoded rates** — carrier fees (UPS, FedEx, USPS), platform fees (Shopify), and processing rates (Stripe) must come from live APIs.
 4. **SKU state transitions are explicit** — all transitions validated and emit domain events. Invalid transitions throw domain exceptions, never silently succeed.
 5. **All shutdown triggers are automated** — no manual step required to pause/terminate a SKU once thresholds are breached.
+6. **Cross-module event listener transaction pattern** — All `@TransactionalEventListener(phase = AFTER_COMMIT)` handlers that write to the database must also carry `@Transactional(propagation = Propagation.REQUIRES_NEW)`. Without `REQUIRES_NEW`, writes are silently discarded because Spring's `TransactionSynchronizationManager` retains stale state in the post-commit callback. Plain `@EventListener` is acceptable only for same-module listeners that should rollback with the publisher.
+7. **All domain aggregates with lifecycle states must use explicit transition maps** — following the `SkuStateMachine` and `Order.VALID_TRANSITIONS` pattern. Invalid transitions must throw domain exceptions, never silently succeed.
+8. **JSONB columns require `@JdbcTypeCode(SqlTypes.JSON)`** — `columnDefinition = "jsonb"` only affects DDL generation — it does NOT tell Hibernate's JDBC binder to use the JSON SQL type. Without `@JdbcTypeCode`, PostgreSQL rejects the insert with "column is of type jsonb but expression is of type character varying."
+9. **Scheduled job orchestrators should NOT be `@Transactional`** — Orchestrators that coordinate multiple independent writes should let each write commit independently. Only batch processors operating on a single logical unit of work should use method-level `@Transactional`. Pattern-copying `@Transactional` from batch processors (like `KillWindowMonitor`) onto orchestrators (like `DemandScanJob`) causes failure status to be silently rolled back.
+10. **Modules with `@Entity` classes must have `kotlin("plugin.jpa")` in build.gradle.kts** — The JPA plugin generates synthetic no-arg constructors for `@Entity` classes at compile time. Without it, Hibernate falls back to reflection-based instantiation, which fails at runtime for Kotlin classes with required constructor parameters. Unit tests with mocked repos won't catch this.
+11. **XML parsers must use OWASP-hardened configuration** — Never use `DocumentBuilderFactory.newInstance()` with defaults. Use `SecureXmlFactory` from the shared module, which disables external entities and DTDs.
+12. **All external API adapters must URL-encode user-supplied values in form-encoded request bodies** — Raw string interpolation in HTTP body construction enables parameter injection. Use `URLEncoder.encode(value, StandardCharsets.UTF_8)` for all user-supplied values.
 
 ## Domain Model Patterns
 
@@ -90,6 +97,14 @@ DB_URL=jdbc:postgresql://localhost:5432/autoshipper_test ./gradlew flywayMigrate
 # Frontend (once initialized)
 cd frontend && npm install && npm run dev
 ```
+
+## Testing Conventions
+
+- When testing `@TransactionalEventListener(AFTER_COMMIT)` listeners directly, events must be published inside `TransactionTemplate.execute {}` — otherwise the listener never fires because there is no transaction to commit.
+- Assert exact values in tests, never use `any<Money>()` matchers for financial operations — placeholder matchers hide incorrect calculations.
+- Scheduled jobs/monitors that write to the database need a failure-path test verifying error state is persisted — happy-path-only tests miss transaction rollback bugs.
+- When fixing a data-source bug, audit ALL consumers of that data source in the same pass — partial fixes leave other consumers broken.
+- Time-window by default: any query that counts rows without a time bound on an append-only table is a code smell — unbounded counts grow monotonically and produce incorrect business metrics.
 
 ## Feature Request Workflow
 

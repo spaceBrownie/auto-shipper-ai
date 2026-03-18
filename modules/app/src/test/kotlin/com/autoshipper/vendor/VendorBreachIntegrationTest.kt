@@ -32,7 +32,7 @@ import java.math.BigDecimal
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Testcontainers(disabledWithoutDocker = true)
+@Testcontainers
 @Transactional
 class VendorBreachIntegrationTest {
 
