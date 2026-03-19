@@ -16,6 +16,8 @@ class StubProviderTest {
     private val cjProvider = StubCjDropshippingProvider()
     private val googleTrendsProvider = StubGoogleTrendsProvider()
     private val amazonProvider = StubAmazonCreatorsApiProvider()
+    private val youtubeProvider = StubYouTubeDataProvider()
+    private val redditProvider = StubRedditDemandProvider()
 
     @Test
     fun `CJ Dropshipping stub returns non-empty list`() {
@@ -81,6 +83,62 @@ class StubProviderTest {
                 candidate.demandSignals.containsKey("seller_count"),
                 "seller_count should be present for '${candidate.productName}'"
             )
+        }
+    }
+
+    @Test
+    fun `YouTube Data stub returns non-empty list`() {
+        val candidates = youtubeProvider.fetch()
+        assertTrue(candidates.isNotEmpty())
+    }
+
+    @Test
+    fun `YouTube Data stub returns correct source type`() {
+        assertEquals("YOUTUBE_DATA", youtubeProvider.sourceType())
+    }
+
+    @Test
+    fun `YouTube Data stub - all candidates have expected demand signal keys`() {
+        val expectedKeys = setOf(
+            "video_id", "view_count", "like_count", "comment_count",
+            "channel_subscriber_count", "publish_date", "search_term"
+        )
+        val candidates = youtubeProvider.fetch()
+        candidates.forEach { candidate ->
+            expectedKeys.forEach { key ->
+                assertTrue(
+                    candidate.demandSignals.containsKey(key),
+                    "$key should be present for '${candidate.productName}'"
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `Reddit stub returns non-empty list`() {
+        val candidates = redditProvider.fetch()
+        assertTrue(candidates.isNotEmpty())
+    }
+
+    @Test
+    fun `Reddit stub returns correct source type`() {
+        assertEquals("REDDIT", redditProvider.sourceType())
+    }
+
+    @Test
+    fun `Reddit stub - all candidates have expected demand signal keys`() {
+        val expectedKeys = setOf(
+            "post_id", "subreddit", "upvote_count", "comment_count",
+            "post_age_hours", "subreddit_subscribers"
+        )
+        val candidates = redditProvider.fetch()
+        candidates.forEach { candidate ->
+            expectedKeys.forEach { key ->
+                assertTrue(
+                    candidate.demandSignals.containsKey(key),
+                    "$key should be present for '${candidate.productName}'"
+                )
+            }
         }
     }
 }

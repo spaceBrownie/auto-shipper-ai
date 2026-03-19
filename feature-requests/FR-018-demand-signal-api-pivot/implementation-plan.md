@@ -312,50 +312,50 @@ Add test methods for the new stubs:
 
 ### Configuration
 
-- [ ] Add `youtube:` section to `modules/app/src/main/resources/application.yml` with base-url, key, search-terms list, max-results-per-search (all with `${ENV_VAR:default}` syntax)
-- [ ] Add `reddit:` section to `modules/app/src/main/resources/application.yml` with base-url, auth-url, client-id, client-secret, user-agent, subreddits list, sort, limit-per-subreddit
-- [ ] Add `amazon-creators.enabled: false` to `modules/app/src/main/resources/application.yml` (default off)
+- [x] Add `youtube:` section to `modules/app/src/main/resources/application.yml` with base-url, key, search-terms list, max-results-per-search (all with `${ENV_VAR:default}` syntax)
+- [x] Add `reddit:` section to `modules/app/src/main/resources/application.yml` with base-url, auth-url, client-id, client-secret, user-agent, subreddits list, sort, limit-per-subreddit
+- [x] Add `amazon-creators.enabled: false` to `modules/app/src/main/resources/application.yml` (default off)
 
 ### Proxy — Amazon deactivation
 
-- [ ] Add `@ConditionalOnProperty(name = ["amazon-creators.enabled"], havingValue = "true", matchIfMissing = false)` to `AmazonCreatorsApiAdapter` in `modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/proxy/AmazonCreatorsApiAdapter.kt`
-- [ ] Add `@ConditionalOnProperty(name = ["amazon-creators.enabled"], havingValue = "true", matchIfMissing = false)` to `StubAmazonCreatorsApiProvider` in `modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/proxy/StubAmazonCreatorsApiProvider.kt`
+- [x] Add `@ConditionalOnProperty(name = ["amazon-creators.enabled"], havingValue = "true", matchIfMissing = false)` to `AmazonCreatorsApiAdapter` in `modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/proxy/AmazonCreatorsApiAdapter.kt`
+- [x] Add `@ConditionalOnProperty(name = ["amazon-creators.enabled"], havingValue = "true", matchIfMissing = false)` to `StubAmazonCreatorsApiProvider` in `modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/proxy/StubAmazonCreatorsApiProvider.kt`
 
 ### Proxy — YouTube adapter (real)
 
-- [ ] Create `modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/proxy/YouTubeDataAdapter.kt` implementing `DemandSignalProvider` with `@Component` + `@Profile("!local")`
-- [ ] Implement `sourceType()` returning `"YOUTUBE_DATA"`
-- [ ] Implement `fetch()` — iterate search terms, call YouTube `search.list`, batch `videos.list` for statistics, batch `channels.list` for subscriber counts
-- [ ] Map YouTube API responses to `RawCandidate` with demand signals: `video_id`, `view_count`, `like_count`, `comment_count`, `channel_subscriber_count`, `publish_date`, `search_term`
-- [ ] Add per-search-term try-catch error handling with logging
+- [x] Create `modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/proxy/YouTubeDataAdapter.kt` implementing `DemandSignalProvider` with `@Component` + `@Profile("!local")`
+- [x] Implement `sourceType()` returning `"YOUTUBE_DATA"`
+- [x] Implement `fetch()` — iterate search terms, call YouTube `search.list`, batch `videos.list` for statistics, batch `channels.list` for subscriber counts
+- [x] Map YouTube API responses to `RawCandidate` with demand signals: `video_id`, `view_count`, `like_count`, `comment_count`, `channel_subscriber_count`, `publish_date`, `search_term`
+- [x] Add per-search-term try-catch error handling with logging
 
 ### Proxy — Reddit adapter (real)
 
-- [ ] Create `modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/proxy/RedditDemandAdapter.kt` implementing `DemandSignalProvider` with `@Component` + `@Profile("!local")`
-- [ ] Implement `sourceType()` returning `"REDDIT"`
-- [ ] Implement OAuth 2.0 client credentials token acquisition with `ReentrantLock` + `@Volatile` caching pattern
-- [ ] Ensure `URLEncoder.encode()` is used for any values in form-encoded request bodies (CLAUDE.md #12)
-- [ ] Implement `fetch()` — iterate configurable subreddits, call `GET /r/{subreddit}/{sort}`, map posts to `RawCandidate`
-- [ ] Map Reddit API responses to `RawCandidate` with demand signals: `post_id`, `subreddit`, `upvote_count`, `comment_count`, `post_age_hours`, `subreddit_subscribers`
-- [ ] Add per-subreddit try-catch error handling with logging
+- [x] Create `modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/proxy/RedditDemandAdapter.kt` implementing `DemandSignalProvider` with `@Component` + `@Profile("!local")`
+- [x] Implement `sourceType()` returning `"REDDIT"`
+- [x] Implement OAuth 2.0 client credentials token acquisition with `ReentrantLock` + `@Volatile` caching pattern
+- [x] Ensure `URLEncoder.encode()` is used for any values in form-encoded request bodies (CLAUDE.md #12)
+- [x] Implement `fetch()` — iterate configurable subreddits, call `GET /r/{subreddit}/{sort}`, map posts to `RawCandidate`
+- [x] Map Reddit API responses to `RawCandidate` with demand signals: `post_id`, `subreddit`, `upvote_count`, `comment_count`, `post_age_hours`, `subreddit_subscribers`
+- [x] Add per-subreddit try-catch error handling with logging
 
 ### Proxy — Stubs
 
-- [ ] Create `modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/proxy/StubYouTubeDataProvider.kt` with `@Component` + `@Profile("local")`, returning 3 deterministic YouTube-shaped `RawCandidate` instances
-- [ ] Create `modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/proxy/StubRedditDemandProvider.kt` with `@Component` + `@Profile("local")`, returning 3 deterministic Reddit-shaped `RawCandidate` instances
+- [x] Create `modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/proxy/StubYouTubeDataProvider.kt` with `@Component` + `@Profile("local")`, returning 3 deterministic YouTube-shaped `RawCandidate` instances
+- [x] Create `modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/proxy/StubRedditDemandProvider.kt` with `@Component` + `@Profile("local")`, returning 3 deterministic Reddit-shaped `RawCandidate` instances
 
 ### Tests
 
-- [ ] Create `modules/portfolio/src/test/kotlin/com/autoshipper/portfolio/proxy/YouTubeDataAdapterTest.kt` — happy path, field mapping, demand signals completeness, partial failure, empty response, null field handling
-- [ ] Create `modules/portfolio/src/test/kotlin/com/autoshipper/portfolio/proxy/RedditDemandAdapterTest.kt` — OAuth token acquisition, token caching, token refresh, happy path, demand signals completeness, partial failure, URL encoding compliance
-- [ ] Create `modules/portfolio/src/test/kotlin/com/autoshipper/portfolio/proxy/AmazonAdapterDeactivationTest.kt` — verify `@ConditionalOnProperty` gating (default off, explicitly disabled, explicitly enabled)
-- [ ] Add YouTube stub tests to `modules/portfolio/src/test/kotlin/com/autoshipper/portfolio/proxy/StubProviderTest.kt` — non-empty list, correct source type, demand signal keys
-- [ ] Add Reddit stub tests to `modules/portfolio/src/test/kotlin/com/autoshipper/portfolio/proxy/StubProviderTest.kt` — non-empty list, correct source type, demand signal keys
-- [ ] Verify all existing tests pass without modification (run `./gradlew test`)
+- [x] Create `modules/portfolio/src/test/kotlin/com/autoshipper/portfolio/proxy/YouTubeDataAdapterTest.kt` — happy path, field mapping, demand signals completeness, partial failure, empty response, null field handling (6 tests)
+- [x] Create `modules/portfolio/src/test/kotlin/com/autoshipper/portfolio/proxy/RedditDemandAdapterTest.kt` — OAuth token acquisition, token caching, token refresh, happy path, demand signals completeness, partial failure, URL encoding compliance (8 tests)
+- [x] Create `modules/portfolio/src/test/kotlin/com/autoshipper/portfolio/proxy/AmazonAdapterDeactivationTest.kt` — verify `@ConditionalOnProperty` gating (2 tests)
+- [x] Add YouTube stub tests to `modules/portfolio/src/test/kotlin/com/autoshipper/portfolio/proxy/StubProviderTest.kt` — non-empty list, correct source type, demand signal keys (3 tests)
+- [x] Add Reddit stub tests to `modules/portfolio/src/test/kotlin/com/autoshipper/portfolio/proxy/StubProviderTest.kt` — non-empty list, correct source type, demand signal keys (3 tests)
+- [x] Verify all existing tests pass without modification (run `./gradlew test`) — all modules pass
 
 ### Documentation
 
-- [ ] Verify `.env.example` already contains `YOUTUBE_API_KEY`, `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` (confirmed — already present)
+- [x] Verify `.env.example` already contains `YOUTUBE_API_KEY`, `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` (confirmed — already present)
 
 ---
 

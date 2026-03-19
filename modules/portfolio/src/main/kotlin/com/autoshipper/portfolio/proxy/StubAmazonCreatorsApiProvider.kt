@@ -4,12 +4,14 @@ import com.autoshipper.portfolio.domain.DemandSignalProvider
 import com.autoshipper.portfolio.domain.RawCandidate
 import com.autoshipper.shared.money.Currency
 import com.autoshipper.shared.money.Money
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
 
 @Component
 @Profile("local")
+@ConditionalOnProperty(name = ["amazon-creators.enabled"], havingValue = "true", matchIfMissing = false)
 class StubAmazonCreatorsApiProvider : DemandSignalProvider {
 
     override fun sourceType(): String = "AMAZON_CREATORS_API"
