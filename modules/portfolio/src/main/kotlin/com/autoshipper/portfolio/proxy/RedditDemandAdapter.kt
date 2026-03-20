@@ -137,7 +137,7 @@ class RedditDemandAdapter(
                 .retrieve()
                 .body(JsonNode::class.java)
 
-            cachedToken = response?.path("access_token")?.asText()
+            cachedToken = response?.get("access_token")?.asText()
                 ?: throw IllegalStateException("Failed to obtain Reddit access token")
             val expiresIn = response.path("expires_in").asLong(86400)
             tokenExpiresAt = Instant.now().plusSeconds(expiresIn - 60)

@@ -15,18 +15,20 @@ class YouTubeDataAdapter(
     @Value("\${youtube.api.base-url}") private val baseUrl: String,
     @Value("\${youtube.api.key}") private val apiKey: String,
     @Value("\${youtube.api.search-terms}") private val searchTerms: List<String>,
-    @Value("\${youtube.api.max-results-per-search:10}") private val maxResultsPerSearch: Int,
-    private val restClient: RestClient
+    @Value("\${youtube.api.max-results-per-search:10}") private val maxResultsPerSearch: Int
 ) : DemandSignalProvider {
 
     private val logger = LoggerFactory.getLogger(YouTubeDataAdapter::class.java)
 
-    constructor(
-        @Value("\${youtube.api.base-url}") baseUrl: String,
-        @Value("\${youtube.api.key}") apiKey: String,
-        @Value("\${youtube.api.search-terms}") searchTerms: List<String>,
-        @Value("\${youtube.api.max-results-per-search:10}") maxResultsPerSearch: Int
-    ) : this(baseUrl, apiKey, searchTerms, maxResultsPerSearch, RestClient.builder().baseUrl(baseUrl).build())
+    private var restClient: RestClient = RestClient.builder().baseUrl(baseUrl).build()
+
+    /** Internal constructor for testing — accepts pre-built RestClient. */
+    internal constructor(
+        baseUrl: String, apiKey: String, searchTerms: List<String>,
+        maxResultsPerSearch: Int, restClient: RestClient
+    ) : this(baseUrl, apiKey, searchTerms, maxResultsPerSearch) {
+        this.restClient = restClient
+    }
 
     override fun sourceType(): String = "YOUTUBE_DATA"
 
