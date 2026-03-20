@@ -81,7 +81,7 @@ class ShopifyListingAdapter(
     override fun pauseSku(externalListingId: String) {
         if (accessToken.isBlank()) {
             log.warn("Shopify access token is blank; cannot pause listing {}", externalListingId)
-            return
+            throw IllegalStateException("Shopify access token is not configured")
         }
 
         log.info("Pausing Shopify product {}", externalListingId)
@@ -101,7 +101,7 @@ class ShopifyListingAdapter(
     override fun archiveSku(externalListingId: String) {
         if (accessToken.isBlank()) {
             log.warn("Shopify access token is blank; cannot archive listing {}", externalListingId)
-            return
+            throw IllegalStateException("Shopify access token is not configured")
         }
 
         log.info("Archiving Shopify product {}", externalListingId)
@@ -121,7 +121,7 @@ class ShopifyListingAdapter(
     override fun updatePrice(externalVariantId: String, newPrice: Money) {
         if (accessToken.isBlank()) {
             log.warn("Shopify access token is blank; cannot update price for variant {}", externalVariantId)
-            return
+            throw IllegalStateException("Shopify access token is not configured")
         }
 
         log.info("Updating price for Shopify variant {} to {}", externalVariantId, newPrice)

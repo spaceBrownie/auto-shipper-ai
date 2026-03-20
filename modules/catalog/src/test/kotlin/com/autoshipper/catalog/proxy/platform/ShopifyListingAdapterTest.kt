@@ -197,10 +197,34 @@ class ShopifyListingAdapterTest {
     }
 
     @Test
-    fun `updatePrice does nothing when access token is blank`() {
+    fun `pauseSku throws when access token is blank`() {
         val blankTokenAdapter = ShopifyListingAdapter(shopifyRestClient, "", objectMapper)
 
-        blankTokenAdapter.updatePrice("4567890123", price)
+        assertThrows(IllegalStateException::class.java) {
+            blankTokenAdapter.pauseSku("7890123456")
+        }
+
+        verify(shopifyRestClient, never()).put()
+    }
+
+    @Test
+    fun `archiveSku throws when access token is blank`() {
+        val blankTokenAdapter = ShopifyListingAdapter(shopifyRestClient, "", objectMapper)
+
+        assertThrows(IllegalStateException::class.java) {
+            blankTokenAdapter.archiveSku("7890123456")
+        }
+
+        verify(shopifyRestClient, never()).put()
+    }
+
+    @Test
+    fun `updatePrice throws when access token is blank`() {
+        val blankTokenAdapter = ShopifyListingAdapter(shopifyRestClient, "", objectMapper)
+
+        assertThrows(IllegalStateException::class.java) {
+            blankTokenAdapter.updatePrice("4567890123", price)
+        }
 
         verify(shopifyRestClient, never()).put()
     }
