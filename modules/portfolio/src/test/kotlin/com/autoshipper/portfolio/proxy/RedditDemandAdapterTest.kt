@@ -114,15 +114,18 @@ class RedditDemandAdapterTest {
     @BeforeEach
     fun setUp() {
         adapter = RedditDemandAdapter(
+            baseUrl = "http://test",
+            authUrl = "http://test/api/v1/access_token",
             clientId = clientId,
             clientSecret = clientSecret,
             userAgent = userAgent,
             subreddits = subreddits,
             sort = "hot",
-            limitPerSubreddit = 25,
-            authClient = authClient,
-            apiClient = apiClient
-        )
+            limitPerSubreddit = 25
+        ).also {
+            it.authClient = authClient
+            it.apiClient = apiClient
+        }
 
         stubAuthChain()
     }
@@ -239,15 +242,18 @@ class RedditDemandAdapterTest {
     @Suppress("UNCHECKED_CAST")
     fun `partial failure - first subreddit succeeds, second throws, results from first returned`() {
         val singleSubredditAdapter = RedditDemandAdapter(
+            baseUrl = "http://test",
+            authUrl = "http://test/api/v1/access_token",
             clientId = clientId,
             clientSecret = clientSecret,
             userAgent = userAgent,
             subreddits = listOf("BuyItForLife", "failing_subreddit"),
             sort = "hot",
-            limitPerSubreddit = 25,
-            authClient = authClient,
-            apiClient = apiClient
-        )
+            limitPerSubreddit = 25
+        ).also {
+            it.authClient = authClient
+            it.apiClient = apiClient
+        }
 
         // For the first subreddit call, return valid data; for the second, throw
         var callCount = 0
@@ -276,15 +282,18 @@ class RedditDemandAdapterTest {
     @Test
     fun `blank credentials returns empty list immediately`() {
         val blankAdapter = RedditDemandAdapter(
+            baseUrl = "http://test",
+            authUrl = "http://test/api/v1/access_token",
             clientId = "",
             clientSecret = clientSecret,
             userAgent = userAgent,
             subreddits = subreddits,
             sort = "hot",
-            limitPerSubreddit = 25,
-            authClient = authClient,
-            apiClient = apiClient
-        )
+            limitPerSubreddit = 25
+        ).also {
+            it.authClient = authClient
+            it.apiClient = apiClient
+        }
 
         val candidates = blankAdapter.fetch()
 

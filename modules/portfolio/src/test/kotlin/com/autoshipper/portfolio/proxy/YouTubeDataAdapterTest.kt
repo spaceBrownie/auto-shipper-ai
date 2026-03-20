@@ -130,9 +130,8 @@ class YouTubeDataAdapterTest {
             baseUrl = "https://test.youtube.com",
             apiKey = "test-api-key",
             searchTerms = listOf("kitchen gadgets"),
-            maxResultsPerSearch = 10,
-            restClient = restClient
-        )
+            maxResultsPerSearch = 10
+        ).also { it.restClient = restClient }
 
         val candidates = adapter.fetch()
 
@@ -163,9 +162,8 @@ class YouTubeDataAdapterTest {
             baseUrl = "https://test.youtube.com",
             apiKey = "test-api-key",
             searchTerms = emptyList(),
-            maxResultsPerSearch = 10,
-            restClient = restClient
-        )
+            maxResultsPerSearch = 10
+        ).also { it.restClient = restClient }
 
         assertEquals("YOUTUBE_DATA", adapter.sourceType())
     }
@@ -224,9 +222,8 @@ class YouTubeDataAdapterTest {
             baseUrl = "https://test.youtube.com",
             apiKey = "test-api-key",
             searchTerms = listOf("good term", "bad term"),
-            maxResultsPerSearch = 10,
-            restClient = restClient
-        )
+            maxResultsPerSearch = 10
+        ).also { it.restClient = restClient }
 
         val candidates = adapter.fetch()
 
@@ -245,9 +242,8 @@ class YouTubeDataAdapterTest {
             baseUrl = "https://test.youtube.com",
             apiKey = "test-api-key",
             searchTerms = listOf("empty search"),
-            maxResultsPerSearch = 10,
-            restClient = restClient
-        )
+            maxResultsPerSearch = 10
+        ).also { it.restClient = restClient }
 
         val candidates = adapter.fetch()
 
@@ -261,9 +257,8 @@ class YouTubeDataAdapterTest {
             baseUrl = "https://test.youtube.com",
             apiKey = "   ",
             searchTerms = listOf("should not execute"),
-            maxResultsPerSearch = 10,
-            restClient = restClient
-        )
+            maxResultsPerSearch = 10
+        ).also { it.restClient = restClient }
 
         val candidates = adapter.fetch()
 
@@ -287,9 +282,8 @@ class YouTubeDataAdapterTest {
             baseUrl = "https://test.youtube.com",
             apiKey = "test-api-key",
             searchTerms = listOf("partial stats"),
-            maxResultsPerSearch = 10,
-            restClient = restClient
-        )
+            maxResultsPerSearch = 10
+        ).also { it.restClient = restClient }
 
         val candidates = adapter.fetch()
 

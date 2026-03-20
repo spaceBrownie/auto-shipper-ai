@@ -21,8 +21,8 @@ import kotlin.concurrent.withLock
 class RedditDemandAdapter(
     @Value("\${reddit.api.base-url:https://oauth.reddit.com}") private val baseUrl: String,
     @Value("\${reddit.api.auth-url:https://www.reddit.com/api/v1/access_token}") private val authUrl: String,
-    @Value("\${reddit.api.client-id}") private val clientId: String,
-    @Value("\${reddit.api.client-secret}") private val clientSecret: String,
+    @Value("\${reddit.api.client-id:}") private val clientId: String,
+    @Value("\${reddit.api.client-secret:}") private val clientSecret: String,
     @Value("\${reddit.api.user-agent:AutoShipperAI/1.0}") private val userAgent: String,
     @Value("\${reddit.api.subreddits:BuyItForLife,shutupandtakemymoney}") private val subreddits: List<String>,
     @Value("\${reddit.api.sort:hot}") private val sort: String,
@@ -31,11 +31,11 @@ class RedditDemandAdapter(
 
     private val logger = LoggerFactory.getLogger(RedditDemandAdapter::class.java)
 
-    private var authClient: RestClient = RestClient.builder()
+    internal var authClient: RestClient = RestClient.builder()
         .baseUrl(authUrl.substringBefore("/api/"))
         .build()
 
-    private var apiClient: RestClient = RestClient.builder()
+    internal var apiClient: RestClient = RestClient.builder()
         .baseUrl(baseUrl)
         .build()
 
@@ -46,30 +46,6 @@ class RedditDemandAdapter(
 
     @Volatile
     private var tokenExpiresAt: Instant = Instant.MIN
-
-    /** Internal constructor for testing — accepts pre-built RestClients. */
-    internal constructor(
-        clientId: String,
-        clientSecret: String,
-        userAgent: String,
-        subreddits: List<String>,
-        sort: String,
-        limitPerSubreddit: Int,
-        authClient: RestClient,
-        apiClient: RestClient
-    ) : this(
-        baseUrl = "http://test",
-        authUrl = "http://test/api/v1/access_token",
-        clientId = clientId,
-        clientSecret = clientSecret,
-        userAgent = userAgent,
-        subreddits = subreddits,
-        sort = sort,
-        limitPerSubreddit = limitPerSubreddit
-    ) {
-        this.authClient = authClient
-        this.apiClient = apiClient
-    }
 
     override fun sourceType(): String = "REDDIT"
 

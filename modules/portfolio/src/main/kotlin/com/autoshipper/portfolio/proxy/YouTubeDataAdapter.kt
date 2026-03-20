@@ -12,23 +12,15 @@ import org.springframework.web.client.RestClient
 @Component
 @Profile("!local")
 class YouTubeDataAdapter(
-    @Value("\${youtube.api.base-url}") private val baseUrl: String,
-    @Value("\${youtube.api.key}") private val apiKey: String,
-    @Value("\${youtube.api.search-terms}") private val searchTerms: List<String>,
+    @Value("\${youtube.api.base-url:https://www.googleapis.com/youtube/v3}") private val baseUrl: String,
+    @Value("\${youtube.api.key:}") private val apiKey: String,
+    @Value("\${youtube.api.search-terms:}") private val searchTerms: List<String>,
     @Value("\${youtube.api.max-results-per-search:10}") private val maxResultsPerSearch: Int
 ) : DemandSignalProvider {
 
     private val logger = LoggerFactory.getLogger(YouTubeDataAdapter::class.java)
 
-    private var restClient: RestClient = RestClient.builder().baseUrl(baseUrl).build()
-
-    /** Internal constructor for testing — accepts pre-built RestClient. */
-    internal constructor(
-        baseUrl: String, apiKey: String, searchTerms: List<String>,
-        maxResultsPerSearch: Int, restClient: RestClient
-    ) : this(baseUrl, apiKey, searchTerms, maxResultsPerSearch) {
-        this.restClient = restClient
-    }
+    internal var restClient: RestClient = RestClient.builder().baseUrl(baseUrl).build()
 
     override fun sourceType(): String = "YOUTUBE_DATA"
 
