@@ -1,0 +1,13 @@
+flowchart LR
+    A["🔍 Discover"]:::done --> B["✅ Validate"]:::done
+    B --> C["💰 Price"]:::done
+    C --> D["🛒 List"]:::done
+    D --> E["📊 Monitor"]:::done
+    E --> F["⛔ Pause / Kill"]:::done
+    F -.->|"reinvest"| A
+
+    D --> G["📣 Market"]:::gap
+    G --> H["💵 Revenue"]:::gap
+
+    classDef done fill:#065f46,stroke:#10b981,color:#ecfdf5,font-weight:bold
+    classDef gap fill:#7f1d1d,stroke:#ef4444,color:#fecaca,font-weight:bold
