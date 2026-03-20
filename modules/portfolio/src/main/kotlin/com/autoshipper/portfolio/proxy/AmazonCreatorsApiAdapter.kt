@@ -20,15 +20,15 @@ import kotlin.concurrent.withLock
 @Profile("!local")
 @ConditionalOnProperty(name = ["amazon-creators.enabled"], havingValue = "true", matchIfMissing = false)
 class AmazonCreatorsApiAdapter(
-    @Value("\${amazon-creators.api.base-url}") private val baseUrl: String,
-    @Value("\${amazon-creators.api.credential-id}") private val credentialId: String,
-    @Value("\${amazon-creators.api.credential-secret}") private val credentialSecret: String,
-    @Value("\${amazon-creators.api.partner-tag}") private val partnerTag: String,
-    @Value("\${amazon-creators.api.marketplace}") private val marketplace: String
+    @Value("\${amazon-creators.api.base-url:}") private val baseUrl: String,
+    @Value("\${amazon-creators.api.credential-id:}") private val credentialId: String,
+    @Value("\${amazon-creators.api.credential-secret:}") private val credentialSecret: String,
+    @Value("\${amazon-creators.api.partner-tag:}") private val partnerTag: String,
+    @Value("\${amazon-creators.api.marketplace:}") private val marketplace: String
 ) : DemandSignalProvider {
 
     private val logger = LoggerFactory.getLogger(AmazonCreatorsApiAdapter::class.java)
-    private val restClient = RestClient.builder().baseUrl(baseUrl).build()
+    private val restClient by lazy { RestClient.builder().baseUrl(baseUrl).build() }
     private val tokenLock = ReentrantLock()
 
     @Volatile
@@ -40,6 +40,11 @@ class AmazonCreatorsApiAdapter(
     override fun sourceType(): String = "AMAZON_CREATORS_API"
 
     override fun fetch(): List<RawCandidate> {
+        if (baseUrl.isBlank() || credentialId.isBlank() || credentialSecret.isBlank()) {
+            logger.warn("Amazon Creators API credentials are blank — skipping fetch")
+            return emptyList()
+        }
+
         logger.info("Fetching products from Amazon Creators API")
 
         val token = getAccessToken()
@@ -103,7 +108,7 @@ class AmazonCreatorsApiAdapter(
                 .retrieve()
                 .body(JsonNode::class.java)
 
-            cachedToken = response?.path("access_token")?.asText()
+            cachedToken = response?.get("access_token")?.asText()
                 ?: throw IllegalStateException("Failed to obtain Amazon access token")
             val expiresIn = response.path("expires_in").asLong(3600)
             tokenExpiresAt = System.currentTimeMillis() + (expiresIn - 60) * 1000

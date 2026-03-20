@@ -15,16 +15,21 @@ import java.math.BigDecimal
 @Component
 @Profile("!local")
 class CjDropshippingAdapter(
-    @Value("\${cj-dropshipping.api.base-url}") private val baseUrl: String,
-    @Value("\${cj-dropshipping.api.access-token}") private val accessToken: String
+    @Value("\${cj-dropshipping.api.base-url:}") private val baseUrl: String,
+    @Value("\${cj-dropshipping.api.access-token:}") private val accessToken: String
 ) : DemandSignalProvider {
 
     private val logger = LoggerFactory.getLogger(CjDropshippingAdapter::class.java)
-    private val restClient = RestClient.builder().baseUrl(baseUrl).build()
+    private val restClient by lazy { RestClient.builder().baseUrl(baseUrl).build() }
 
     override fun sourceType(): String = "CJ_DROPSHIPPING"
 
     override fun fetch(): List<RawCandidate> {
+        if (baseUrl.isBlank() || accessToken.isBlank()) {
+            logger.warn("CJ Dropshipping API credentials are blank — skipping fetch")
+            return emptyList()
+        }
+
         logger.info("Fetching products from CJ Dropshipping API")
 
         val categories = listOf("Kitchen & Dining", "Electronics", "Sports & Outdoors", "Home & Garden")
