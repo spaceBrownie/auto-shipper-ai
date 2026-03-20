@@ -34,19 +34,19 @@ class DemandScanSmokeService(
                 }, executor)
             }
 
-            val results = futures.map { future ->
+            val results = providers.zip(futures).map { (provider, future) ->
                 try {
                     future.get(timeoutSeconds, TimeUnit.SECONDS)
                 } catch (e: TimeoutException) {
                     SourceSmokeResult(
-                        source = "UNKNOWN",
+                        source = provider.sourceType(),
                         status = SmokeStatus.TIMEOUT,
                         responseTimeMs = timeoutSeconds * 1000,
                         sampleCount = 0
                     )
                 } catch (e: Exception) {
                     SourceSmokeResult(
-                        source = "UNKNOWN",
+                        source = provider.sourceType(),
                         status = SmokeStatus.UNKNOWN_ERROR,
                         responseTimeMs = 0,
                         sampleCount = 0
