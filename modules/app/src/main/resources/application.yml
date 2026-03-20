@@ -183,7 +183,37 @@ cj-dropshipping:
     base-url: ${CJ_API_BASE_URL:https://developers.cjdropshipping.com/api2.0/v1}
     access-token: ${CJ_ACCESS_TOKEN:}
 
+# YouTube Data API v3
+youtube:
+  api:
+    base-url: ${YOUTUBE_API_BASE_URL:https://www.googleapis.com/youtube/v3}
+    key: ${YOUTUBE_API_KEY:}
+    search-terms:
+      - "best product review"
+      - "product unboxing 2026"
+      - "top gadgets"
+      - "must have kitchen gadgets"
+    max-results-per-search: 10
+
+# Reddit API
+reddit:
+  api:
+    base-url: ${REDDIT_API_BASE_URL:https://oauth.reddit.com}
+    auth-url: ${REDDIT_AUTH_URL:https://www.reddit.com/api/v1/access_token}
+    client-id: ${REDDIT_CLIENT_ID:}
+    client-secret: ${REDDIT_CLIENT_SECRET:}
+    user-agent: ${REDDIT_USER_AGENT:AutoShipperAI/1.0}
+    subreddits:
+      - BuyItForLife
+      - shutupandtakemymoney
+      - gadgets
+      - homeautomation
+    sort: hot
+    limit-per-subreddit: 25
+
+# Amazon Creators API (deactivated — PA-API 5.0 deprecated May 2026)
 amazon-creators:
+  enabled: false
   api:
     base-url: ${AMAZON_CREATORS_API_BASE_URL:https://api.amazon.com}
     credential-id: ${AMAZON_CREDENTIAL_ID:}

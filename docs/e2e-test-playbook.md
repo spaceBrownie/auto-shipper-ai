@@ -3,7 +3,7 @@
 End-to-end manual test script for the full SKU lifecycle through capital protection, compliance guards, and portfolio orchestration.
 Covers: SKU creation, compliance checks, state machine, cost gate, stress test, pricing, orders, reserve management, margin monitoring, automated shutdown rules, portfolio experiments, kill window monitoring, priority ranking, and demand scan job.
 
-**Last validated:** 2026-03-18 on branch `feat/FR-016-demand-scan-job`
+**Last validated:** 2026-03-19 on branch `feat/RAT-22-demand-signal-api-pivot`
 
 ---
 
@@ -690,8 +690,8 @@ curl -s http://localhost:8080/api/portfolio/demand-scan/status | python3 -m json
 | Field | Expected |
 |---|---|
 | `lastRunStatus` | `COMPLETED` |
-| `sourcesQueried` | `3` (CJ, Google Trends, Amazon — all stubs in local profile) |
-| `candidatesFound` | `≥ 5` (dedup may reduce from 10 raw) |
+| `sourcesQueried` | `4` (CJ, Google Trends, YouTube, Reddit — all stubs in local profile; Amazon deactivated) |
+| `candidatesFound` | `≥ 5` (dedup may reduce from ~12 raw) |
 | `experimentsCreated` | `≥ 1` (candidates above 0.6 threshold) |
 | `rejections` | `≥ 1` (candidates below 0.6 threshold) |
 
@@ -707,7 +707,7 @@ curl -s http://localhost:8080/api/portfolio/demand-scan/candidates | python3 -m 
 | Each entry has `demandScore`, `marginPotentialScore`, `competitionScore`, `compositeScore` | All present, 0-1 range |
 | Entries with `passed: true` | Have `compositeScore >= 0.6` |
 | Entries with `passed: false` | Have `compositeScore < 0.6` |
-| `sourceType` values | Mix of `CJ_DROPSHIPPING`, `GOOGLE_TRENDS`, `AMAZON_CREATORS_API` |
+| `sourceType` values | Mix of `CJ_DROPSHIPPING`, `GOOGLE_TRENDS`, `YOUTUBE_DATA`, `REDDIT` |
 
 ### 8.5 Verify Rejections
 
@@ -731,7 +731,7 @@ curl -s http://localhost:8080/api/portfolio/experiments | python3 -m json.tool
 
 | Check | Expected |
 |---|---|
-| Experiments with `sourceSignal` starting with `GOOGLE_TRENDS:` or `AMAZON_CREATORS_API:` | Present |
+| Experiments with `sourceSignal` starting with `GOOGLE_TRENDS:`, `YOUTUBE_DATA:`, or `REDDIT:` | Present |
 | `status` | `ACTIVE` |
 | `validationWindowDays` | `30` |
 | `hypothesis` | Contains `"Demand signal detected via"` |
@@ -795,7 +795,7 @@ PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
 "
 ```
 
-Expected: Both "Silicone Collapsible Water Bottle" (CJ) and "Collapsible Silicone Water Bottle 600ml" (Amazon) should appear with similarity > 0.3, validating the trigram index.
+Expected: Similar product names from different sources (e.g., CJ and YouTube/Reddit) should appear with similarity > 0.3, validating the trigram index.
 
 ---
 

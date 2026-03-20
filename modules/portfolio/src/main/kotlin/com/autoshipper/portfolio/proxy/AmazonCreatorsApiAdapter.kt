@@ -7,6 +7,7 @@ import com.autoshipper.shared.money.Money
 import com.fasterxml.jackson.databind.JsonNode
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Profile
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
@@ -17,6 +18,7 @@ import kotlin.concurrent.withLock
 
 @Component
 @Profile("!local")
+@ConditionalOnProperty(name = ["amazon-creators.enabled"], havingValue = "true", matchIfMissing = false)
 class AmazonCreatorsApiAdapter(
     @Value("\${amazon-creators.api.base-url}") private val baseUrl: String,
     @Value("\${amazon-creators.api.credential-id}") private val credentialId: String,
