@@ -1,9 +1,9 @@
 # E2E Test Playbook
 
 End-to-end manual test script for the full SKU lifecycle through capital protection, compliance guards, and portfolio orchestration.
-Covers: SKU creation, compliance checks, state machine, cost gate, stress test, pricing, orders, reserve management, margin monitoring, automated shutdown rules, portfolio experiments, kill window monitoring, priority ranking, and demand scan job.
+Covers: SKU creation, compliance checks, state machine, cost gate, stress test, pricing, platform listing (FR-020), orders, reserve management, margin monitoring, automated shutdown rules, portfolio experiments, kill window monitoring, priority ranking, and demand scan job.
 
-**Last validated:** 2026-03-19 on branch `feat/RAT-22-demand-signal-api-pivot`
+**Last validated:** 2026-03-20 on branch `feat/RAT-23-pm012-prevention-constraints`
 
 ---
 
@@ -38,7 +38,8 @@ PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
                  vendors, vendor_sku_assignments, vendor_breach_log,
                  compliance_audit, experiments, kill_recommendations,
                  priority_ranking_log, scaling_flags, refund_alerts, discovery_blacklist,
-                 demand_candidates, candidate_rejections, demand_scan_runs
+                 demand_candidates, candidate_rejections, demand_scan_runs,
+                 platform_listings
   CASCADE;
 "
 ```
@@ -221,6 +222,26 @@ curl -s "http://localhost:8080/api/skus/$SKU_ID/pricing" | python3 -m json.tool
 | Pricing HTTP status | `200` (not 404) |
 
 **Checkpoint:** If pricing returns 404, the `PricingInitializer` AFTER_COMMIT listener is broken (see PM-001).
+
+### 1.7 Verify Platform Listing (FR-020)
+
+The `PlatformListingListener` fires on the same `SkuStateChanged(toState=LISTED)` event via `AFTER_COMMIT` + `REQUIRES_NEW`. It creates a `platform_listings` record with the stub adapter's deterministic external IDs.
+
+```bash
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
+  "SELECT sku_id, platform, external_listing_id, external_variant_id, current_price_amount, currency, status FROM platform_listings WHERE sku_id = '$SKU_ID';"
+```
+
+| Column | Expected |
+|---|---|
+| `platform` | `SHOPIFY` |
+| `external_listing_id` | Non-null UUID (stub deterministic) |
+| `external_variant_id` | Non-null UUID (stub deterministic) |
+| `current_price_amount` | `199.9900` |
+| `currency` | `USD` |
+| `status` | `ACTIVE` |
+
+**Checkpoint:** If no row exists, the `PlatformListingListener` AFTER_COMMIT + REQUIRES_NEW pattern is broken.
 
 ---
 
@@ -420,6 +441,22 @@ PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
 | `rule` | `MARGIN_BREACH` |
 | `condition_value` | `25.00%` |
 | `action` | `PAUSE` |
+
+### 4.3b Verify Platform Listing Paused (FR-020)
+
+The `PlatformListingListener` also fires on `SkuStateChanged(toState=PAUSED)` and sets the listing status to `DRAFT`:
+
+```bash
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
+  "SELECT status, updated_at FROM platform_listings WHERE sku_id = '$SKU_ID';"
+```
+
+| Column | Expected |
+|---|---|
+| `status` | `DRAFT` |
+| `updated_at` | Updated since creation |
+
+**Checkpoint:** If status is still `ACTIVE`, the `PlatformListingListener` is not reacting to PAUSED transitions.
 
 ### 4.4 Verify P&L Now Shows Data
 
@@ -862,5 +899,6 @@ These are the cross-module event listener patterns that must hold for the system
 | `CatalogComplianceListener` | `ComplianceFailed` | `AFTER_COMMIT` + `REQUIRES_NEW` | SKU not terminated on compliance failure (FR-011) |
 | `CatalogKillWindowListener` | `KillWindowBreached` | `AFTER_COMMIT` + `REQUIRES_NEW` | SKU not auto-terminated after kill window breach (FR-010) |
 | `ComplianceOrchestrator` | `SkuReadyForComplianceCheck` | `AFTER_COMMIT` + `REQUIRES_NEW` | Compliance check never triggered on SKU creation (FR-011) |
+| `PlatformListingListener` | `SkuStateChanged` | `AFTER_COMMIT` + `REQUIRES_NEW` | Platform listing never created/paused/archived on SKU transition (FR-020) |
 
 **Rule:** Any `@TransactionalEventListener(AFTER_COMMIT)` handler that writes to the database **must** use `@Transactional(propagation = Propagation.REQUIRES_NEW)`. Without it, JPA operations silently succeed but are never flushed.
