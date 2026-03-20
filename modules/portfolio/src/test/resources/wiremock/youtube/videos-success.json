@@ -1,0 +1,36 @@
+{
+  "kind": "youtube#videoListResponse",
+  "pageInfo": {
+    "totalResults": 3,
+    "resultsPerPage": 3
+  },
+  "items": [
+    {
+      "kind": "youtube#video",
+      "id": "VID-TEST-001",
+      "statistics": {
+        "viewCount": "125000",
+        "likeCount": "4200",
+        "commentCount": "380"
+      }
+    },
+    {
+      "kind": "youtube#video",
+      "id": "VID-TEST-002",
+      "statistics": {
+        "viewCount": "58000",
+        "likeCount": "1800",
+        "commentCount": "150"
+      }
+    },
+    {
+      "kind": "youtube#video",
+      "id": "VID-TEST-003",
+      "statistics": {
+        "viewCount": "340000",
+        "likeCount": "12500",
+        "commentCount": "920"
+      }
+    }
+  ]
+}

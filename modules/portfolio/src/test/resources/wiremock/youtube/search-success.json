@@ -1,0 +1,39 @@
+{
+  "kind": "youtube#searchListResponse",
+  "pageInfo": {
+    "totalResults": 3,
+    "resultsPerPage": 10
+  },
+  "items": [
+    {
+      "kind": "youtube#searchResult",
+      "id": { "kind": "youtube#video", "videoId": "VID-TEST-001" },
+      "snippet": {
+        "publishedAt": "2026-03-15T14:00:00Z",
+        "channelId": "CHAN-TEST-001",
+        "title": "Best Portable Blender 2026 Review",
+        "description": "In this video we review the top portable blenders of 2026."
+      }
+    },
+    {
+      "kind": "youtube#searchResult",
+      "id": { "kind": "youtube#video", "videoId": "VID-TEST-002" },
+      "snippet": {
+        "publishedAt": "2026-03-10T09:30:00Z",
+        "channelId": "CHAN-TEST-001",
+        "title": "Portable Blender vs Full Size — Worth It?",
+        "description": "Comparing portable and full-size blenders for everyday use."
+      }
+    },
+    {
+      "kind": "youtube#searchResult",
+      "id": { "kind": "youtube#video", "videoId": "VID-TEST-003" },
+      "snippet": {
+        "publishedAt": "2026-02-28T18:00:00Z",
+        "channelId": "CHAN-TEST-002",
+        "title": "I Tested Every Portable Blender on Amazon",
+        "description": "Testing and ranking all the top-selling portable blenders."
+      }
+    }
+  ]
+}

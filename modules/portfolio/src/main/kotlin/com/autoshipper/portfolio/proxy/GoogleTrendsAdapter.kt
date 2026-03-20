@@ -21,10 +21,10 @@ class GoogleTrendsAdapter(
 
     override fun sourceType(): String = "GOOGLE_TRENDS"
 
+    internal var feedUrl: String = "https://trends.google.com/trending/rss?geo=$geo"
+
     override fun fetch(): List<RawCandidate> {
         logger.info("Fetching Google Trends RSS feed for geo={}", geo)
-
-        val feedUrl = "https://trends.google.com/trending/rss?geo=$geo"
         val candidates = mutableListOf<RawCandidate>()
 
         try {

@@ -57,7 +57,12 @@ class RedditDemandAdapter(
 
         logger.info("Fetching demand signals from Reddit ({} subreddits)", subreddits.size)
 
-        val token = getAccessToken()
+        val token = try {
+            getAccessToken()
+        } catch (e: Exception) {
+            logger.warn("Reddit OAuth token acquisition failed — skipping fetch: {}", e.message)
+            return emptyList()
+        }
         val candidates = mutableListOf<RawCandidate>()
 
         for (subreddit in subreddits) {
@@ -115,7 +120,7 @@ class RedditDemandAdapter(
 
             cachedToken = response?.get("access_token")?.asText()
                 ?: throw IllegalStateException("Failed to obtain Reddit access token")
-            val expiresIn = response.path("expires_in").asLong(86400)
+            val expiresIn = response.path("expires_in").asLong(3600)
             tokenExpiresAt = Instant.now().plusSeconds(expiresIn - 60)
 
             logger.info("Obtained Reddit access token (expires in {}s)", expiresIn)
