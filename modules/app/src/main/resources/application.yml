@@ -71,6 +71,10 @@ resilience4j:
         sliding-window-size: 10
         failure-rate-threshold: 50
         wait-duration-in-open-state: 30s
+      shopify-listing:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
   retry:
     instances:
       ups-rate:
@@ -101,6 +105,11 @@ resilience4j:
       shopify-price-sync:
         max-attempts: 3
         wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+      shopify-listing:
+        max-attempts: 3
+        wait-duration: 1s
         enable-exponential-backoff: true
         exponential-backoff-multiplier: 2
 
