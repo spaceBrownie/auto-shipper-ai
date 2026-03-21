@@ -1,0 +1,36 @@
+{
+  "variant": {
+    "id": 808950810,
+    "product_id": 632910392,
+    "title": "Default Title",
+    "price": "29.99",
+    "position": 1,
+    "inventory_policy": "deny",
+    "compare_at_price": null,
+    "option1": "Default Title",
+    "option2": null,
+    "option3": null,
+    "created_at": "2026-01-09T17:04:11-05:00",
+    "updated_at": "2026-01-09T17:04:11-05:00",
+    "taxable": true,
+    "barcode": null,
+    "fulfillment_service": "manual",
+    "grams": 0,
+    "inventory_management": "shopify",
+    "requires_shipping": true,
+    "sku": "TEST-SKU-001",
+    "weight": 0.0,
+    "weight_unit": "lb",
+    "inventory_item_id": 808950810,
+    "inventory_quantity": 0,
+    "old_inventory_quantity": 0,
+    "presentment_prices": [
+      {
+        "price": {"amount": "29.99", "currency_code": "USD"},
+        "compare_at_price": null
+      }
+    ],
+    "admin_graphql_api_id": "gid://shopify/ProductVariant/808950810",
+    "image_id": null
+  }
+}

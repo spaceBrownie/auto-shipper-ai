@@ -17,8 +17,8 @@ interface InventoryChecker {
 @Component
 @Profile("!local")
 class ShopifyInventoryCheckAdapter(
-    @Value("\${shopify.api.base-url}") private val baseUrl: String,
-    @Value("\${shopify.api.access-token}") private val accessToken: String
+    @Value("\${shopify.api.base-url:}") private val baseUrl: String,
+    @Value("\${shopify.api.access-token:}") private val accessToken: String
 ) : InventoryChecker {
 
     private val restClient: RestClient = RestClient.builder()

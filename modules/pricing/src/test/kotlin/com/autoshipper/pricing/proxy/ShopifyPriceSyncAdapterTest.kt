@@ -47,7 +47,7 @@ class ShopifyPriceSyncAdapterTest {
 
     @BeforeEach
     fun setUp() {
-        adapter = ShopifyPriceSyncAdapter(shopifyRestClient, platformAdapter, platformListingRepository)
+        adapter = ShopifyPriceSyncAdapter(shopifyRestClient, platformAdapter, platformListingRepository, "test-access-token")
     }
 
     @Test
@@ -78,6 +78,7 @@ class ShopifyPriceSyncAdapterTest {
 
         whenever(shopifyRestClient.put()).thenReturn(requestBodyUriSpec)
         whenever(requestBodyUriSpec.uri(any<String>(), any<Any>())).thenReturn(requestBodySpec)
+        whenever(requestBodySpec.header(any<String>(), any<String>())).thenReturn(requestBodySpec)
         whenever(requestBodySpec.body(any<Any>())).thenReturn(requestBodySpec)
         whenever(requestBodySpec.retrieve()).thenReturn(responseSpec)
         whenever(responseSpec.toBodilessEntity()).thenReturn(ResponseEntity.ok().build())
@@ -104,6 +105,7 @@ class ShopifyPriceSyncAdapterTest {
 
         whenever(shopifyRestClient.put()).thenReturn(requestBodyUriSpec)
         whenever(requestBodyUriSpec.uri(any<String>(), any<Any>())).thenReturn(requestBodySpec)
+        whenever(requestBodySpec.header(any<String>(), any<String>())).thenReturn(requestBodySpec)
         whenever(requestBodySpec.body(any<Any>())).thenReturn(requestBodySpec)
         whenever(requestBodySpec.retrieve()).thenReturn(responseSpec)
         whenever(responseSpec.toBodilessEntity()).thenReturn(ResponseEntity.ok().build())

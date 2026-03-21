@@ -1,0 +1,20 @@
+{
+  "shop": {
+    "id": 548380009,
+    "name": "My Test Store",
+    "email": "owner@example.com",
+    "domain": "my-test-store.myshopify.com",
+    "plan_name": "unlimited",
+    "plan_display_name": "Advanced Shopify",
+    "currency": "USD",
+    "country_code": "US",
+    "province_code": "CA",
+    "timezone": "(GMT-05:00) Eastern Time (US & Canada)",
+    "iana_timezone": "America/New_York",
+    "myshopify_domain": "my-test-store.myshopify.com",
+    "money_format": "${{amount}}",
+    "weight_unit": "lb",
+    "created_at": "2007-12-31T19:00:00-05:00",
+    "updated_at": "2026-01-09T19:37:58-05:00"
+  }
+}

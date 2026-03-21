@@ -1,0 +1,3 @@
+{
+  "errors": "Exceeded 2 calls per second for api client. Reduce request rates to resume uninterrupted service."
+}
