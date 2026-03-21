@@ -160,6 +160,23 @@ This gives Nathan a feel for velocity and complexity without technical details.}
 
 **Metrics when available:** If the session produced quantifiable results (tests added, endpoints created, sources integrated), include them — Nathan likes numbers. Frame them as outcomes: "4 data sources now active (was 3)" not "22 new unit tests".
 
+**Visuals — create diagrams by default.** Every report should include at least one Mermaid diagram. Nathan is a visual thinker — a good diagram replaces paragraphs of explanation. Common visual patterns:
+- **Pipeline/flow diagrams** — show what's built (green) vs what's missing (red) in a process flow
+- **Cascade diagrams** — show how one change ripples through the system (e.g., fee bug → cost envelope → stress test)
+- **Scorecard/status grids** — show coverage or completion across multiple areas
+- **Before/after comparisons** — show what changed
+
+Use Mermaid `.mmd` files rendered via `mmdc`. Generate the `.mmd` first, then render:
+```bash
+# SVG for the markdown report (zooms cleanly, renders on GitHub)
+mmdc -i /tmp/diagram.mmd -o docs/nathan-reports/diagram.svg -b transparent
+
+# PNG for email only (Gmail strips SVG text; use 2x retina)
+mmdc -i /tmp/diagram.mmd -o docs/nathan-reports/diagram.png -b white -s 2
+```
+
+**SVG for reports, PNG for email.** The markdown report references `.svg` (zoomable, crisp at any size). The email draft references `.png` hosted on GitHub raw URLs (Gmail can't render SVGs with text). Always generate both.
+
 ## Step 5: Phase 1 — Draft and Review
 
 After writing the file to `docs/nathan-reports/`:
@@ -316,9 +333,18 @@ For the "Risks & Decisions Needed" section, use a red-tinted callout:
 
 #### Images (Diagrams)
 
-**Always use PNG for email, never SVG.** Mermaid-generated SVGs use `<foreignObject>` for text, which Gmail and most email clients strip — resulting in shapes without labels. Render with `mmdc -s 2` for 2x retina resolution and `-b white` for a clean background.
+**Dual format: SVG for markdown reports, PNG for email.** Mermaid SVGs use `<foreignObject>` for text, which Gmail strips — resulting in shapes without labels. But SVGs zoom perfectly and render correctly on GitHub, so they're ideal for the markdown report file.
 
-Embed as hosted images via `<img>` tag. Use `width="100%"` and `max-width` for mobile responsiveness:
+- **Markdown report (`.md`):** Reference `.svg` — zoomable, crisp at any resolution
+- **Email draft (HTML):** Reference `.png` hosted on GitHub raw URLs — Gmail-safe
+
+Always generate both formats from the same `.mmd` source:
+```bash
+mmdc -i /tmp/diagram.mmd -o docs/nathan-reports/diagram.svg -b transparent
+mmdc -i /tmp/diagram.mmd -o docs/nathan-reports/diagram.png -b white -s 2
+```
+
+Embed PNGs in email via hosted `<img>` tag. Use `width="100%"` and `max-width` for mobile responsiveness:
 
 ```html
 <img src="cid:pipeline-status" alt="Autonomous Pipeline Status" style="width: 100%; max-width: 600px; height: auto; margin: 16px 0; border-radius: 4px;">

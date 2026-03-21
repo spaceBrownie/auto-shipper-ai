@@ -35,13 +35,13 @@ Big testing day. We verified all three Shopify integrations against their real A
 
 One wrong plan identifier inflates the platform fee, which inflates the cost envelope, which either kills a viable SKU or lists it with incorrect margins.
 
-![Fee Bug Cascade](fee-cascade.png)
+![Fee Bug Cascade](fee-cascade.svg)
 
 ## Postmortem Gap Closure — 0/8 → 8/8
 
 Every postmortem recommended specific tests. Until today, none had been written. Now all 8 gaps have automated verification.
 
-![Postmortem Coverage](pm-coverage.png)
+![Postmortem Coverage](pm-coverage.svg)
 
 ## Why This Matters
 
