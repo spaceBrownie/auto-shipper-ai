@@ -218,4 +218,37 @@ class OrderServiceTest {
         assert(result != null) { "Expected order to be found" }
         assert(result!!.id == order.id)
     }
+
+    @Test
+    fun `setChannelMetadata updates channel fields on existing order`() {
+        val order = pendingOrder()
+        whenever(orderRepository.findById(order.id)).thenReturn(Optional.of(order))
+        whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+
+        val result = orderService.setChannelMetadata(
+            orderId = order.id,
+            channel = "shopify",
+            channelOrderId = "12345",
+            channelOrderNumber = "#1001"
+        )
+
+        assert(result.channel == "shopify") { "Expected channel=shopify, got ${result.channel}" }
+        assert(result.channelOrderId == "12345") { "Expected channelOrderId=12345, got ${result.channelOrderId}" }
+        assert(result.channelOrderNumber == "#1001") { "Expected channelOrderNumber=#1001, got ${result.channelOrderNumber}" }
+        verify(orderRepository).save(argThat<Order> {
+            channel == "shopify" && channelOrderId == "12345" && channelOrderNumber == "#1001"
+        })
+    }
+
+    @Test
+    fun `setChannelMetadata throws for non-existent order`() {
+        val unknownId = UUID.randomUUID()
+        whenever(orderRepository.findById(unknownId)).thenReturn(Optional.empty())
+
+        assertThrows<IllegalArgumentException> {
+            orderService.setChannelMetadata(unknownId, "shopify", "12345", "#1001")
+        }
+
+        verify(orderRepository, never()).save(any<Order>())
+    }
 }

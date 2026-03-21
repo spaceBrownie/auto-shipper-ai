@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 import java.util.UUID
 
 @Service
@@ -101,6 +102,21 @@ class OrderService(
         val saved = orderRepository.save(order)
         logger.info("Order {} marked SHIPPED with tracking {} via {}", orderId, trackingNumber, carrier)
         return saved
+    }
+
+    /**
+     * Sets channel metadata (channel name, channel order ID, channel order number) on an existing order.
+     * Used by webhook processing to associate internal orders with their external channel source.
+     */
+    @Transactional
+    fun setChannelMetadata(orderId: UUID, channel: String, channelOrderId: String, channelOrderNumber: String): Order {
+        val order = orderRepository.findById(orderId)
+            .orElseThrow { IllegalArgumentException("Order $orderId not found") }
+        order.channel = channel
+        order.channelOrderId = channelOrderId
+        order.channelOrderNumber = channelOrderNumber
+        order.updatedAt = Instant.now()
+        return orderRepository.save(order)
     }
 
     /**

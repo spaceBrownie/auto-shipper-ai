@@ -52,6 +52,15 @@ class Order(
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: Instant = Instant.now(),
 
+    @Column(name = "channel")
+    var channel: String? = null,
+
+    @Column(name = "channel_order_id")
+    var channelOrderId: String? = null,
+
+    @Column(name = "channel_order_number")
+    var channelOrderNumber: String? = null,
+
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now()
 ) {
