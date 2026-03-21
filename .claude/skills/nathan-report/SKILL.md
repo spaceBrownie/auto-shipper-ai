@@ -176,7 +176,7 @@ Once the user approves the draft:
 
 1. **Create a Gmail draft** using `mcp__claude_ai_Gmail__gmail_create_draft`:
    - **Subject:** `[Auto Shipper] NR-{NNN}: {Title}`
-   - **To:** Nathan's email (ask the user if not known; save to memory once provided)
+   - **To:** Nathan's email — check memory first (`user_nathan_profile.md` has his email). Only ask the user if not found in memory.
    - **Body:** Convert the markdown report to styled HTML following the Email Design System below. The email should feel like a polished internal newsletter — professional but not corporate, scannable on a phone, engaging without being distracting.
 2. Tell the user the draft is ready in Gmail for final review and send
 3. The file in `docs/nathan-reports/` stays as a local reference copy
