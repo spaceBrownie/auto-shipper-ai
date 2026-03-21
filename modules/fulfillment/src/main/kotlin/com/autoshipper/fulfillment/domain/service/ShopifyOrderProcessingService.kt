@@ -2,10 +2,7 @@ package com.autoshipper.fulfillment.domain.service
 
 import com.autoshipper.fulfillment.domain.channel.ShopifyOrderAdapter
 import com.autoshipper.fulfillment.handler.webhook.ShopifyOrderReceivedEvent
-import com.autoshipper.fulfillment.proxy.platform.PlatformListingResolver
-import com.autoshipper.fulfillment.proxy.platform.VendorSkuResolver
 import com.autoshipper.shared.money.Currency
-import com.autoshipper.shared.money.Money
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Propagation
@@ -15,18 +12,20 @@ import org.springframework.transaction.event.TransactionalEventListener
 import java.util.UUID
 
 /**
- * Processes Shopify order webhook events asynchronously after the deduplication
- * record is committed. Creates internal Order entities for each resolvable line item.
+ * Orchestrates Shopify order webhook processing after the deduplication
+ * record is committed. Each line item is processed in its own REQUIRES_NEW
+ * transaction via LineItemOrderCreator — a failure on one line item does not
+ * roll back orders created for other line items.
  *
  * Uses @TransactionalEventListener(AFTER_COMMIT) + @Transactional(REQUIRES_NEW)
- * per CLAUDE.md constraint #6 — without REQUIRES_NEW, writes are silently discarded.
+ * per CLAUDE.md constraint #6. LineItemOrderCreator.processLineItem() also uses
+ * REQUIRES_NEW, which suspends this transaction during each line item — inner
+ * failures are isolated and caught without poisoning this outer transaction.
  */
 @Component
 class ShopifyOrderProcessingService(
     private val shopifyOrderAdapter: ShopifyOrderAdapter,
-    private val platformListingResolver: PlatformListingResolver,
-    private val vendorSkuResolver: VendorSkuResolver,
-    private val orderService: OrderService
+    private val lineItemOrderCreator: LineItemOrderCreator
 ) {
     private val logger = LoggerFactory.getLogger(ShopifyOrderProcessingService::class.java)
 
@@ -50,59 +49,16 @@ class ShopifyOrderProcessingService(
         var created = 0
 
         channelOrder.lineItems.forEachIndexed { index, lineItem ->
-            val skuId = platformListingResolver.resolveSkuId(
-                lineItem.externalProductId,
-                lineItem.externalVariantId,
-                "SHOPIFY"
-            )
-            if (skuId == null) {
-                logger.warn(
-                    "Unresolvable line item: productId={}, variantId={}, title={}",
-                    lineItem.externalProductId, lineItem.externalVariantId, lineItem.title
+            try {
+                val wasCreated = lineItemOrderCreator.processLineItem(
+                    index, lineItem, channelOrder, customerUUID, currency
                 )
-                return@forEachIndexed
-            }
-
-            val vendorId = vendorSkuResolver.resolveVendorId(skuId)
-            if (vendorId == null) {
-                logger.warn("No vendor assignment for SKU {}", skuId)
-                return@forEachIndexed
-            }
-
-            resolved++
-
-            val totalAmount = Money.of(
-                lineItem.unitPrice.multiply(lineItem.quantity.toBigDecimal()),
-                currency
-            )
-
-            val command = CreateOrderCommand(
-                skuId = skuId,
-                vendorId = vendorId,
-                customerId = customerUUID,
-                totalAmount = totalAmount,
-                paymentIntentId = "shopify:order:${channelOrder.channelOrderId}",
-                idempotencyKey = "shopify:order:${channelOrder.channelOrderId}:item:$index"
-            )
-
-            val (order, isNew) = orderService.create(command)
-
-            if (isNew) {
-                orderService.setChannelMetadata(
-                    orderId = order.id,
-                    channel = channelOrder.channelName,
-                    channelOrderId = channelOrder.channelOrderId,
-                    channelOrderNumber = channelOrder.channelOrderNumber
-                )
-                created++
-                logger.info(
-                    "Created order {} for SKU {} from Shopify order {}",
-                    order.id, skuId, channelOrder.channelOrderId
-                )
-            } else {
-                logger.info(
-                    "Order already exists for idempotency key {}, skipping channel metadata",
-                    command.idempotencyKey
+                if (wasCreated) created++
+                resolved++
+            } catch (e: Exception) {
+                logger.error(
+                    "Failed to process line item {} in Shopify order {}: {}",
+                    index, channelOrder.channelOrderId, e.message
                 )
             }
         }

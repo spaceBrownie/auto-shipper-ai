@@ -173,6 +173,45 @@ class ShopifyWebhookControllerTest {
     }
 
     @Test
+    fun `replay protection enabled with malformed timestamp skips check and accepts webhook`() {
+        val properties = ShopifyWebhookProperties(
+            secrets = listOf("test-secret"),
+            replayProtection = ShopifyWebhookProperties.ReplayProtection(
+                enabled = true,
+                maxAgeSeconds = 300
+            )
+        )
+
+        val controller = ShopifyWebhookController(
+            webhookEventRepository = webhookEventRepository,
+            eventPublisher = eventPublisher,
+            properties = properties,
+            objectMapper = objectMapper
+        )
+
+        val replayMockMvc = MockMvcBuilders.standaloneSetup(controller)
+            .setMessageConverters(StringHttpMessageConverter(), MappingJackson2HttpMessageConverter(objectMapper))
+            .build()
+
+        whenever(webhookEventRepository.existsByEventId("evt-malformed")).thenReturn(false)
+        whenever(webhookEventRepository.save(any<WebhookEvent>())).thenAnswer { it.arguments[0] }
+
+        replayMockMvc.perform(
+            post("/webhooks/shopify/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validPayload)
+                .header("X-Shopify-Topic", "orders/create")
+                .header("X-Shopify-Event-Id", "evt-malformed")
+                .header("X-Shopify-Triggered-At", "not-a-valid-timestamp")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.status").value("accepted"))
+
+        verify(webhookEventRepository).save(any<WebhookEvent>())
+        verify(eventPublisher).publishEvent(any<ShopifyOrderReceivedEvent>())
+    }
+
+    @Test
     fun `replay protection disabled allows stale timestamp`() {
         whenever(webhookEventRepository.existsByEventId("evt-789")).thenReturn(false)
         whenever(webhookEventRepository.save(any<WebhookEvent>())).thenAnswer { it.arguments[0] }

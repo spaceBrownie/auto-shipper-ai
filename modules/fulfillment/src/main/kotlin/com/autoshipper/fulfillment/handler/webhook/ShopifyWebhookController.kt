@@ -48,11 +48,18 @@ class ShopifyWebhookController(
         if (properties.replayProtection.enabled) {
             val triggeredAt = headers.getFirst("X-Shopify-Triggered-At")
             if (triggeredAt != null) {
-                val eventTime = Instant.parse(triggeredAt)
-                val maxAge = Instant.now().minusSeconds(properties.replayProtection.maxAgeSeconds)
-                if (eventTime.isBefore(maxAge)) {
-                    logger.warn("Shopify webhook event {} is too old: {}", eventId, triggeredAt)
-                    return ResponseEntity.badRequest().body(mapOf("error" to "Event too old"))
+                val eventTime = try {
+                    Instant.parse(triggeredAt)
+                } catch (e: java.time.format.DateTimeParseException) {
+                    logger.warn("Malformed X-Shopify-Triggered-At header '{}', skipping replay protection", triggeredAt)
+                    null
+                }
+                if (eventTime != null) {
+                    val maxAge = Instant.now().minusSeconds(properties.replayProtection.maxAgeSeconds)
+                    if (eventTime.isBefore(maxAge)) {
+                        logger.warn("Shopify webhook event {} is too old: {}", eventId, triggeredAt)
+                        return ResponseEntity.badRequest().body(mapOf("error" to "Event too old"))
+                    }
                 }
             }
         }
