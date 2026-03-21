@@ -5,6 +5,7 @@ import com.autoshipper.fulfillment.domain.OrderStatus
 import com.autoshipper.fulfillment.domain.ShipmentDetails
 import com.autoshipper.fulfillment.domain.service.CreateOrderCommand
 import com.autoshipper.fulfillment.domain.service.OrderService
+import com.autoshipper.fulfillment.handler.dto.ShipOrderRequest
 import com.autoshipper.shared.money.Currency
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -156,6 +157,69 @@ class OrderControllerTest {
         whenever(orderService.findById(unknownId)).thenReturn(null)
 
         mockMvc.perform(get("/api/orders/{id}/tracking", unknownId.toString()))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `POST confirm returns CONFIRMED order`() {
+        val order = testOrder(OrderStatus.CONFIRMED)
+        whenever(orderService.routeToVendor(order.id)).thenReturn(order)
+
+        mockMvc.perform(post("/api/orders/{id}/confirm", order.id.toString()))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.id").value(order.id.toString()))
+            .andExpect(jsonPath("$.status").value("CONFIRMED"))
+    }
+
+    @Test
+    fun `POST ship returns SHIPPED order with tracking`() {
+        val order = testOrder(OrderStatus.SHIPPED)
+        whenever(orderService.markShipped(order.id, "TRK123456", "UPS")).thenReturn(order)
+
+        val requestBody = ShipOrderRequest(trackingNumber = "TRK123456", carrier = "UPS")
+
+        mockMvc.perform(
+            post("/api/orders/{id}/ship", order.id.toString())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestBody))
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.id").value(order.id.toString()))
+            .andExpect(jsonPath("$.status").value("SHIPPED"))
+            .andExpect(jsonPath("$.trackingNumber").value("1Z999"))
+            .andExpect(jsonPath("$.carrier").value("UPS"))
+    }
+
+    @Test
+    fun `POST deliver returns DELIVERED order`() {
+        val order = testOrder(OrderStatus.DELIVERED)
+        whenever(orderService.markDelivered(order.id)).thenReturn(order)
+
+        mockMvc.perform(post("/api/orders/{id}/deliver", order.id.toString()))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.id").value(order.id.toString()))
+            .andExpect(jsonPath("$.status").value("DELIVERED"))
+    }
+
+    @Test
+    fun `POST confirm returns 400 for invalid transition`() {
+        val orderId = UUID.randomUUID()
+        whenever(orderService.routeToVendor(orderId)).thenThrow(
+            IllegalArgumentException("Cannot route order $orderId: expected PENDING but was SHIPPED")
+        )
+
+        mockMvc.perform(post("/api/orders/{id}/confirm", orderId.toString()))
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `POST deliver returns 404 for unknown order`() {
+        val unknownId = UUID.randomUUID()
+        whenever(orderService.markDelivered(unknownId)).thenThrow(
+            IllegalArgumentException("Order $unknownId not found")
+        )
+
+        mockMvc.perform(post("/api/orders/{id}/deliver", unknownId.toString()))
             .andExpect(status().isNotFound)
     }
 }

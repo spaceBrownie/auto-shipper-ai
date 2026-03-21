@@ -133,6 +133,82 @@ curl -s "http://localhost:8080/api/compliance/skus/$SKU_ID" | python3 -m json.to
 | `auditHistory` length | 4 (one per check type) |
 | Each entry `checkType` | `IP_CHECK`, `CLAIMS_CHECK`, `PROCESSOR_CHECK`, `SOURCING_CHECK` |
 
+### 1.2d Compliance Re-Check (Cross-SKU Isolation)
+
+Verify that compliance failures on one SKU do not contaminate another SKU's compliance results.
+
+**Step 1:** Create a SKU with a trademarked name and run compliance (should fail):
+
+```bash
+curl -s -X POST http://localhost:8080/api/skus \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Adidas Ultraboost Replica","category":"Footwear"}' | python3 -m json.tool
+
+CONTAMINATION_FAIL_SKU_ID="<id from response>"
+
+curl -s -X POST "http://localhost:8080/api/compliance/skus/$CONTAMINATION_FAIL_SKU_ID/check" \
+  -H "Content-Type: application/json" \
+  -d '{"productDescription":"Athletic running shoes"}' | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `latestResult` | `FAILED` |
+
+Verify SKU is terminated:
+```bash
+curl -s "http://localhost:8080/api/skus/$CONTAMINATION_FAIL_SKU_ID" | python3 -m json.tool
+# currentState -> "TERMINATED", terminationReason -> "COMPLIANCE_VIOLATION"
+```
+
+**Step 2:** Create a NEW SKU with a clean name and run compliance (should pass):
+
+```bash
+curl -s -X POST http://localhost:8080/api/skus \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Portable LED Desk Lamp","category":"Home Office"}' | python3 -m json.tool
+
+CLEAN_SKU_ID="<id from response>"
+
+curl -s -X POST "http://localhost:8080/api/compliance/skus/$CLEAN_SKU_ID/check" \
+  -H "Content-Type: application/json" \
+  -d '{"productDescription":"Adjustable brightness LED lamp with USB charging port"}' | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `latestResult` | `CLEARED` |
+
+Verify the clean SKU advanced to VALIDATION_PENDING (not affected by the failed SKU):
+```bash
+curl -s "http://localhost:8080/api/skus/$CLEAN_SKU_ID" | python3 -m json.tool
+# currentState -> "VALIDATION_PENDING"
+```
+
+**Step 3:** Query compliance audit for the clean SKU and verify no contamination:
+
+```bash
+curl -s "http://localhost:8080/api/compliance/skus/$CLEAN_SKU_ID" | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `latestResult` | `CLEARED` |
+| `auditHistory` | 4 entries, all `CLEARED` — no `FAILED` entries from the other SKU |
+
+**Step 4:** Query the failed SKU audit to confirm it still shows failure:
+
+```bash
+curl -s "http://localhost:8080/api/compliance/skus/$CONTAMINATION_FAIL_SKU_ID" | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `latestResult` | `FAILED` |
+| `auditHistory` | Contains at least one `FAILED` entry with `IP_INFRINGEMENT` |
+
+**Checkpoint:** If the clean SKU's audit contains any FAILED entries, compliance state is leaking between SKUs.
+
 ### 1.3 Advance: VALIDATION_PENDING to COST_GATING
 
 **Note:** If step 1.2 auto-advanced the SKU to `VALIDATION_PENDING` via the compliance listener, skip the manual transition below and go straight to 1.3.
@@ -305,19 +381,42 @@ Save the order `id`:
 ORDER_ID="<id from response>"
 ```
 
-### 2.3 Advance Order to DELIVERED (via DB)
+### 2.3 Advance Order to DELIVERED (via REST)
 
-There are no REST endpoints for `routeToVendor`, `markShipped`, or `markDelivered` — these are internal service methods invoked by the `ShipmentTracker` scheduler. For E2E testing, advance the order through the DB:
+Use the order state transition REST endpoints to advance the order through its lifecycle. This exercises the full `OrderService` methods, including domain event publishing.
 
 ```bash
-PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
-  UPDATE orders SET status = 'CONFIRMED', updated_at = NOW() WHERE id = '$ORDER_ID';
-  UPDATE orders SET status = 'SHIPPED', tracking_number = 'TRK123456', carrier = 'UPS', updated_at = NOW() WHERE id = '$ORDER_ID';
-  UPDATE orders SET status = 'DELIVERED', updated_at = NOW() WHERE id = '$ORDER_ID';
-"
+# Confirm order
+curl -s -X POST "http://localhost:8080/api/orders/$ORDER_ID/confirm" | python3 -m json.tool
+# Expected: status = "CONFIRMED"
+
+# Ship order
+curl -s -X POST "http://localhost:8080/api/orders/$ORDER_ID/ship" \
+  -H "Content-Type: application/json" \
+  -d '{"trackingNumber":"TRK123456","carrier":"UPS"}' | python3 -m json.tool
+# Expected: status = "SHIPPED", trackingNumber = "TRK123456"
+
+# Deliver order
+curl -s -X POST "http://localhost:8080/api/orders/$ORDER_ID/deliver" | python3 -m json.tool
+# Expected: status = "DELIVERED"
 ```
 
-**Note:** This DB-only approach bypasses `OrderService.markDelivered()`, so the `OrderFulfilled` event is NOT published and the `OrderEventListener` does NOT fire. To test the full AFTER_COMMIT event chain for `OrderEventListener`, you would need a REST endpoint for order state transitions (not yet implemented — see [Gap](#known-gaps) below).
+**Verification:** After delivery, the `OrderFulfilled` event fires via `AFTER_COMMIT`, and the `OrderEventListener` creates a `capital_order_records` entry and credits the reserve. Verify:
+
+```bash
+# Check that capital_order_records was created automatically
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
+  "SELECT order_id, sku_id, total_amount, status, refunded FROM capital_order_records WHERE order_id = '$ORDER_ID';"
+```
+
+| Column | Expected |
+|---|---|
+| `order_id` | `$ORDER_ID` |
+| `total_amount` | `199.9900` |
+| `status` | `DELIVERED` |
+| `refunded` | `false` |
+
+**Checkpoint:** If no `capital_order_records` row exists, the `OrderEventListener` AFTER_COMMIT + REQUIRES_NEW pattern is broken.
 
 ---
 
@@ -325,22 +424,25 @@ PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
 
 ### 3.1 Seed Capital Data
 
-Since the order was advanced via DB (bypassing `OrderEventListener`), manually insert the capital order record and reserve account:
+The `OrderEventListener` automatically creates the first `capital_order_records` entry and credits the reserve when the order is delivered via REST (Phase 2.3). To generate meaningful P&L data, add more orders:
 
 ```bash
 PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
-  -- Capital order record (what OrderEventListener would create)
-  INSERT INTO capital_order_records (id, order_id, sku_id, total_amount, currency, status, refunded, chargebacked, recorded_at)
-  VALUES (gen_random_uuid(), '$ORDER_ID', '$SKU_ID'::uuid, 199.9900, 'USD', 'DELIVERED', false, false, NOW());
-
-  -- Add more orders for meaningful P&L data (10 orders over 10 days)
+  -- Add more orders for meaningful P&L data (9 additional orders over 9 days)
   INSERT INTO capital_order_records (id, order_id, sku_id, total_amount, currency, status, refunded, chargebacked, recorded_at)
   SELECT gen_random_uuid(), gen_random_uuid(), '$SKU_ID'::uuid, 199.9900, 'USD', 'DELIVERED', false, false, NOW() - (i || ' days')::interval
   FROM generate_series(1, 9) AS s(i);
+"
+```
 
-  -- Reserve account (10% of 10 orders x \$199.99 = \$199.99)
+If a reserve account does not yet exist (first run), create one:
+
+```bash
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
+  -- Create reserve account if none exists (10% of 10 orders x \$199.99 = \$199.99)
   INSERT INTO reserve_accounts (id, balance_amount, balance_currency, target_rate_min, target_rate_max, last_updated_at, version)
-  VALUES (gen_random_uuid(), 199.9900, 'USD', 10, 15, NOW(), 0);
+  SELECT gen_random_uuid(), 199.9900, 'USD', 10, 15, NOW(), 0
+  WHERE NOT EXISTS (SELECT 1 FROM reserve_accounts);
 "
 ```
 
@@ -873,6 +975,9 @@ Expected: Similar product names from different sources (e.g., CJ and YouTube/Red
 | `POST` | `/api/vendors/{id}/activate` | Activate vendor |
 | `POST` | `/api/vendors/{id}/score` | Trigger vendor reliability scoring |
 | `POST` | `/api/orders` | Create order |
+| `POST` | `/api/orders/{id}/confirm` | Confirm order (PENDING -> CONFIRMED) |
+| `POST` | `/api/orders/{id}/ship` | Ship order with tracking (CONFIRMED -> SHIPPED) |
+| `POST` | `/api/orders/{id}/deliver` | Deliver order (SHIPPED -> DELIVERED) |
 | `GET` | `/api/capital/reserve` | Reserve balance + health |
 | `GET` | `/api/capital/skus/{id}/pnl?from=&to=` | SKU P&L report |
 | `GET` | `/api/capital/skus/{id}/margin-history` | SKU margin snapshot history |
@@ -897,7 +1002,6 @@ Expected: Similar product names from different sources (e.g., CJ and YouTube/Red
 
 | Gap | Impact | Workaround |
 |---|---|---|
-| No REST endpoints for order state transitions (`routeToVendor`, `markShipped`, `markDelivered`) | Cannot test `OrderEventListener` AFTER_COMMIT chain via HTTP | Update order status via DB; manually insert `capital_order_records` |
 | No REST endpoint to trigger `MarginSweepJob` on demand | Must restart app to trigger sweep | Restart the application; sweep fires immediately on startup |
 | `MarginSweepSkuProcessor` estimates cost as `revenue * 0.50` | P&L cost figures are approximations, not from cost envelope | Acceptable for Phase 1; will use real cost envelope data later |
 | No REST endpoint to trigger `KillWindowMonitor` on demand | Must restart app or wait for 1 AM cron | Restart the application; or insert qualifying data and check after next scheduled run |
