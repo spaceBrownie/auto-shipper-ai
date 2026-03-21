@@ -57,19 +57,14 @@ jobs:
           # Parse JUnit XML reports to ensure integration tests actually executed.
           # Prevents silent-skip regressions (PM-004, PM-006, RAT-18).
 
-          REPORT_DIR="modules/app/build/test-results/test"
-
-          if [ ! -d "$REPORT_DIR" ]; then
-            echo "FAIL: Test report directory not found at $REPORT_DIR"
-            exit 1
-          fi
+          REPORT_DIRS="modules/*/build/test-results/test"
 
           check_test_count() {
             local class_name="$1"
             local min_expected="$2"
             local file
 
-            file=$(find "$REPORT_DIR" -name "TEST-${class_name}.xml" 2>/dev/null | head -1)
+            file=$(find $REPORT_DIRS -name "TEST-${class_name}.xml" 2>/dev/null | head -1)
 
             if [ -z "$file" ]; then
               echo "FAIL: No test report found for $class_name"
@@ -109,6 +104,12 @@ jobs:
           check_test_count "com.autoshipper.pricing.PricingInitializerIntegrationTest" 2 || FAILURES=$((FAILURES + 1))
           check_test_count "com.autoshipper.portfolio.DemandScanJobIntegrationTest" 3 || FAILURES=$((FAILURES + 1))
           check_test_count "com.autoshipper.fulfillment.OrderTransitionIntegrationTest" 4 || FAILURES=$((FAILURES + 1))
+          check_test_count "com.autoshipper.fulfillment.handler.webhook.ShopifyHmacVerificationFilterTest" 9 || FAILURES=$((FAILURES + 1))
+          check_test_count "com.autoshipper.fulfillment.handler.webhook.ShopifyWebhookControllerTest" 7 || FAILURES=$((FAILURES + 1))
+          check_test_count "com.autoshipper.fulfillment.handler.webhook.ShopifyWebhookDeduplicationTest" 2 || FAILURES=$((FAILURES + 1))
+          check_test_count "com.autoshipper.fulfillment.handler.webhook.ShopifyWebhookHmacIntegrationTest" 3 || FAILURES=$((FAILURES + 1))
+          check_test_count "com.autoshipper.fulfillment.domain.service.ShopifyOrderProcessingServiceTest" 4 || FAILURES=$((FAILURES + 1))
+          check_test_count "com.autoshipper.fulfillment.domain.service.LineItemOrderCreatorTest" 4 || FAILURES=$((FAILURES + 1))
           check_test_count "com.autoshipper.AutoShipperApplicationTest" 1 || FAILURES=$((FAILURES + 1))
 
           if [ "$FAILURES" -gt 0 ]; then
