@@ -297,7 +297,9 @@ For the "Risks & Decisions Needed" section, use a red-tinted callout:
 
 #### Images (Diagrams)
 
-Embed SVGs or PNGs as hosted images. If images were generated with Mermaid CLI during report creation, reference them via `<img>` tag. Use `width="100%"` and `max-width` for mobile responsiveness:
+**Always use PNG for email, never SVG.** Mermaid-generated SVGs use `<foreignObject>` for text, which Gmail and most email clients strip — resulting in shapes without labels. Render with `mmdc -s 2` for 2x retina resolution and `-b white` for a clean background.
+
+Embed as hosted images via `<img>` tag. Use `width="100%"` and `max-width` for mobile responsiveness:
 
 ```html
 <img src="cid:pipeline-status" alt="Autonomous Pipeline Status" style="width: 100%; max-width: 600px; height: auto; margin: 16px 0; border-radius: 4px;">

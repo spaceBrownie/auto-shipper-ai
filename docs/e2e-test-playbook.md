@@ -1,9 +1,9 @@
 # E2E Test Playbook
 
 End-to-end manual test script for the full SKU lifecycle through capital protection, compliance guards, and portfolio orchestration.
-Covers: SKU creation, compliance checks, state machine, cost gate, stress test, pricing, platform listing (FR-020), orders, reserve management, margin monitoring, automated shutdown rules, portfolio experiments, kill window monitoring, priority ranking, and demand scan job.
+Covers: SKU creation, compliance checks, state machine, cost gate, stress test, pricing, platform listing (FR-020), orders, reserve management, margin monitoring, automated shutdown rules, portfolio experiments, kill window monitoring, priority ranking, demand scan job, and demand signal smoke test (FR-017).
 
-**Last validated:** 2026-03-20 on branch `feat/RAT-23-pm012-prevention-constraints`
+**Last validated:** 2026-03-21 on branch `feat/RAT-24-shopify-admin-api-contract-tests`
 
 ---
 
@@ -707,7 +707,24 @@ curl -s http://localhost:8080/api/portfolio/demand-scan/rejections | python3 -m 
 # Expected: []
 ```
 
-### 8.2 Trigger Demand Scan
+### 8.2 Smoke Test Demand Signal Adapters (FR-017)
+
+Before triggering the full scan, run the smoke test to verify all 4 demand signal adapters (CJ, Google Trends, YouTube, Reddit) can respond. This is a quick pre-flight check — rate limited to 1 request per 60 seconds.
+
+```bash
+curl -s -X POST http://localhost:8080/api/portfolio/demand-scan/smoke-test | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `overallHealthy` | `true` |
+| `results` length | `4` (one per adapter) |
+| Each result `healthy` | `true` (stubs always succeed in local profile) |
+| Each result `source` | `CJ_DROPSHIPPING`, `GOOGLE_TRENDS`, `YOUTUBE_DATA`, `REDDIT` |
+
+**Checkpoint:** If any adapter shows `healthy: false`, check the adapter's stub configuration. If `source` shows `UNKNOWN`, the smoke service has lost provider identity (see PM-014).
+
+### 8.3 Trigger Demand Scan
 
 ```bash
 curl -s -X POST http://localhost:8080/api/portfolio/demand-scan/trigger | python3 -m json.tool
@@ -718,7 +735,7 @@ curl -s -X POST http://localhost:8080/api/portfolio/demand-scan/trigger | python
 | `message` | `"Demand scan triggered successfully"` |
 | HTTP status | `200` |
 
-### 8.3 Verify Scan Status
+### 8.4 Verify Scan Status
 
 ```bash
 curl -s http://localhost:8080/api/portfolio/demand-scan/status | python3 -m json.tool
@@ -732,7 +749,7 @@ curl -s http://localhost:8080/api/portfolio/demand-scan/status | python3 -m json
 | `experimentsCreated` | `≥ 1` (candidates above 0.6 threshold) |
 | `rejections` | `≥ 1` (candidates below 0.6 threshold) |
 
-### 8.4 Verify Scored Candidates
+### 8.5 Verify Scored Candidates
 
 ```bash
 curl -s http://localhost:8080/api/portfolio/demand-scan/candidates | python3 -m json.tool
@@ -746,7 +763,7 @@ curl -s http://localhost:8080/api/portfolio/demand-scan/candidates | python3 -m 
 | Entries with `passed: false` | Have `compositeScore < 0.6` |
 | `sourceType` values | Mix of `CJ_DROPSHIPPING`, `GOOGLE_TRENDS`, `YOUTUBE_DATA`, `REDDIT` |
 
-### 8.5 Verify Rejections
+### 8.6 Verify Rejections
 
 ```bash
 curl -s http://localhost:8080/api/portfolio/demand-scan/rejections | python3 -m json.tool
@@ -758,7 +775,7 @@ curl -s http://localhost:8080/api/portfolio/demand-scan/rejections | python3 -m 
 | Each entry has `rejectionReason` | `"Below scoring threshold"` |
 | Each entry has dimension scores | Present |
 
-### 8.6 Verify Experiments Created
+### 8.7 Verify Experiments Created
 
 Passing candidates should have created `Experiment` records automatically:
 
@@ -773,7 +790,7 @@ curl -s http://localhost:8080/api/portfolio/experiments | python3 -m json.tool
 | `validationWindowDays` | `30` |
 | `hypothesis` | Contains `"Demand signal detected via"` |
 
-### 8.7 Verify Cooldown / Idempotency
+### 8.8 Verify Cooldown / Idempotency
 
 Trigger the scan again immediately — it should be silently skipped (within 20h cooldown):
 
@@ -791,7 +808,7 @@ PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
 | Expected | `1` (cooldown prevented second run) |
 |---|---|
 
-### 8.8 Verify Blacklist Filtering (Optional)
+### 8.9 Verify Blacklist Filtering (Optional)
 
 Add a blacklist entry, clear scan data, and re-trigger to verify filtering:
 
@@ -819,7 +836,7 @@ print(f'Electronics candidates: {len(electronics)} (expected: 0)')
 "
 ```
 
-### 8.9 Verify pg_trgm Dedup (Optional)
+### 8.10 Verify pg_trgm Dedup (Optional)
 
 Check that trigram similarity dedup is working at the database level:
 
@@ -842,7 +859,9 @@ Expected: Similar product names from different sources (e.g., CJ and YouTube/Red
 |---|---|---|
 | `GET` | `/actuator/health` | App health check |
 | `POST` | `/api/skus` | Create SKU |
+| `GET` | `/api/skus` | List all SKUs |
 | `GET` | `/api/skus/{id}` | Get SKU state |
+| `GET` | `/api/skus/{id}/state-history` | SKU state transition history |
 | `POST` | `/api/skus/{id}/state` | Transition SKU (`{"state":"..."}`) |
 | `POST` | `/api/skus/{id}/verify-costs` | Cost gate verification |
 | `POST` | `/api/skus/{id}/stress-test` | Stress test (`{"estimatedPriceAmount":..., "currency":"USD"}`) |
@@ -852,9 +871,11 @@ Expected: Similar product names from different sources (e.g., CJ and YouTube/Red
 | `POST` | `/api/vendors` | Create vendor |
 | `PATCH` | `/api/vendors/{id}/checklist` | Update onboarding checklist |
 | `POST` | `/api/vendors/{id}/activate` | Activate vendor |
+| `POST` | `/api/vendors/{id}/score` | Trigger vendor reliability scoring |
 | `POST` | `/api/orders` | Create order |
 | `GET` | `/api/capital/reserve` | Reserve balance + health |
 | `GET` | `/api/capital/skus/{id}/pnl?from=&to=` | SKU P&L report |
+| `GET` | `/api/capital/skus/{id}/margin-history` | SKU margin snapshot history |
 | `GET` | `/api/portfolio/summary` | Portfolio KPIs (FR-010) |
 | `GET` | `/api/portfolio/experiments` | List experiments |
 | `POST` | `/api/portfolio/experiments` | Create experiment |
@@ -868,6 +889,7 @@ Expected: Similar product names from different sources (e.g., CJ and YouTube/Red
 | `GET` | `/api/portfolio/demand-scan/candidates` | Scored candidates from latest run (FR-016) |
 | `GET` | `/api/portfolio/demand-scan/rejections` | Rejections from latest run (FR-016) |
 | `POST` | `/api/portfolio/demand-scan/trigger` | Manually trigger demand scan (FR-016) |
+| `POST` | `/api/portfolio/demand-scan/smoke-test` | Smoke test all demand signal adapters (FR-017) |
 
 ---
 

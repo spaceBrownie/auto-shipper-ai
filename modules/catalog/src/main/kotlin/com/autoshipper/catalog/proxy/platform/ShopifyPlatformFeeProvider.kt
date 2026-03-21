@@ -5,6 +5,7 @@ import com.autoshipper.shared.money.Currency
 import com.autoshipper.shared.money.Money
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker
 import io.github.resilience4j.retry.annotation.Retry
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Profile
@@ -25,15 +26,17 @@ import java.math.BigDecimal
 @Profile("!local")
 class ShopifyPlatformFeeProvider(
     @Qualifier("shopifyRestClient") private val shopifyRestClient: RestClient,
-    @Value("\${shopify.api.access-token}") private val accessToken: String,
+    @Value("\${shopify.api.access-token:}") private val accessToken: String,
     @Value("\${shopify.platform.estimated-order-value:100.00}") private val estimatedOrderValue: BigDecimal
 ) : PlatformFeeProvider {
+    private val log = LoggerFactory.getLogger(ShopifyPlatformFeeProvider::class.java)
+
     companion object {
         private val PLAN_FEE_RATES: Map<String, BigDecimal> = mapOf(
             "basic" to BigDecimal("0.020"),
-            "shopify" to BigDecimal("0.010"),
-            "advanced" to BigDecimal("0.005"),
-            "plus" to BigDecimal("0.000")
+            "professional" to BigDecimal("0.010"),
+            "unlimited" to BigDecimal("0.005"),
+            "shopify_plus" to BigDecimal("0.000")
         )
         private val DEFAULT_RATE = BigDecimal("0.020")  // Assume Basic if unknown
     }
@@ -41,6 +44,11 @@ class ShopifyPlatformFeeProvider(
     @CircuitBreaker(name = "shopify-fee")
     @Retry(name = "shopify-fee")
     override fun getFee(): Money {
+        if (accessToken.isBlank()) {
+            log.warn("Shopify access token is blank; cannot retrieve platform fee")
+            throw IllegalStateException("Shopify access token is not configured")
+        }
+
         try {
             @Suppress("UNCHECKED_CAST")
             val response = shopifyRestClient.get()
