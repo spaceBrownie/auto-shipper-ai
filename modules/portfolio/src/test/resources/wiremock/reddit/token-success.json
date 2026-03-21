@@ -1,0 +1,6 @@
+{
+  "access_token": "test-bearer-token-xxx-yyy-zzz",
+  "token_type": "bearer",
+  "expires_in": 3600,
+  "scope": "*"
+}

@@ -178,6 +178,8 @@ portfolio:
 demand-scan:
   enabled: true
   cooldown-hours: 20
+  smoke-test-enabled: false
+  smoke-test-timeout-seconds: 10
   validation-window-days: 30
   scoring-weights:
     demand: 0.4

@@ -1,0 +1,54 @@
+{
+  "kind": "Listing",
+  "data": {
+    "after": "t3_test_after",
+    "dist": 3,
+    "children": [
+      {
+        "kind": "t3",
+        "data": {
+          "name": "t3_post001",
+          "id": "post001",
+          "title": "Best portable blender I've ever owned — Ninja Blast review",
+          "subreddit": "BuyItForLife",
+          "subreddit_subscribers": 1850000,
+          "ups": 2400,
+          "num_comments": 185,
+          "created_utc": 1742428800.0,
+          "selftext": "After trying 5 different portable blenders, the Ninja Blast is the clear winner.",
+          "permalink": "/r/BuyItForLife/comments/test1/best_portable_blender/"
+        }
+      },
+      {
+        "kind": "t3",
+        "data": {
+          "name": "t3_post002",
+          "id": "post002",
+          "title": "Affordable ergonomic chair recommendation?",
+          "subreddit": "BuyItForLife",
+          "subreddit_subscribers": 1850000,
+          "ups": 890,
+          "num_comments": 72,
+          "created_utc": 1742342400.0,
+          "selftext": "Looking for an ergonomic office chair under $300 that will last.",
+          "permalink": "/r/BuyItForLife/comments/test2/affordable_ergonomic_chair/"
+        }
+      },
+      {
+        "kind": "t3",
+        "data": {
+          "name": "t3_post003",
+          "id": "post003",
+          "title": "These wireless earbuds have lasted me 3 years and still going strong",
+          "subreddit": "BuyItForLife",
+          "subreddit_subscribers": 1850000,
+          "ups": 5100,
+          "num_comments": 340,
+          "created_utc": 1742256000.0,
+          "selftext": "Sony WF-1000XM5 — bought them in 2023 and they're still perfect.",
+          "permalink": "/r/BuyItForLife/comments/test3/wireless_earbuds_3_years/"
+        }
+      }
+    ]
+  }
+}

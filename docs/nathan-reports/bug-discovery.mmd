@@ -1,0 +1,17 @@
+flowchart TD
+    A["✅ 27 automated checks written, all passing"]:::neutral --> B{"🔎 Manual Review"}:::review
+    B -->|"Caught"| C["⚠️ Test data built from our assumptions, not real API specs"]:::warning
+    C --> D{"📋 Verified against official API docs"}:::review
+    D -->|"CJ"| E["🔴 Wrong error handling — would miss real failures"]:::critical
+    D -->|"Reddit"| F["🔴 Expired credentials cached 24h — would block demand scanning"]:::critical
+    D -->|"YouTube"| G["🟢 All correct"]:::ok
+    D -->|"Trends"| H["🟢 Minor data adjustments"]:::ok
+
+    A --> I{"🤖 Automated PR Review"}:::review
+    I -->|"Caught"| J["🔴 Health check couldn't identify which source was failing"]:::critical
+
+    classDef neutral fill:#1e293b,stroke:#475569,color:#e2e8f0,font-weight:bold
+    classDef review fill:#1e3a5f,stroke:#3b82f6,color:#dbeafe,font-weight:bold
+    classDef warning fill:#78350f,stroke:#f59e0b,color:#fef3c7,font-weight:bold
+    classDef critical fill:#7f1d1d,stroke:#ef4444,color:#fecaca,font-weight:bold
+    classDef ok fill:#065f46,stroke:#10b981,color:#ecfdf5,font-weight:bold

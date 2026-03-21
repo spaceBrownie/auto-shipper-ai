@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:ht="https://trends.google.com/trending/rss" version="2.0">
+  <channel>
+    <title>Daily Search Trends</title>
+    <description>Recent searches</description>
+    <link>https://trends.google.com/trending/rss?geo=US</link>
+    <atom:link href="https://trends.google.com/trending/rss?geo=US" rel="self" type="application/rss+xml"/>
+    <item>
+      <title>Portable Blender</title>
+      <ht:approx_traffic>5,000+</ht:approx_traffic>
+      <description/>
+      <link>https://trends.google.com/trending/rss?geo=US</link>
+      <pubDate>Wed, 19 Mar 2026 12:00:00 -0700</pubDate>
+      <ht:picture>https://t3.gstatic.com/images?q=tbn:example1</ht:picture>
+      <ht:picture_source>Reuters</ht:picture_source>
+    </item>
+    <item>
+      <title>Ergonomic Office Chair</title>
+      <ht:approx_traffic>2,000+</ht:approx_traffic>
+      <description/>
+      <link>https://trends.google.com/trending/rss?geo=US</link>
+      <pubDate>Wed, 19 Mar 2026 10:00:00 -0700</pubDate>
+      <ht:picture>https://t3.gstatic.com/images?q=tbn:example2</ht:picture>
+      <ht:picture_source>AP</ht:picture_source>
+    </item>
+    <item>
+      <title>Wireless Earbuds</title>
+      <ht:approx_traffic>10,000+</ht:approx_traffic>
+      <description/>
+      <link>https://trends.google.com/trending/rss?geo=US</link>
+      <pubDate>Tue, 18 Mar 2026 08:00:00 -0700</pubDate>
+      <ht:picture>https://t3.gstatic.com/images?q=tbn:example3</ht:picture>
+      <ht:picture_source>CNN</ht:picture_source>
+    </item>
+  </channel>
+</rss>

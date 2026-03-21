@@ -1,0 +1,12 @@
+{
+  "code": 200,
+  "result": true,
+  "message": "Success",
+  "requestId": "a12bc34d-5678-90ef-ghij-klmnopqrstuv",
+  "data": {
+    "pageNum": 1,
+    "pageSize": 20,
+    "total": 0,
+    "list": []
+  }
+}

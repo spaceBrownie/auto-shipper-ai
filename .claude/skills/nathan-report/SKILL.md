@@ -177,8 +177,177 @@ Once the user approves the draft:
 1. **Create a Gmail draft** using `mcp__claude_ai_Gmail__gmail_create_draft`:
    - **Subject:** `[Auto Shipper] NR-{NNN}: {Title}`
    - **To:** Nathan's email (ask the user if not known; save to memory once provided)
-   - **Body:** The full report content. Convert markdown to clean HTML for email readability — headers, bullet points, tables. Keep the same structure but render it for an email client, not a code editor.
+   - **Body:** Convert the markdown report to styled HTML following the Email Design System below. The email should feel like a polished internal newsletter — professional but not corporate, scannable on a phone, engaging without being distracting.
 2. Tell the user the draft is ready in Gmail for final review and send
 3. The file in `docs/nathan-reports/` stays as a local reference copy
 
 If Gmail MCP is not available, tell the user to forward the file manually and note which email to send to.
+
+### Email Design System
+
+The email should feel like a well-designed internal newsletter (think Morning Brew or TLDR). All styling must use **inline CSS** — email clients strip `<style>` blocks.
+
+#### Brand Colors
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| Amber (primary accent) | `#F59E0B` | H1 bottom border, key metric highlights, link color |
+| Dark surface | `#1C1917` | Email header/banner background |
+| Warm white | `#FAFAF9` | Body background |
+| Stone text | `#292524` | Body text |
+| Muted stone | `#78716C` | Secondary text, dates, labels |
+| Green (done) | `#10B981` | Status indicators for completed work |
+| Red (gap/risk) | `#EF4444` | Status indicators for blockers or risks |
+
+#### Typography
+
+All fonts use the stack: `'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif` — Inter is widely supported and clean on mobile.
+
+| Element | Size | Weight | Color | Extra |
+|---------|------|--------|-------|-------|
+| Report title (H1) | 28px | 700 | `#292524` | 3px solid `#F59E0B` bottom border, 12px bottom padding |
+| Section header (H2) | 20px | 600 | `#292524` | 24px top margin, 8px bottom margin |
+| Subsection (H3) | 16px | 600 | `#78716C` | Uppercase, letter-spacing 0.5px |
+| Body text | 15px | 400 | `#292524` | Line-height 1.6 |
+| TL;DR text | 16px | 400 | `#292524` | Inside a callout box (see below) |
+
+#### Layout
+
+- Max width: `640px`, centered with `margin: 0 auto`
+- Body padding: `24px` on sides (comfortable on phone)
+- Section spacing: `32px` between major sections
+
+#### Header Banner
+
+A dark strip at the top of the email with the report identifier:
+
+```html
+<div style="background-color: #1C1917; padding: 16px 24px; border-radius: 8px 8px 0 0;">
+  <span style="color: #F59E0B; font-size: 13px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;">Auto Shipper — Progress Report</span>
+  <br>
+  <span style="color: #A8A29E; font-size: 13px; font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;">NR-{NNN} · {Date}</span>
+</div>
+```
+
+#### TL;DR Callout Box
+
+The TL;DR should stand out as a highlighted summary block:
+
+```html
+<div style="background-color: #FFFBEB; border-left: 4px solid #F59E0B; padding: 16px 20px; border-radius: 4px; margin: 20px 0;">
+  <span style="font-size: 12px; font-weight: 600; color: #D97706; text-transform: uppercase; letter-spacing: 0.5px;">TL;DR</span>
+  <p style="font-size: 16px; color: #292524; line-height: 1.6; margin: 8px 0 0 0;">...</p>
+</div>
+```
+
+#### Status Indicators
+
+Use colored dots for inline status. These render in all email clients:
+
+```html
+<!-- Done -->
+<span style="color: #10B981; font-weight: 600;">● Done</span>
+
+<!-- Not Started -->
+<span style="color: #EF4444; font-weight: 600;">● Not Started</span>
+
+<!-- In Progress -->
+<span style="color: #F59E0B; font-weight: 600;">● In Progress</span>
+
+<!-- Blocked -->
+<span style="color: #EF4444; font-weight: 600;">◆ Blocked</span>
+```
+
+#### Tables
+
+Status snapshot tables should be clean with subtle borders and alternating row shading:
+
+```html
+<table style="width: 100%; border-collapse: collapse; font-size: 14px; font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;">
+  <thead>
+    <tr style="border-bottom: 2px solid #E7E5E4;">
+      <th style="text-align: left; padding: 10px 12px; color: #78716C; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Area</th>
+      <th style="text-align: left; padding: 10px 12px; color: #78716C; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Status</th>
+      <th style="text-align: left; padding: 10px 12px; color: #78716C; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom: 1px solid #F5F5F4;">
+      <td style="padding: 10px 12px;">...</td>
+      <td style="padding: 10px 12px;"><span style="color: #10B981; font-weight: 600;">● Done</span></td>
+      <td style="padding: 10px 12px; color: #78716C;">...</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #F5F5F4; background-color: #FAFAF9;">
+      <!-- alternating row -->
+    </tr>
+  </tbody>
+</table>
+```
+
+#### Risk / Decision Callout
+
+For the "Risks & Decisions Needed" section, use a red-tinted callout:
+
+```html
+<div style="background-color: #FEF2F2; border-left: 4px solid #EF4444; padding: 16px 20px; border-radius: 4px; margin: 20px 0;">
+  <span style="font-size: 12px; font-weight: 600; color: #DC2626; text-transform: uppercase; letter-spacing: 0.5px;">Decision Needed</span>
+  <p style="font-size: 15px; color: #292524; line-height: 1.6; margin: 8px 0 0 0;">...</p>
+</div>
+```
+
+#### Images (Diagrams)
+
+Embed SVGs or PNGs as hosted images. If images were generated with Mermaid CLI during report creation, reference them via `<img>` tag. Use `width="100%"` and `max-width` for mobile responsiveness:
+
+```html
+<img src="cid:pipeline-status" alt="Autonomous Pipeline Status" style="width: 100%; max-width: 600px; height: auto; margin: 16px 0; border-radius: 4px;">
+```
+
+When using Gmail draft API, attach images as inline attachments with matching Content-ID, or host them at a stable URL the recipient can access.
+
+#### Footer
+
+A minimal footer with project context:
+
+```html
+<div style="border-top: 1px solid #E7E5E4; padding-top: 16px; margin-top: 32px;">
+  <p style="font-size: 12px; color: #A8A29E; font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; margin: 0;">
+    Commerce Engine · Auto Shipper AI<br>
+    This report was generated from session work on {date}.
+  </p>
+</div>
+```
+
+#### Full Email Skeleton
+
+```html
+<div style="max-width: 640px; margin: 0 auto; font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #FFFFFF;">
+
+  <!-- Header banner -->
+  <div style="background-color: #1C1917; padding: 16px 24px; border-radius: 8px 8px 0 0;">
+    <span style="color: #F59E0B; font-size: 13px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">Auto Shipper — Progress Report</span><br>
+    <span style="color: #A8A29E; font-size: 13px;">NR-{NNN} · {Date}</span>
+  </div>
+
+  <!-- Body -->
+  <div style="padding: 24px; background-color: #FFFFFF;">
+
+    <h1 style="font-size: 28px; font-weight: 700; color: #292524; margin: 0 0 12px 0; padding-bottom: 12px; border-bottom: 3px solid #F59E0B;">{Title}</h1>
+
+    <!-- TL;DR callout -->
+    <div style="background-color: #FFFBEB; border-left: 4px solid #F59E0B; padding: 16px 20px; border-radius: 4px; margin: 20px 0;">
+      <span style="font-size: 12px; font-weight: 600; color: #D97706; text-transform: uppercase; letter-spacing: 0.5px;">TL;DR</span>
+      <p style="font-size: 16px; color: #292524; line-height: 1.6; margin: 8px 0 0 0;">{summary text}</p>
+    </div>
+
+    <!-- Sections follow with H2/H3, body text, tables, images, callouts as needed -->
+
+  </div>
+
+  <!-- Footer -->
+  <div style="padding: 16px 24px; border-top: 1px solid #E7E5E4;">
+    <p style="font-size: 12px; color: #A8A29E; margin: 0;">Commerce Engine · Auto Shipper AI<br>Generated from session work on {date}.</p>
+  </div>
+
+</div>
+```
