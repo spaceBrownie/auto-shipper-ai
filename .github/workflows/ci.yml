@@ -102,8 +102,13 @@ jobs:
           # AutoShipperApplicationTest: 1 test (context load)
           check_test_count "com.autoshipper.capital.CapitalIntegrationTest" 6 || FAILURES=$((FAILURES + 1))
           check_test_count "com.autoshipper.capital.MarginSweepIntegrationTest" 4 || FAILURES=$((FAILURES + 1))
+          check_test_count "com.autoshipper.capital.MarginSweepFailureIntegrationTest" 2 || FAILURES=$((FAILURES + 1))
           check_test_count "com.autoshipper.vendor.VendorBreachIntegrationTest" 4 || FAILURES=$((FAILURES + 1))
           check_test_count "com.autoshipper.vendor.VendorEndpointIntegrationTest" 8 || FAILURES=$((FAILURES + 1))
+          check_test_count "com.autoshipper.vendor.VendorSlaMonitorIntegrationTest" 2 || FAILURES=$((FAILURES + 1))
+          check_test_count "com.autoshipper.pricing.PricingInitializerIntegrationTest" 2 || FAILURES=$((FAILURES + 1))
+          check_test_count "com.autoshipper.portfolio.DemandScanJobIntegrationTest" 3 || FAILURES=$((FAILURES + 1))
+          check_test_count "com.autoshipper.fulfillment.OrderTransitionIntegrationTest" 4 || FAILURES=$((FAILURES + 1))
           check_test_count "com.autoshipper.AutoShipperApplicationTest" 1 || FAILURES=$((FAILURES + 1))
 
           if [ "$FAILURES" -gt 0 ]; then

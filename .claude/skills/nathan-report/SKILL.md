@@ -176,7 +176,7 @@ Once the user approves the draft:
 
 1. **Create a Gmail draft** using `mcp__claude_ai_Gmail__gmail_create_draft`:
    - **Subject:** `[Auto Shipper] NR-{NNN}: {Title}`
-   - **To:** Nathan's email (ask the user if not known; save to memory once provided)
+   - **To:** Nathan's email — check memory first (`user_nathan_profile.md` has his email). Only ask the user if not found in memory.
    - **Body:** Convert the markdown report to styled HTML following the Email Design System below. The email should feel like a polished internal newsletter — professional but not corporate, scannable on a phone, engaging without being distracting.
 2. Tell the user the draft is ready in Gmail for final review and send
 3. The file in `docs/nathan-reports/` stays as a local reference copy
@@ -186,6 +186,25 @@ If Gmail MCP is not available, tell the user to forward the file manually and no
 ### Email Design System
 
 The email should feel like a well-designed internal newsletter (think Morning Brew or TLDR). All styling must use **inline CSS** — email clients strip `<style>` blocks.
+
+#### Dark Mode Compatibility
+
+Email dark mode varies wildly across clients. Use this strategy to look good everywhere:
+
+1. **Force light mode where supported** — wrap the entire email body in a `<div>` with both `style="background-color: #FFFFFF; color: #292524;"` AND add these attributes to prevent auto-inversion:
+   - Apple Mail / iOS: respects `style="color-scheme: light only; -webkit-color-scheme: light only;"`
+   - Outlook: respects inline backgrounds
+   - Gmail: ignores meta tags and auto-inverts — but respects explicit inline `color` and `background-color`
+
+2. **Every text element must have explicit inline `color`** — Gmail dark mode only inverts elements without explicit color. If `color` is set inline, Gmail leaves it alone. Never rely on inherited color.
+
+3. **Every container must have explicit `background-color`** — don't let any div inherit from body. Set `background-color` on every section wrapper, callout box, table cell, etc.
+
+4. **Images need a visible frame** — in dark mode, white-background PNGs float as bright rectangles. Add `border: 1px solid #E7E5E4; border-radius: 8px; padding: 4px; background-color: #FFFFFF;` to `<img>` tags so the image has a contained look in both themes.
+
+5. **Amber/green status colors survive dark mode** — these are bright enough to read on both light and dark backgrounds. Red (`#EF4444`) also survives. Avoid pale colors like `#78716C` for critical content (use it only for labels, not key data).
+
+6. **Host images on GitHub** — push PNGs to the branch, then reference via `https://raw.githubusercontent.com/{org}/{repo}/{branch}/docs/nathan-reports/{file}.png`. Always include descriptive `alt` text as fallback.
 
 #### Brand Colors
 
@@ -323,15 +342,15 @@ A minimal footer with project context:
 #### Full Email Skeleton
 
 ```html
-<div style="max-width: 640px; margin: 0 auto; font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #FFFFFF;">
+<div style="max-width: 640px; margin: 0 auto; font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #FFFFFF; color: #292524; color-scheme: light only; -webkit-color-scheme: light only;">
 
-  <!-- Header banner -->
+  <!-- Header banner (already dark — looks great in both modes) -->
   <div style="background-color: #1C1917; padding: 16px 24px; border-radius: 8px 8px 0 0;">
     <span style="color: #F59E0B; font-size: 13px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">Auto Shipper — Progress Report</span><br>
     <span style="color: #A8A29E; font-size: 13px;">NR-{NNN} · {Date}</span>
   </div>
 
-  <!-- Body -->
+  <!-- Body — explicit background-color on every container -->
   <div style="padding: 24px; background-color: #FFFFFF;">
 
     <h1 style="font-size: 28px; font-weight: 700; color: #292524; margin: 0 0 12px 0; padding-bottom: 12px; border-bottom: 3px solid #F59E0B;">{Title}</h1>
@@ -342,12 +361,18 @@ A minimal footer with project context:
       <p style="font-size: 16px; color: #292524; line-height: 1.6; margin: 8px 0 0 0;">{summary text}</p>
     </div>
 
-    <!-- Sections follow with H2/H3, body text, tables, images, callouts as needed -->
+    <!-- Images: always framed for dark mode -->
+    <img src="https://raw.githubusercontent.com/{org}/{repo}/{branch}/docs/nathan-reports/{file}.png"
+         alt="{Descriptive fallback text}"
+         style="width: 100%; max-width: 600px; height: auto; margin: 16px 0; border-radius: 8px; border: 1px solid #E7E5E4; padding: 4px; background-color: #FFFFFF;">
+
+    <!-- Sections follow with H2/H3, body text, tables, callouts as needed -->
+    <!-- IMPORTANT: every element must have explicit inline color and background-color -->
 
   </div>
 
   <!-- Footer -->
-  <div style="padding: 16px 24px; border-top: 1px solid #E7E5E4;">
+  <div style="padding: 16px 24px; border-top: 1px solid #E7E5E4; background-color: #FFFFFF;">
     <p style="font-size: 12px; color: #A8A29E; margin: 0;">Commerce Engine · Auto Shipper AI<br>Generated from session work on {date}.</p>
   </div>
 

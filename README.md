@@ -378,6 +378,9 @@ Interactive API docs are available via Swagger UI at **`http://localhost:8080/sw
 | `POST` | `/api/vendors/{id}/score` | Compute vendor reliability score |
 | `POST` | `/api/orders` | Create a new order (with inventory pre-check) |
 | `GET` | `/api/orders/{id}` | Get order detail and status |
+| `POST` | `/api/orders/{id}/confirm` | Confirm order (PENDING → CONFIRMED) |
+| `POST` | `/api/orders/{id}/ship` | Ship order with tracking (CONFIRMED → SHIPPED) |
+| `POST` | `/api/orders/{id}/deliver` | Mark delivered (SHIPPED → DELIVERED, triggers reserve credit) |
 | `GET` | `/api/orders/{id}/tracking` | Get shipment tracking details |
 | `GET` | `/api/capital/reserve` | Current reserve balance and health status |
 | `GET` | `/api/capital/skus/{id}/pnl?from=&to=` | SKU-level P&L (revenue, cost, margins, snapshot count) |
@@ -477,6 +480,7 @@ Implementation is tracked in `feature-requests/FR-NNN-name/` with a `spec.md`, `
 | FR-019 | PM-012 prevention constraints | ✅ Complete |
 | FR-020 | Platform listing adapter (Shopify) | ✅ Complete |
 | FR-021 | Shopify Admin API contract tests | ✅ Complete |
+| FR-022 | Integration test coverage gaps (postmortem sweep) | ✅ Complete |
 
 ## Frontend Dashboard
 
