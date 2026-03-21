@@ -36,7 +36,15 @@ class ShopifyOrderProcessingService(
         val channelOrder = shopifyOrderAdapter.parse(event.rawPayload)
 
         val customerUUID = UUID.nameUUIDFromBytes(channelOrder.customerEmail.toByteArray())
-        val currency = Currency.valueOf(channelOrder.currencyCode)
+        val currency = try {
+            Currency.valueOf(channelOrder.currencyCode)
+        } catch (e: IllegalArgumentException) {
+            logger.error(
+                "Unsupported currency '{}' in Shopify order {} — skipping all line items",
+                channelOrder.currencyCode, channelOrder.channelOrderId
+            )
+            return
+        }
 
         var resolved = 0
         var created = 0

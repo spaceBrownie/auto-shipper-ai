@@ -183,6 +183,20 @@ class ShopifyOrderProcessingServiceTest {
     }
 
     @Test
+    fun `unsupported currency - logs error and returns without creating orders`() {
+        val payload = loadPayload()
+        val adapter = ShopifyOrderAdapter(com.fasterxml.jackson.databind.ObjectMapper())
+        val channelOrder = adapter.parse(payload)
+        val unsupportedOrder = channelOrder.copy(currencyCode = "JPY")
+        whenever(shopifyOrderAdapter.parse(any())).thenReturn(unsupportedOrder)
+
+        processingService.onOrderReceived(createEvent())
+
+        verify(orderService, never()).create(any<CreateOrderCommand>())
+        verify(orderService, never()).setChannelMetadata(any(), any(), any(), any())
+    }
+
+    @Test
     fun `vendor not found - SKU resolves but vendor does not, skips line item`() {
         stubAdapterParse()
 
