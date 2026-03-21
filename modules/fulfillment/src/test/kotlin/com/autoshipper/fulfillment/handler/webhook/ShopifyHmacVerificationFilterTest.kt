@@ -149,4 +149,34 @@ class ShopifyHmacVerificationFilterTest {
         assert(chain.request == null) { "Filter should NOT chain when HMAC was computed for different body" }
         assert(response.status == 401) { "Response should be 401 for mismatched body" }
     }
+
+    @Test
+    fun `blank secrets are filtered out - all requests rejected with 401`() {
+        val blankFilter = ShopifyHmacVerificationFilter(listOf("", "  ", ""))
+        val body = """{"order_id": 12345}"""
+        val request = createRequest(body, "any-hmac-value")
+        val response = MockHttpServletResponse()
+        val chain = MockFilterChain()
+
+        blankFilter.doFilter(request, response, chain)
+
+        assert(chain.request == null) { "Filter should NOT chain when no valid secrets configured" }
+        assert(response.status == 401) { "Response should be 401 when no valid secrets configured" }
+        assert(response.contentAsString.contains("Webhook secrets not configured"))
+    }
+
+    @Test
+    fun `empty secrets list rejects all requests with 401`() {
+        val emptyFilter = ShopifyHmacVerificationFilter(emptyList())
+        val body = """{"order_id": 12345}"""
+        val request = createRequest(body, "any-hmac-value")
+        val response = MockHttpServletResponse()
+        val chain = MockFilterChain()
+
+        emptyFilter.doFilter(request, response, chain)
+
+        assert(chain.request == null) { "Filter should NOT chain when secrets list is empty" }
+        assert(response.status == 401) { "Response should be 401 when secrets list is empty" }
+        assert(response.contentAsString.contains("Webhook secrets not configured"))
+    }
 }

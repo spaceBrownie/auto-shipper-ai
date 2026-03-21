@@ -232,4 +232,23 @@ class ShopifyWebhookControllerTest {
         verify(webhookEventRepository).save(any<WebhookEvent>())
         verify(eventPublisher).publishEvent(any<ShopifyOrderReceivedEvent>())
     }
+
+    @Test
+    fun `concurrent duplicate insert returns 200 already_processed instead of 500`() {
+        whenever(webhookEventRepository.existsByEventId("evt-concurrent")).thenReturn(false)
+        whenever(webhookEventRepository.save(any<WebhookEvent>()))
+            .thenThrow(org.springframework.dao.DataIntegrityViolationException("Duplicate key"))
+
+        mockMvc.perform(
+            post("/webhooks/shopify/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validPayload)
+                .header("X-Shopify-Topic", "orders/create")
+                .header("X-Shopify-Event-Id", "evt-concurrent")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.status").value("already_processed"))
+
+        verify(eventPublisher, never()).publishEvent(any())
+    }
 }

@@ -6,6 +6,7 @@ import com.autoshipper.fulfillment.persistence.WebhookEventRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseEntity
 import org.springframework.transaction.annotation.Transactional
@@ -64,13 +65,18 @@ class ShopifyWebhookController(
             }
         }
 
-        webhookEventRepository.save(
-            WebhookEvent(
-                eventId = eventId,
-                topic = topic,
-                channel = "shopify"
+        try {
+            webhookEventRepository.save(
+                WebhookEvent(
+                    eventId = eventId,
+                    topic = topic,
+                    channel = "shopify"
+                )
             )
-        )
+        } catch (e: DataIntegrityViolationException) {
+            logger.info("Concurrent duplicate Shopify webhook event: {}", eventId)
+            return ResponseEntity.ok(mapOf("status" to "already_processed"))
+        }
 
         eventPublisher.publishEvent(
             ShopifyOrderReceivedEvent(
