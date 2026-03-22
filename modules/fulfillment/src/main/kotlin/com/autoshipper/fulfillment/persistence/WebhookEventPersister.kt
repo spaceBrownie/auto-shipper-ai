@@ -28,7 +28,7 @@ class WebhookEventPersister(
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun tryPersist(event: WebhookEvent): Boolean {
         return try {
-            webhookEventRepository.save(event)
+            webhookEventRepository.saveAndFlush(event)
             true
         } catch (e: DataIntegrityViolationException) {
             logger.info("Concurrent duplicate webhook event: {}", event.eventId)

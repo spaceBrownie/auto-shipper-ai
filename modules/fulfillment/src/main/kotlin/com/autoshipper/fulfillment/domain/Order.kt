@@ -6,6 +6,7 @@ import com.autoshipper.shared.identity.VendorId
 import com.autoshipper.shared.money.Currency
 import com.autoshipper.shared.money.Money
 import jakarta.persistence.*
+import org.springframework.data.domain.Persistable
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -15,6 +16,7 @@ import java.util.UUID
 class Order(
     @Id
     @Column(name = "id", nullable = false, updatable = false)
+    @get:JvmName("_internalId")
     val id: UUID = UUID.randomUUID(),
 
     @Column(name = "idempotency_key", nullable = false, unique = true)
@@ -63,7 +65,21 @@ class Order(
 
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now()
-) {
+) : Persistable<UUID> {
+
+    @Transient
+    private var isNew: Boolean = true
+
+    override fun getId(): UUID = id
+
+    override fun isNew(): Boolean = isNew
+
+    @PostPersist
+    @PostLoad
+    fun markNotNew() {
+        isNew = false
+    }
+
     fun orderId(): OrderId = OrderId(id)
     fun skuId(): SkuId = SkuId(skuId)
     fun vendorId(): VendorId = VendorId(vendorId)

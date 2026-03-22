@@ -2,6 +2,7 @@ package com.autoshipper.catalog.domain
 
 import com.autoshipper.shared.identity.SkuId
 import jakarta.persistence.*
+import org.springframework.data.domain.Persistable
 import java.time.Instant
 import java.util.UUID
 
@@ -10,6 +11,7 @@ import java.util.UUID
 class Sku(
     @Id
     @Column(name = "id", nullable = false, updatable = false)
+    @get:JvmName("_internalId")
     val id: UUID = UUID.randomUUID(),
 
     @Column(name = "name", nullable = false)
@@ -32,7 +34,21 @@ class Sku(
 
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now()
-) {
+) : Persistable<UUID> {
+
+    @Transient
+    private var isNew: Boolean = true
+
+    override fun getId(): UUID = id
+
+    override fun isNew(): Boolean = isNew
+
+    @PostPersist
+    @PostLoad
+    fun markNotNew() {
+        isNew = false
+    }
+
     fun skuId(): SkuId = SkuId(id)
 
     fun currentState(): SkuState = SkuState.fromDiscriminator(

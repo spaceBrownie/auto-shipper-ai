@@ -1,6 +1,7 @@
 package com.autoshipper.catalog.persistence
 
 import jakarta.persistence.*
+import org.springframework.data.domain.Persistable
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -10,6 +11,7 @@ import java.util.UUID
 class PlatformListingEntity(
     @Id
     @Column(name = "id", nullable = false, updatable = false)
+    @get:JvmName("_internalId")
     val id: UUID = UUID.randomUUID(),
 
     @Column(name = "sku_id", nullable = false, updatable = false)
@@ -38,4 +40,18 @@ class PlatformListingEntity(
 
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now()
-)
+) : Persistable<UUID> {
+
+    @Transient
+    private var isNew: Boolean = true
+
+    override fun getId(): UUID = id
+
+    override fun isNew(): Boolean = isNew
+
+    @PostPersist
+    @PostLoad
+    fun markNotNew() {
+        isNew = false
+    }
+}
