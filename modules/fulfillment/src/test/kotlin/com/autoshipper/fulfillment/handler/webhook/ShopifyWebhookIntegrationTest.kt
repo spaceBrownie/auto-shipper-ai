@@ -2,6 +2,7 @@ package com.autoshipper.fulfillment.handler.webhook
 
 import com.autoshipper.fulfillment.config.ShopifyWebhookProperties
 import com.autoshipper.fulfillment.persistence.WebhookEvent
+import com.autoshipper.fulfillment.persistence.WebhookEventPersister
 import com.autoshipper.fulfillment.persistence.WebhookEventRepository
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.junit.jupiter.api.BeforeEach
@@ -21,15 +22,6 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 
-/**
- * Integration test for the full webhook controller flow:
- * controller -> dedup check -> event persistence -> event publishing.
- *
- * Uses MockMvc with manually wired components. External dependencies
- * (PlatformListingResolver, VendorSkuResolver, InventoryChecker) are not
- * involved at the controller layer — they operate in the downstream
- * ShopifyOrderProcessingService triggered by the published event.
- */
 @ExtendWith(MockitoExtension::class)
 class ShopifyWebhookIntegrationTest {
 
@@ -37,30 +29,23 @@ class ShopifyWebhookIntegrationTest {
     lateinit var webhookEventRepository: WebhookEventRepository
 
     @Mock
+    lateinit var webhookEventPersister: WebhookEventPersister
+
+    @Mock
     lateinit var eventPublisher: ApplicationEventPublisher
 
     @Captor
     lateinit var eventCaptor: ArgumentCaptor<ShopifyOrderReceivedEvent>
 
-    @Captor
-    lateinit var webhookEventCaptor: ArgumentCaptor<WebhookEvent>
-
     private lateinit var mockMvc: MockMvc
     private val objectMapper = jacksonObjectMapper()
-
-    private val testSecret = "test-webhook-secret-key"
 
     private val shopifyPayload = """
         {
           "id": 820982911946154508,
-          "admin_graphql_api_id": "gid://shopify/Order/820982911946154508",
           "name": "#1001",
-          "order_number": 1001,
           "currency": "USD",
-          "total_price": "89.98",
-          "subtotal_price": "89.98",
           "financial_status": "paid",
-          "fulfillment_status": null,
           "customer": {
             "id": 115310627314723954,
             "email": "john@example.com",
@@ -86,41 +71,35 @@ class ShopifyWebhookIntegrationTest {
               "price": "29.99",
               "sku": "USB-C-CABLE-001"
             }
-          ],
-          "created_at": "2026-03-21T10:00:00-05:00",
-          "updated_at": "2026-03-21T10:00:00-05:00"
+          ]
         }
     """.trimIndent()
 
     @BeforeEach
     fun setUp() {
         val properties = ShopifyWebhookProperties(
-            secrets = listOf(testSecret),
-            replayProtection = ShopifyWebhookProperties.ReplayProtection(
-                enabled = false,
-                maxAgeSeconds = 300
-            )
+            secrets = listOf("test-webhook-secret-key"),
+            replayProtection = ShopifyWebhookProperties.ReplayProtection(enabled = false, maxAgeSeconds = 300)
         )
 
         val controller = ShopifyWebhookController(
             webhookEventRepository = webhookEventRepository,
+            webhookEventPersister = webhookEventPersister,
             eventPublisher = eventPublisher,
             properties = properties,
             objectMapper = objectMapper
         )
 
-        val converter = MappingJackson2HttpMessageConverter(objectMapper)
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-            .setMessageConverters(StringHttpMessageConverter(), converter)
+            .setMessageConverters(StringHttpMessageConverter(), MappingJackson2HttpMessageConverter(objectMapper))
             .build()
     }
 
     @Test
-    fun `full flow - valid webhook persists event and publishes ShopifyOrderReceivedEvent`() {
+    fun `full flow - valid webhook publishes ShopifyOrderReceivedEvent with raw payload`() {
         val eventId = "integration-test-evt-001"
-
         whenever(webhookEventRepository.existsByEventId(eventId)).thenReturn(false)
-        whenever(webhookEventRepository.save(any<WebhookEvent>())).thenAnswer { it.arguments[0] }
+        whenever(webhookEventPersister.tryPersist(any())).thenReturn(true)
 
         mockMvc.perform(
             post("/webhooks/shopify/orders")
@@ -128,35 +107,25 @@ class ShopifyWebhookIntegrationTest {
                 .content(shopifyPayload)
                 .header("X-Shopify-Topic", "orders/create")
                 .header("X-Shopify-Event-Id", eventId)
-                .header("X-Shopify-Hmac-SHA256", "test-hmac") // HMAC checked by filter, not controller
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.status").value("accepted"))
 
-        // Verify WebhookEvent was persisted with correct fields
-        verify(webhookEventRepository).save(capture(webhookEventCaptor))
-        val savedEvent = webhookEventCaptor.value
-        assert(savedEvent.eventId == eventId) { "Expected eventId=$eventId, got ${savedEvent.eventId}" }
-        assert(savedEvent.topic == "orders/create") { "Expected topic=orders/create, got ${savedEvent.topic}" }
-        assert(savedEvent.channel == "shopify") { "Expected channel=shopify, got ${savedEvent.channel}" }
+        verify(webhookEventPersister).tryPersist(argThat<WebhookEvent> {
+            this.eventId == eventId && topic == "orders/create" && channel == "shopify"
+        })
 
-        // Verify ShopifyOrderReceivedEvent was published with the raw payload
         verify(eventPublisher).publishEvent(capture(eventCaptor))
-        val publishedEvent = eventCaptor.value
-        assert(publishedEvent.shopifyEventId == eventId) {
-            "Expected shopifyEventId=$eventId, got ${publishedEvent.shopifyEventId}"
-        }
-        assert(publishedEvent.rawPayload == shopifyPayload) {
-            "Expected raw payload to match the request body"
-        }
+        val published = eventCaptor.value
+        assert(published.shopifyEventId == eventId)
+        assert(published.rawPayload == shopifyPayload)
     }
 
     @Test
-    fun `full flow - valid webhook with case-insensitive topic`() {
+    fun `full flow - case-insensitive topic accepted`() {
         val eventId = "integration-test-evt-002"
-
         whenever(webhookEventRepository.existsByEventId(eventId)).thenReturn(false)
-        whenever(webhookEventRepository.save(any<WebhookEvent>())).thenAnswer { it.arguments[0] }
+        whenever(webhookEventPersister.tryPersist(any())).thenReturn(true)
 
         mockMvc.perform(
             post("/webhooks/shopify/orders")
@@ -164,11 +133,9 @@ class ShopifyWebhookIntegrationTest {
                 .content(shopifyPayload)
                 .header("X-Shopify-Topic", "Orders/Create")
                 .header("X-Shopify-Event-Id", eventId)
-        )
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.status").value("accepted"))
+        ).andExpect(status().isOk).andExpect(jsonPath("$.status").value("accepted"))
 
-        verify(webhookEventRepository).save(any<WebhookEvent>())
+        verify(webhookEventPersister).tryPersist(any())
         verify(eventPublisher).publishEvent(any<ShopifyOrderReceivedEvent>())
     }
 
@@ -179,11 +146,9 @@ class ShopifyWebhookIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(shopifyPayload)
                 .header("X-Shopify-Topic", "orders/create")
-        )
-            .andExpect(status().isBadRequest)
-            .andExpect(jsonPath("$.error").value("Missing event ID"))
+        ).andExpect(status().isBadRequest).andExpect(jsonPath("$.error").value("Missing event ID"))
 
-        verify(webhookEventRepository, never()).save(any<WebhookEvent>())
+        verify(webhookEventPersister, never()).tryPersist(any())
         verify(eventPublisher, never()).publishEvent(any())
     }
 
@@ -194,9 +159,7 @@ class ShopifyWebhookIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(shopifyPayload)
                 .header("X-Shopify-Event-Id", "evt-missing-topic")
-        )
-            .andExpect(status().isBadRequest)
-            .andExpect(jsonPath("$.error").value("Unexpected topic"))
+        ).andExpect(status().isBadRequest).andExpect(jsonPath("$.error").value("Unexpected topic"))
 
         verify(webhookEventRepository, never()).existsByEventId(any())
         verify(eventPublisher, never()).publishEvent(any())

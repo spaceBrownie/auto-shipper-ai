@@ -4,6 +4,7 @@ import com.autoshipper.fulfillment.domain.channel.ShopifyOrderAdapter
 import com.autoshipper.fulfillment.handler.webhook.ShopifyOrderReceivedEvent
 import com.autoshipper.shared.money.Currency
 import org.slf4j.LoggerFactory
+import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
@@ -12,15 +13,17 @@ import org.springframework.transaction.event.TransactionalEventListener
 import java.util.UUID
 
 /**
- * Orchestrates Shopify order webhook processing after the deduplication
- * record is committed. Each line item is processed in its own REQUIRES_NEW
- * transaction via LineItemOrderCreator — a failure on one line item does not
- * roll back orders created for other line items.
+ * Orchestrates Shopify order webhook processing asynchronously after the
+ * deduplication record is committed. Each line item is processed in its own
+ * REQUIRES_NEW transaction via LineItemOrderCreator — a failure on one line
+ * item does not roll back orders created for other line items.
+ *
+ * @Async ensures processing runs on a separate thread so the HTTP 200
+ * response returns to Shopify immediately (within 5-second timeout).
  *
  * Uses @TransactionalEventListener(AFTER_COMMIT) + @Transactional(REQUIRES_NEW)
- * per CLAUDE.md constraint #6. LineItemOrderCreator.processLineItem() also uses
- * REQUIRES_NEW, which suspends this transaction during each line item — inner
- * failures are isolated and caught without poisoning this outer transaction.
+ * per CLAUDE.md constraint #6. @Async is compatible — the REQUIRES_NEW
+ * transaction simply runs on the async thread instead of the commit thread.
  */
 @Component
 class ShopifyOrderProcessingService(
@@ -29,6 +32,7 @@ class ShopifyOrderProcessingService(
 ) {
     private val logger = LoggerFactory.getLogger(ShopifyOrderProcessingService::class.java)
 
+    @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun onOrderReceived(event: ShopifyOrderReceivedEvent) {

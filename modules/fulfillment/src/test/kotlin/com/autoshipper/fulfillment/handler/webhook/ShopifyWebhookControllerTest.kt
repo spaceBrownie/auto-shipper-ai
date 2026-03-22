@@ -2,6 +2,7 @@ package com.autoshipper.fulfillment.handler.webhook
 
 import com.autoshipper.fulfillment.config.ShopifyWebhookProperties
 import com.autoshipper.fulfillment.persistence.WebhookEvent
+import com.autoshipper.fulfillment.persistence.WebhookEventPersister
 import com.autoshipper.fulfillment.persistence.WebhookEventRepository
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.junit.jupiter.api.BeforeEach
@@ -25,6 +26,9 @@ class ShopifyWebhookControllerTest {
 
     @Mock
     lateinit var webhookEventRepository: WebhookEventRepository
+
+    @Mock
+    lateinit var webhookEventPersister: WebhookEventPersister
 
     @Mock
     lateinit var eventPublisher: ApplicationEventPublisher
@@ -64,6 +68,7 @@ class ShopifyWebhookControllerTest {
 
         val controller = ShopifyWebhookController(
             webhookEventRepository = webhookEventRepository,
+            webhookEventPersister = webhookEventPersister,
             eventPublisher = eventPublisher,
             properties = properties,
             objectMapper = objectMapper
@@ -78,7 +83,7 @@ class ShopifyWebhookControllerTest {
     @Test
     fun `valid webhook returns 200 with accepted status`() {
         whenever(webhookEventRepository.existsByEventId("evt-123")).thenReturn(false)
-        whenever(webhookEventRepository.save(any<WebhookEvent>())).thenAnswer { it.arguments[0] }
+        whenever(webhookEventPersister.tryPersist(any())).thenReturn(true)
 
         mockMvc.perform(
             post("/webhooks/shopify/orders")
@@ -90,7 +95,7 @@ class ShopifyWebhookControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.status").value("accepted"))
 
-        verify(webhookEventRepository).save(argThat<WebhookEvent> {
+        verify(webhookEventPersister).tryPersist(argThat<WebhookEvent> {
             eventId == "evt-123" && topic == "orders/create" && channel == "shopify"
         })
         verify(eventPublisher).publishEvent(argThat<ShopifyOrderReceivedEvent> {
@@ -113,7 +118,7 @@ class ShopifyWebhookControllerTest {
             .andExpect(jsonPath("$.status").value("already_processed"))
 
         verify(eventPublisher, never()).publishEvent(any())
-        verify(webhookEventRepository, never()).save(any<WebhookEvent>())
+        verify(webhookEventPersister, never()).tryPersist(any())
     }
 
     @Test
@@ -129,7 +134,7 @@ class ShopifyWebhookControllerTest {
             .andExpect(jsonPath("$.error").value("Unexpected topic"))
 
         verify(eventPublisher, never()).publishEvent(any())
-        verify(webhookEventRepository, never()).save(any<WebhookEvent>())
+        verify(webhookEventPersister, never()).tryPersist(any())
     }
 
     @Test
@@ -144,6 +149,7 @@ class ShopifyWebhookControllerTest {
 
         val controller = ShopifyWebhookController(
             webhookEventRepository = webhookEventRepository,
+            webhookEventPersister = webhookEventPersister,
             eventPublisher = eventPublisher,
             properties = properties,
             objectMapper = objectMapper
@@ -169,7 +175,7 @@ class ShopifyWebhookControllerTest {
             .andExpect(jsonPath("$.error").value("Event too old"))
 
         verify(eventPublisher, never()).publishEvent(any())
-        verify(webhookEventRepository, never()).save(any<WebhookEvent>())
+        verify(webhookEventPersister, never()).tryPersist(any())
     }
 
     @Test
@@ -184,6 +190,7 @@ class ShopifyWebhookControllerTest {
 
         val controller = ShopifyWebhookController(
             webhookEventRepository = webhookEventRepository,
+            webhookEventPersister = webhookEventPersister,
             eventPublisher = eventPublisher,
             properties = properties,
             objectMapper = objectMapper
@@ -194,7 +201,7 @@ class ShopifyWebhookControllerTest {
             .build()
 
         whenever(webhookEventRepository.existsByEventId("evt-malformed")).thenReturn(false)
-        whenever(webhookEventRepository.save(any<WebhookEvent>())).thenAnswer { it.arguments[0] }
+        whenever(webhookEventPersister.tryPersist(any())).thenReturn(true)
 
         replayMockMvc.perform(
             post("/webhooks/shopify/orders")
@@ -207,14 +214,14 @@ class ShopifyWebhookControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.status").value("accepted"))
 
-        verify(webhookEventRepository).save(any<WebhookEvent>())
+        verify(webhookEventPersister).tryPersist(any())
         verify(eventPublisher).publishEvent(any<ShopifyOrderReceivedEvent>())
     }
 
     @Test
     fun `replay protection disabled allows stale timestamp`() {
         whenever(webhookEventRepository.existsByEventId("evt-789")).thenReturn(false)
-        whenever(webhookEventRepository.save(any<WebhookEvent>())).thenAnswer { it.arguments[0] }
+        whenever(webhookEventPersister.tryPersist(any())).thenReturn(true)
 
         val staleTimestamp = Instant.now().minusSeconds(600).toString()
 
@@ -229,15 +236,14 @@ class ShopifyWebhookControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.status").value("accepted"))
 
-        verify(webhookEventRepository).save(any<WebhookEvent>())
+        verify(webhookEventPersister).tryPersist(any())
         verify(eventPublisher).publishEvent(any<ShopifyOrderReceivedEvent>())
     }
 
     @Test
-    fun `concurrent duplicate insert returns 200 already_processed instead of 500`() {
+    fun `concurrent duplicate via persister returns 200 already_processed`() {
         whenever(webhookEventRepository.existsByEventId("evt-concurrent")).thenReturn(false)
-        whenever(webhookEventRepository.save(any<WebhookEvent>()))
-            .thenThrow(org.springframework.dao.DataIntegrityViolationException("Duplicate key"))
+        whenever(webhookEventPersister.tryPersist(any())).thenReturn(false)
 
         mockMvc.perform(
             post("/webhooks/shopify/orders")

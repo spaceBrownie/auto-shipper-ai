@@ -2,11 +2,11 @@ package com.autoshipper.fulfillment.handler.webhook
 
 import com.autoshipper.fulfillment.config.ShopifyWebhookProperties
 import com.autoshipper.fulfillment.persistence.WebhookEvent
+import com.autoshipper.fulfillment.persistence.WebhookEventPersister
 import com.autoshipper.fulfillment.persistence.WebhookEventRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
-import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseEntity
 import org.springframework.transaction.annotation.Transactional
@@ -17,6 +17,7 @@ import java.time.Instant
 @RequestMapping("/webhooks/shopify")
 class ShopifyWebhookController(
     private val webhookEventRepository: WebhookEventRepository,
+    private val webhookEventPersister: WebhookEventPersister,
     private val eventPublisher: ApplicationEventPublisher,
     private val properties: ShopifyWebhookProperties,
     private val objectMapper: ObjectMapper
@@ -65,16 +66,10 @@ class ShopifyWebhookController(
             }
         }
 
-        try {
-            webhookEventRepository.save(
-                WebhookEvent(
-                    eventId = eventId,
-                    topic = topic,
-                    channel = "shopify"
-                )
-            )
-        } catch (e: DataIntegrityViolationException) {
-            logger.info("Concurrent duplicate Shopify webhook event: {}", eventId)
+        val persisted = webhookEventPersister.tryPersist(
+            WebhookEvent(eventId = eventId, topic = topic, channel = "shopify")
+        )
+        if (!persisted) {
             return ResponseEntity.ok(mapOf("status" to "already_processed"))
         }
 

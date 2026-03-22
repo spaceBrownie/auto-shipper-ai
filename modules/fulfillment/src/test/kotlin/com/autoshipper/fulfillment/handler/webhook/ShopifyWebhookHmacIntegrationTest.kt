@@ -1,6 +1,7 @@
 package com.autoshipper.fulfillment.handler.webhook
 
 import com.autoshipper.fulfillment.config.ShopifyWebhookProperties
+import com.autoshipper.fulfillment.persistence.WebhookEventPersister
 import com.autoshipper.fulfillment.persistence.WebhookEventRepository
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.junit.jupiter.api.BeforeEach
@@ -14,8 +15,6 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.http.MediaType
-import org.springframework.http.converter.StringHttpMessageConverter
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -25,15 +24,14 @@ import java.util.Base64
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
-/**
- * Integration test verifying the HMAC filter + controller chain.
- * Uses the filter registered manually in MockMvc to test end-to-end HMAC verification.
- */
 @ExtendWith(MockitoExtension::class)
 class ShopifyWebhookHmacIntegrationTest {
 
     @Mock
     lateinit var webhookEventRepository: WebhookEventRepository
+
+    @Mock
+    lateinit var webhookEventPersister: WebhookEventPersister
 
     @Mock
     lateinit var eventPublisher: ApplicationEventPublisher
@@ -53,6 +51,7 @@ class ShopifyWebhookHmacIntegrationTest {
 
         val controller = ShopifyWebhookController(
             webhookEventRepository = webhookEventRepository,
+            webhookEventPersister = webhookEventPersister,
             eventPublisher = eventPublisher,
             properties = properties,
             objectMapper = objectMapper
@@ -75,7 +74,7 @@ class ShopifyWebhookHmacIntegrationTest {
     fun `valid HMAC passes filter and reaches controller - returns 200`() {
         val hmac = computeHmac(payload, testSecret)
         whenever(webhookEventRepository.existsByEventId("evt-hmac-1")).thenReturn(false)
-        whenever(webhookEventRepository.save(any())).thenAnswer { it.arguments[0] }
+        whenever(webhookEventPersister.tryPersist(any())).thenReturn(true)
 
         mockMvc.perform(
             post("/webhooks/shopify/orders")
@@ -103,7 +102,7 @@ class ShopifyWebhookHmacIntegrationTest {
         )
             .andExpect(status().isUnauthorized)
 
-        verify(webhookEventRepository, never()).save(any())
+        verify(webhookEventPersister, never()).tryPersist(any())
         verify(eventPublisher, never()).publishEvent(any())
     }
 
@@ -118,6 +117,6 @@ class ShopifyWebhookHmacIntegrationTest {
         )
             .andExpect(status().isUnauthorized)
 
-        verify(webhookEventRepository, never()).save(any())
+        verify(webhookEventPersister, never()).tryPersist(any())
     }
 }
