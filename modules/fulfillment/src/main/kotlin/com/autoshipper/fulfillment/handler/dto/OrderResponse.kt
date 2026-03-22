@@ -11,6 +11,9 @@ data class OrderResponse(
     val trackingNumber: String?,
     val carrier: String?,
     val estimatedDelivery: String?,
+    val channel: String? = null,
+    val channelOrderId: String? = null,
+    val channelOrderNumber: String? = null,
     val createdAt: String,
     val updatedAt: String
 )

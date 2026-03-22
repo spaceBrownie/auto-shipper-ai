@@ -1,7 +1,7 @@
 # E2E Test Playbook
 
 End-to-end manual test script for the full SKU lifecycle through capital protection, compliance guards, and portfolio orchestration.
-Covers: SKU creation, compliance checks, state machine, cost gate, stress test, pricing, platform listing (FR-020), orders, reserve management, margin monitoring, automated shutdown rules, portfolio experiments, kill window monitoring, priority ranking, demand scan job, and demand signal smoke test (FR-017).
+Covers: SKU creation, compliance checks, state machine, cost gate, stress test, pricing, platform listing (FR-020), Shopify webhook order creation (FR-023), orders, reserve management, margin monitoring, automated shutdown rules, portfolio experiments, kill window monitoring, priority ranking, demand scan job, and demand signal smoke test (FR-017).
 
 **Last validated:** 2026-03-21 on branch `feat/RAT-24-shopify-admin-api-contract-tests`
 
@@ -39,7 +39,7 @@ PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
                  compliance_audit, experiments, kill_recommendations,
                  priority_ranking_log, scaling_flags, refund_alerts, discovery_blacklist,
                  demand_candidates, candidate_rejections, demand_scan_runs,
-                 platform_listings
+                 platform_listings, webhook_events
   CASCADE;
 "
 ```
@@ -318,6 +318,152 @@ PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
 | `status` | `ACTIVE` |
 
 **Checkpoint:** If no row exists, the `PlatformListingListener` AFTER_COMMIT + REQUIRES_NEW pattern is broken.
+
+---
+
+## Phase 1b: Shopify Webhook Order Creation (FR-023)
+
+This phase tests the Shopify `orders/create` webhook flow: HMAC verification, deduplication, order creation, and idempotency. Requires Phase 1 to complete (SKU must be LISTED with an active platform listing).
+
+### Prerequisites
+
+Set the webhook secret in the environment before starting the application:
+
+```bash
+export SHOPIFY_WEBHOOK_SECRETS="e2e-test-webhook-secret"
+```
+
+Restart the application if it was already running:
+
+```bash
+pkill -f "bootRun"
+./gradlew :app:bootRun --args='--spring.profiles.active=local'
+```
+
+### 1b.1 Compute HMAC for Test Payload
+
+The test payload must be signed with the configured secret. Compute the HMAC using `openssl`:
+
+```bash
+# Define the test payload
+WEBHOOK_PAYLOAD='{
+  "id": 820982911946154508,
+  "name": "#1001",
+  "currency": "USD",
+  "customer": {"email": "buyer@example.com"},
+  "line_items": [{
+    "product_id": 788032119674292922,
+    "variant_id": 788032119674292923,
+    "quantity": 1,
+    "price": "199.99",
+    "title": "E2E Test SKU"
+  }]
+}'
+
+# Compute HMAC-SHA256 and Base64-encode
+HMAC=$(printf '%s' "$WEBHOOK_PAYLOAD" | openssl dgst -sha256 -hmac "e2e-test-webhook-secret" -binary | openssl base64)
+
+echo "HMAC: $HMAC"
+```
+
+### 1b.2 Send Valid Webhook
+
+```bash
+curl -s -X POST http://localhost:8080/webhooks/shopify/orders \
+  -H "Content-Type: application/json" \
+  -H "X-Shopify-Topic: orders/create" \
+  -H "X-Shopify-Event-Id: e2e-webhook-001" \
+  -H "X-Shopify-Hmac-SHA256: $HMAC" \
+  -d "$WEBHOOK_PAYLOAD" | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `status` | `accepted` |
+| HTTP status | `200` |
+
+### 1b.3 Verify Webhook Event Persisted
+
+```bash
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
+  "SELECT event_id, topic, channel FROM webhook_events WHERE event_id = 'e2e-webhook-001';"
+```
+
+| Column | Expected |
+|---|---|
+| `event_id` | `e2e-webhook-001` |
+| `topic` | `orders/create` |
+| `channel` | `shopify` |
+
+### 1b.4 Verify Internal Order Created
+
+If the platform listing from Phase 1.7 has `external_listing_id` matching the webhook's `product_id`, an internal Order should be created in PENDING status:
+
+```bash
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
+  "SELECT id, status, channel, channel_order_id, channel_order_number FROM orders WHERE channel = 'shopify' AND channel_order_id = '820982911946154508';"
+```
+
+| Column | Expected |
+|---|---|
+| `status` | `PENDING` |
+| `channel` | `shopify` |
+| `channel_order_id` | `820982911946154508` |
+| `channel_order_number` | `#1001` |
+
+**Note:** If no order is created, check that `PlatformListingResolver` can resolve the `product_id` from the webhook to an internal SKU. The stub adapter's deterministic IDs may not match the test payload's `product_id` — adjust the payload accordingly.
+
+### 1b.5 Verify Idempotency (Send Same Webhook Again)
+
+```bash
+curl -s -X POST http://localhost:8080/webhooks/shopify/orders \
+  -H "Content-Type: application/json" \
+  -H "X-Shopify-Topic: orders/create" \
+  -H "X-Shopify-Event-Id: e2e-webhook-001" \
+  -H "X-Shopify-Hmac-SHA256: $HMAC" \
+  -d "$WEBHOOK_PAYLOAD" | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `status` | `already_processed` |
+| HTTP status | `200` |
+
+Verify no duplicate order was created:
+
+```bash
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
+  "SELECT COUNT(*) FROM orders WHERE channel = 'shopify' AND channel_order_id = '820982911946154508';"
+```
+
+| Expected | `1` (not 2) |
+|---|---|
+
+### 1b.6 Verify HMAC Rejection (Wrong Signature)
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8080/webhooks/shopify/orders \
+  -H "Content-Type: application/json" \
+  -H "X-Shopify-Topic: orders/create" \
+  -H "X-Shopify-Event-Id: e2e-webhook-002" \
+  -H "X-Shopify-Hmac-SHA256: aW52YWxpZC1zaWduYXR1cmU=" \
+  -d "$WEBHOOK_PAYLOAD"
+```
+
+| Expected HTTP status | `401` |
+|---|---|
+
+Verify the rejected event was NOT persisted:
+
+```bash
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
+  "SELECT COUNT(*) FROM webhook_events WHERE event_id = 'e2e-webhook-002';"
+```
+
+| Expected | `0` |
+|---|---|
+
+**Checkpoint:** If the invalid HMAC returns 200 instead of 401, the `ShopifyHmacVerificationFilter` is not intercepting requests to `/webhooks/shopify/*`.
 
 ---
 
@@ -995,6 +1141,7 @@ Expected: Similar product names from different sources (e.g., CJ and YouTube/Red
 | `GET` | `/api/portfolio/demand-scan/rejections` | Rejections from latest run (FR-016) |
 | `POST` | `/api/portfolio/demand-scan/trigger` | Manually trigger demand scan (FR-016) |
 | `POST` | `/api/portfolio/demand-scan/smoke-test` | Smoke test all demand signal adapters (FR-017) |
+| `POST` | `/webhooks/shopify/orders` | Receive Shopify orders/create webhook (FR-023) |
 
 ---
 
@@ -1026,5 +1173,6 @@ These are the cross-module event listener patterns that must hold for the system
 | `CatalogKillWindowListener` | `KillWindowBreached` | `AFTER_COMMIT` + `REQUIRES_NEW` | SKU not auto-terminated after kill window breach (FR-010) |
 | `ComplianceOrchestrator` | `SkuReadyForComplianceCheck` | `AFTER_COMMIT` + `REQUIRES_NEW` | Compliance check never triggered on SKU creation (FR-011) |
 | `PlatformListingListener` | `SkuStateChanged` | `AFTER_COMMIT` + `REQUIRES_NEW` | Platform listing never created/paused/archived on SKU transition (FR-020) |
+| `ShopifyOrderProcessingService` | `ShopifyOrderReceivedEvent` | `AFTER_COMMIT` + `REQUIRES_NEW` | Shopify webhook accepted but orders never created (FR-023) |
 
 **Rule:** Any `@TransactionalEventListener(AFTER_COMMIT)` handler that writes to the database **must** use `@Transactional(propagation = Propagation.REQUIRES_NEW)`. Without it, JPA operations silently succeed but are never flushed.

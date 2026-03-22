@@ -1,6 +1,7 @@
 package com.autoshipper.vendor.domain
 
 import jakarta.persistence.*
+import org.springframework.data.domain.Persistable
 import java.time.Instant
 import java.util.UUID
 
@@ -9,6 +10,7 @@ import java.util.UUID
 class VendorSkuAssignment(
     @Id
     @Column(name = "id", nullable = false, updatable = false)
+    @get:JvmName("_internalId")
     val id: UUID = UUID.randomUUID(),
 
     @Column(name = "vendor_id", nullable = false)
@@ -22,4 +24,18 @@ class VendorSkuAssignment(
 
     @Column(name = "active", nullable = false)
     var active: Boolean = true
-)
+) : Persistable<UUID> {
+
+    @Transient
+    private var isNew: Boolean = true
+
+    override fun getId(): UUID = id
+
+    override fun isNew(): Boolean = isNew
+
+    @PostPersist
+    @PostLoad
+    fun markNotNew() {
+        isNew = false
+    }
+}

@@ -108,6 +108,9 @@ class OrderController(private val orderService: OrderService) {
         trackingNumber = shipmentDetails.trackingNumber,
         carrier = shipmentDetails.carrier,
         estimatedDelivery = shipmentDetails.estimatedDelivery?.toString(),
+        channel = channel,
+        channelOrderId = channelOrderId,
+        channelOrderNumber = channelOrderNumber,
         createdAt = createdAt.toString(),
         updatedAt = updatedAt.toString()
     )

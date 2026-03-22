@@ -8,8 +8,12 @@ import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
+import jakarta.persistence.PostLoad
+import jakarta.persistence.PostPersist
 import jakarta.persistence.Table
+import jakarta.persistence.Transient
 import jakarta.persistence.UniqueConstraint
+import org.springframework.data.domain.Persistable
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -23,6 +27,7 @@ import java.util.UUID
 class MarginSnapshot(
     @Id
     @Column(name = "id", nullable = false, updatable = false)
+    @get:JvmName("_internalId")
     val id: UUID = UUID.randomUUID(),
 
     @Column(name = "sku_id", nullable = false)
@@ -62,7 +67,21 @@ class MarginSnapshot(
 
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: Instant = Instant.now()
-) {
+) : Persistable<UUID> {
+
+    @Transient
+    private var isNew: Boolean = true
+
+    override fun getId(): UUID = id
+
+    override fun isNew(): Boolean = isNew
+
+    @PostPersist
+    @PostLoad
+    fun markNotNew() {
+        isNew = false
+    }
+
     fun skuId(): SkuId = SkuId(skuId)
     fun revenue(): Money = Money.of(revenueAmount, revenueCurrency)
     fun totalCost(): Money = Money.of(totalCostAmount, totalCostCurrency)
