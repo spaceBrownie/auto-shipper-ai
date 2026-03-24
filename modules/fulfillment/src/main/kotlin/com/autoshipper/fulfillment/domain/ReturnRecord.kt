@@ -3,6 +3,7 @@ package com.autoshipper.fulfillment.domain
 import com.autoshipper.shared.money.Currency
 import com.autoshipper.shared.money.Money
 import jakarta.persistence.*
+import org.springframework.data.domain.Persistable
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -12,6 +13,7 @@ import java.util.UUID
 class ReturnRecord(
     @Id
     @Column(name = "id", nullable = false, updatable = false)
+    @get:JvmName("_internalId")
     val id: UUID = UUID.randomUUID(),
 
     @Column(name = "order_id", nullable = false)
@@ -32,6 +34,20 @@ class ReturnRecord(
 
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: Instant = Instant.now()
-) {
+) : Persistable<UUID> {
+
+    @Transient
+    private var isNew: Boolean = true
+
+    override fun getId(): UUID = id
+
+    override fun isNew(): Boolean = isNew
+
+    @PostPersist
+    @PostLoad
+    fun markNotNew() {
+        isNew = false
+    }
+
     fun returnHandlingCost(): Money = Money.of(returnHandlingCostAmount, returnHandlingCostCurrency)
 }

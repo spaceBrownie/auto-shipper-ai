@@ -1,5 +1,6 @@
 package com.autoshipper
 
+import com.tngtech.archunit.core.domain.JavaClass
 import com.tngtech.archunit.core.domain.JavaMethod
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.core.importer.ImportOption
@@ -8,6 +9,7 @@ import com.tngtech.archunit.lang.ConditionEvents
 import com.tngtech.archunit.lang.SimpleConditionEvent
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition
 import org.junit.jupiter.api.Test
+import org.springframework.data.domain.Persistable
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.event.TransactionPhase
@@ -75,6 +77,37 @@ class ArchitectureTest {
         rule.check(testClasses)
     }
 
+    /**
+     * Rule 3: @Entity classes with assigned (non-generated) @Id must implement Persistable.
+     *
+     * Spring Data JPA's SimpleJpaRepository.save() calls entityInformation.isNew(entity)
+     * to decide between persist() and merge(). For non-Persistable entities, isNew() checks
+     * if the @Id field is null. Assigned IDs (UUID.randomUUID(), external strings) are never
+     * null, so isNew() returns false and save() calls merge() — which issues a SELECT before
+     * INSERT. In REQUIRES_NEW transactions (like WebhookEventPersister), merge()'s deferred
+     * flush means the DataIntegrityViolationException for duplicates is never thrown within
+     * the catch block, breaking deduplication.
+     *
+     * Implementing Persistable<T> with a @Transient isNew flag fixes this: the entity
+     * reports isNew=true on construction, so save() calls persist() directly.
+     *
+     * Violations found by: PM-001 (deferred flush pattern)
+     */
+    @Test
+    fun `entities with assigned IDs must implement Persistable`() {
+        val rule = ArchRuleDefinition.classes()
+            .that().areAnnotatedWith(jakarta.persistence.Entity::class.java)
+            .should(implementPersistableIfAssignedId())
+            .because(
+                "PM-001: @Entity classes whose @Id field lacks @GeneratedValue must implement " +
+                "Persistable<T>. Without it, Spring Data calls merge() instead of persist() " +
+                "for assigned IDs, causing unnecessary SELECT-before-INSERT and breaking " +
+                "deduplication in REQUIRES_NEW transactions."
+            )
+
+        rule.check(productionClasses)
+    }
+
     // --- Custom conditions ---
 
     private fun haveRequiresNewWhenAfterCommit(): ArchCondition<JavaMethod> {
@@ -137,12 +170,45 @@ class ArchitectureTest {
         }
     }
 
-    private fun notUseTestcontainers(): ArchCondition<com.tngtech.archunit.core.domain.JavaClass> {
-        return object : ArchCondition<com.tngtech.archunit.core.domain.JavaClass>(
+    private fun implementPersistableIfAssignedId(): ArchCondition<JavaClass> {
+        return object : ArchCondition<JavaClass>(
+            "implement Persistable if @Id field has no @GeneratedValue"
+        ) {
+            override fun check(javaClass: JavaClass, events: ConditionEvents) {
+                // Find the @Id field
+                val idField = javaClass.allFields.firstOrNull { field ->
+                    field.annotations.any { it.rawType.name == "jakarta.persistence.Id" }
+                } ?: return // No @Id field — not our concern
+
+                // Check if it has @GeneratedValue
+                val hasGeneratedValue = idField.annotations.any {
+                    it.rawType.name == "jakarta.persistence.GeneratedValue"
+                }
+
+                if (hasGeneratedValue) return // Database-generated ID — merge/persist distinction is moot
+
+                // Assigned ID — must implement Persistable
+                if (!javaClass.isAssignableTo(Persistable::class.java)) {
+                    events.add(
+                        SimpleConditionEvent.violated(
+                            javaClass,
+                            "${javaClass.name} has an assigned @Id (no @GeneratedValue) " +
+                            "but does not implement Persistable<T>. This causes Spring Data " +
+                            "to call merge() instead of persist(), leading to unnecessary " +
+                            "SELECT-before-INSERT and potential deferred flush bugs."
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    private fun notUseTestcontainers(): ArchCondition<JavaClass> {
+        return object : ArchCondition<JavaClass>(
             "not use @Testcontainers annotation"
         ) {
             override fun check(
-                javaClass: com.tngtech.archunit.core.domain.JavaClass,
+                javaClass: JavaClass,
                 events: ConditionEvents
             ) {
                 val hasTestcontainers = javaClass.annotations

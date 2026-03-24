@@ -21,10 +21,11 @@ Auto Shipper AI is an autonomous commerce engine designed to handle the entire p
 9. **Discover demand** — daily scheduled scan ingests demand signals from CJ Dropshipping, Google Trends RSS, YouTube Data API, and Reddit; scores candidates on demand, margin potential, and competition; deduplicates via pg_trgm trigram similarity; auto-creates experiments for passing candidates
 10. **List on platforms** — auto-create Shopify product listings on SKU approval (create, pause, archive, price sync), with WireMock contract tests validated against official Shopify Admin API documentation
 11. **Validate API contracts** — WireMock integration tests for all external API adapters (demand signal + Shopify) with recorded response fixtures from real API docs, catching request/response mismatches that unit tests miss
+12. **Detect sales** — receive Shopify `orders/create` webhooks with HMAC-SHA256 signature verification, resolve Shopify products to internal SKUs, create internal orders per line item with per-item transaction isolation, event-level deduplication, and async processing within Shopify's 5-second timeout
 
 **Planned (specs written, not yet built):**
 
-12. **Drive organic traffic** — automated SEO and content marketing with zero ad spend (RAT-14)
+13. **Drive organic traffic** — automated SEO and content marketing with zero ad spend (RAT-14)
 
 ### Product Flow
 
@@ -402,6 +403,7 @@ Interactive API docs are available via Swagger UI at **`http://localhost:8080/sw
 | `GET` | `/api/portfolio/demand-scan/rejections` | Rejections from latest scan with reasons |
 | `POST` | `/api/portfolio/demand-scan/trigger` | Manually trigger a demand scan |
 | `POST` | `/api/portfolio/demand-scan/smoke-test` | Smoke test all demand signal adapters (FR-017) |
+| `POST` | `/webhooks/shopify/orders` | Receive Shopify order webhook (HMAC-verified, async processing) |
 | `GET` | `/actuator/health` | Health check |
 | `GET` | `/actuator/prometheus` | Prometheus metrics |
 
@@ -416,6 +418,7 @@ See `.env.example` for all available configuration. Key variables:
 | `DB_PASSWORD` | Database password (must be set securely) |
 | `SHOPIFY_API_KEY` | Shopify storefront integration (Phase 2+) |
 | `SHOPIFY_API_SECRET` | Shopify API secret (Phase 2+) |
+| `SHOPIFY_WEBHOOK_SECRETS` | Shopify webhook HMAC secrets (comma-separated for rotation) |
 | `STRIPE_SECRET_KEY` | Stripe payment processing and SLA breach refunds |
 | `UPS_API_KEY` | UPS carrier rates and shipment tracking |
 | `FEDEX_API_KEY` | FedEx carrier rates and shipment tracking |
@@ -452,6 +455,7 @@ Migrations live in `modules/app/src/main/resources/db/migration/` and run automa
 | V17 | Compliance audit `run_id` for batch grouping |
 | V18 | Demand scan (`demand_scan_runs`, `demand_candidates`, `candidate_rejections`, pg_trgm) |
 | V19 | Platform listings (`platform_listings` for Shopify product/variant tracking) |
+| V20 | Webhook events + order channel metadata (`webhook_events`, `orders.channel*` columns) |
 
 ## Feature Requests
 
@@ -481,6 +485,7 @@ Implementation is tracked in `feature-requests/FR-NNN-name/` with a `spec.md`, `
 | FR-020 | Platform listing adapter (Shopify) | ✅ Complete |
 | FR-021 | Shopify Admin API contract tests | ✅ Complete |
 | FR-022 | Integration test coverage gaps (postmortem sweep) | ✅ Complete |
+| FR-023 | Shopify order webhook listener (RAT-26) | ✅ Complete |
 
 ## Frontend Dashboard
 
