@@ -108,6 +108,42 @@ class ArchitectureTest {
         rule.check(productionClasses)
     }
 
+    /**
+     * Rule 4: @EventListener methods must not handle events from com.autoshipper.shared.events.
+     *
+     * Cross-module event listeners must use @TransactionalEventListener(AFTER_COMMIT) +
+     * @Transactional(REQUIRES_NEW) per CLAUDE.md constraint #6. Plain @EventListener is only
+     * acceptable for same-module listeners that should rollback with the publisher. Since all
+     * domain events live in the shared module, any @EventListener handling a shared event type
+     * is a cross-module listener that requires the double-annotation pattern.
+     *
+     * Known allowlist: PricingEngine.onPricingSignal — tracked for future migration (see
+     * FR-024 BR-4 note in implementation-plan.md).
+     *
+     * Violations found by: PM-001, PM-005, PM-006 (VendorSlaBreachRefunder was the last instance)
+     */
+    @Test
+    fun `EventListener methods must not handle shared domain events`() {
+        val allowlist = setOf(
+            // PricingEngine.onPricingSignal is a cross-module listener (capital publishes,
+            // pricing consumes) that uses @EventListener + class-level @Transactional.
+            // Migration to @TransactionalEventListener is tracked as a future improvement.
+            "onPricingSignal"
+        )
+
+        val rule = ArchRuleDefinition.methods()
+            .that().areAnnotatedWith(org.springframework.context.event.EventListener::class.java)
+            .should(notHandleSharedEventsWithEventListener(allowlist))
+            .because(
+                "PM-001/PM-005/PM-006: @EventListener methods must not handle events from " +
+                "com.autoshipper.shared.events. Cross-module listeners must use " +
+                "@TransactionalEventListener(AFTER_COMMIT) + @Transactional(REQUIRES_NEW). " +
+                "Plain @EventListener is only acceptable for same-module events."
+            )
+
+        rule.check(productionClasses)
+    }
+
     // --- Custom conditions ---
 
     private fun haveRequiresNewWhenAfterCommit(): ArchCondition<JavaMethod> {
@@ -196,6 +232,33 @@ class ArchitectureTest {
                             "but does not implement Persistable<T>. This causes Spring Data " +
                             "to call merge() instead of persist(), leading to unnecessary " +
                             "SELECT-before-INSERT and potential deferred flush bugs."
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    private fun notHandleSharedEventsWithEventListener(allowlist: Set<String>): ArchCondition<JavaMethod> {
+        return object : ArchCondition<JavaMethod>(
+            "not handle events from com.autoshipper.shared.events with @EventListener"
+        ) {
+            override fun check(method: JavaMethod, events: ConditionEvents) {
+                // Skip methods in the allowlist
+                if (method.name in allowlist) return
+
+                // Check if any parameter type is from the shared events package
+                val hasSharedEventParam = method.rawParameterTypes.any { paramType ->
+                    paramType.name.startsWith("com.autoshipper.shared.events.")
+                }
+
+                if (hasSharedEventParam) {
+                    events.add(
+                        SimpleConditionEvent.violated(
+                            method,
+                            "${method.fullName} uses @EventListener to handle a shared domain event. " +
+                            "Cross-module listeners must use @TransactionalEventListener(AFTER_COMMIT) + " +
+                            "@Transactional(propagation = REQUIRES_NEW) per CLAUDE.md constraint #6."
                         )
                     )
                 }
