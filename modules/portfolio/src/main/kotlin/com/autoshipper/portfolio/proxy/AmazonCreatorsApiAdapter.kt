@@ -13,6 +13,8 @@ import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import java.math.BigDecimal
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -104,7 +106,9 @@ class AmazonCreatorsApiAdapter(
             val response = tokenClient.post()
                 .uri("/auth/o2/token")
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .body("grant_type=client_credentials&client_id=$credentialId&client_secret=$credentialSecret")
+                .body("grant_type=client_credentials" +
+                    "&client_id=${URLEncoder.encode(credentialId, StandardCharsets.UTF_8)}" +
+                    "&client_secret=${URLEncoder.encode(credentialSecret, StandardCharsets.UTF_8)}")
                 .retrieve()
                 .body(JsonNode::class.java)
 
