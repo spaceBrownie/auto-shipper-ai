@@ -3,6 +3,7 @@ package com.autoshipper.fulfillment.proxy.payment
 import com.autoshipper.shared.money.Money
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker
 import io.github.resilience4j.retry.annotation.Retry
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -21,8 +22,10 @@ data class RefundResult(val refundId: String, val status: String)
 @Component
 @Profile("!local")
 class StripeRefundAdapter(
-    @Value("\${stripe.api.secret-key}") private val secretKey: String
+    @Value("\${stripe.api.secret-key:}") private val secretKey: String
 ) : RefundProvider {
+
+    private val logger = LoggerFactory.getLogger(StripeRefundAdapter::class.java)
 
     private val restClient: RestClient = RestClient.builder()
         .baseUrl("https://api.stripe.com")
@@ -32,6 +35,10 @@ class StripeRefundAdapter(
     @CircuitBreaker(name = "stripe-refund")
     @Retry(name = "stripe-refund")
     override fun refund(orderId: UUID, amount: Money, paymentIntentId: String, idempotencyKey: String): RefundResult {
+        if (secretKey.isBlank()) {
+            logger.warn("Stripe API secret-key is blank — cannot process refund")
+            throw IllegalStateException("Stripe API secret key not configured")
+        }
         val amountInCents = amount.normalizedAmount.movePointRight(2).toLong()
         val encodedPi = URLEncoder.encode(paymentIntentId, Charsets.UTF_8)
         val encodedOrderId = URLEncoder.encode(orderId.toString(), Charsets.UTF_8)
