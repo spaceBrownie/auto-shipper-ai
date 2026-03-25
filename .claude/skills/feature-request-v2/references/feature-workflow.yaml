@@ -1,0 +1,638 @@
+# Feature Request Workflow Configuration v2
+# Defines the 6-phase workflow for managing feature requests in Spring Boot projects
+# Phases: Discovery → Specification → Planning → Test-First Gate → Implementation → Review-Fix Loop
+
+# Global Configuration
+global:
+  feature_directory: "feature-requests"
+  fr_number_pattern: "^FR-\\d{3}$"
+  fr_directory_pattern: "^FR-\\d{3}-[a-z0-9-]+$"
+  max_feature_name_length: 50
+  feature_name_pattern: "^[a-z0-9-]+$"
+  required_summary_count: 1  # Exactly 1 summary.md required at end
+  decision_support:
+    strategy_script: ".claude/skills/feature-request-v2/scripts/meta_controller.py"
+    evaluator_script: ".claude/skills/feature-request-v2/scripts/evaluate_meta_controller.py"
+    scenarios_file: ".claude/skills/feature-request-v2/references/meta-controller-scenarios.json"
+    enabled_phase: 5
+    description: "Run strategy recommendation in phase 5 after permission validation and before spawning sub-agents."
+
+# Phase 1: Discovery (Read-Only Exploration)
+phases:
+  phase_1_discovery:
+    name: "Discovery"
+    description: "Read-only exploration of codebase to understand requirements and constraints"
+
+    permissions:
+      # Read permissions - what files can be read
+      read:
+        - "**/*.java"
+        - "**/*.kt"
+        - "**/*.md"
+        - "**/*.yaml"
+        - "**/*.yml"
+        - "**/*.properties"
+        - "**/*.xml"
+        - "pom.xml"
+        - "AGENTS.md"
+        - "README.md"
+        - ".claude/**/*"
+
+      # Write permissions - NONE in discovery phase
+      write: []
+
+      # Bash commands - read-only operations only
+      bash:
+        allowed_commands:
+          - "ls"
+          - "cat"
+          - "grep"
+          - "find"
+          - "git log"
+          - "git status"
+          - "git diff"
+          - "git show"
+          - "pwd"
+          - "tree"
+          - "head"
+          - "tail"
+          - "wc"
+
+        forbidden_commands:
+          - "mkdir"
+          - "touch"
+          - "rm"
+          - "mv"
+          - "cp"
+          - "git add"
+          - "git commit"
+          - "git push"
+          - "git reset"
+          - "git rebase"
+          - "mvn"
+          - "gradle"
+
+    deliverables:
+      - name: "feature-name"
+        type: "string"
+        description: "Kebab-case feature name (e.g., 'jwt-refresh-tokens')"
+        pattern: "^[a-z0-9-]+$"
+        max_length: 50
+        required: true
+
+    next_phase: "phase_2_specification"
+    requires_manual_approval: true
+
+  # Phase 2: Specification (Write spec.md only)
+  phase_2_specification:
+    name: "Specification"
+    description: "Document feature requirements in spec.md"
+
+    permissions:
+      # Read permissions - can read anything
+      read:
+        - "**/*"
+
+      # Write permissions - ONLY to spec.md in the feature directory
+      write:
+        - "feature-requests/FR-*/spec.md"
+
+      # Bash commands - can create directory and view files
+      bash:
+        allowed_commands:
+          - "ls"
+          - "cat"
+          - "grep"
+          - "find"
+          - "git log"
+          - "git status"
+          - "pwd"
+          - "tree"
+          - "mkdir"  # Only to create FR directory
+
+        forbidden_commands:
+          - "rm"
+          - "git add"
+          - "git commit"
+          - "git push"
+          - "mvn"
+          - "gradle"
+
+    deliverables:
+      - name: "spec.md"
+        type: "file"
+        description: "Feature specification document"
+        path_pattern: "feature-requests/FR-\\d{3}-[a-z0-9-]+/spec.md"
+        required: true
+        required_sections:
+          - "Problem Statement"
+          - "Business Requirements"
+          - "Success Criteria"
+          - "Non-Functional Requirements"
+          - "Dependencies"
+        forbidden_sections:
+          - "Implementation Details"
+          - "Technical Design"
+          - "Code Changes"
+
+    next_phase: "phase_3_planning"
+    requires_manual_approval: true
+
+  # Phase 3: Implementation Planning (Write implementation-plan.md only)
+  phase_3_planning:
+    name: "Implementation Planning"
+    description: "Design technical solution and create task breakdown"
+
+    permissions:
+      # Read permissions - can read anything including spec.md
+      read:
+        - "**/*"
+
+      # Write permissions - ONLY to implementation-plan.md
+      write:
+        - "feature-requests/FR-*/implementation-plan.md"
+
+      # Bash commands - read-only
+      bash:
+        allowed_commands:
+          - "ls"
+          - "cat"
+          - "grep"
+          - "find"
+          - "git log"
+          - "git status"
+          - "pwd"
+          - "tree"
+
+        forbidden_commands:
+          - "mkdir"
+          - "touch"
+          - "rm"
+          - "git add"
+          - "git commit"
+          - "mvn"
+          - "gradle"
+
+    deliverables:
+      - name: "implementation-plan.md"
+        type: "file"
+        description: "Technical implementation plan with task breakdown"
+        path_pattern: "feature-requests/FR-\\d{3}-[a-z0-9-]+/implementation-plan.md"
+        required: true
+        required_sections:
+          - "Technical Design"
+          - "Architecture Decisions"
+          - "Layer-by-Layer Implementation"
+          - "Task Breakdown"
+          - "Testing Strategy"
+          - "Rollout Plan"
+        required_elements:
+          - "GitHub-style checkboxes (- [ ] Task)"
+          - "Layer groupings (handler, domain, proxy, security, config, common)"
+
+    next_phase: "phase_4_test_first_gate"
+    requires_manual_approval: true
+
+  # Phase 4: Test-First Gate (Write test files only — NEW in v2)
+  phase_4_test_first_gate:
+    name: "Test-First Gate"
+    description: "Generate runnable tests from spec + implementation plan before implementation"
+
+    permissions:
+      # Read permissions - can read anything
+      read:
+        - "**/*"
+
+      # Write permissions - test files and test-manifest only
+      write:
+        - "src/test/**/*.kt"
+        - "src/test/**/*.java"
+        - "src/test/**/*.xml"
+        - "src/test/**/*.yaml"
+        - "src/test/**/*.yml"
+        - "src/test/**/*.properties"
+        - "src/test/**/*.json"
+        - "src/test/**/*.sql"
+        - "modules/**/src/test/**/*.kt"
+        - "modules/**/src/test/**/*.java"
+        - "modules/**/src/test/**/*.xml"
+        - "modules/**/src/test/**/*.yaml"
+        - "modules/**/src/test/**/*.yml"
+        - "modules/**/src/test/**/*.properties"
+        - "modules/**/src/test/**/*.json"
+        - "modules/**/src/test/**/*.sql"
+        - "feature-requests/FR-*/test-manifest.md"
+
+      # Bash commands - compile allowed, test execution forbidden
+      bash:
+        allowed_commands:
+          - "ls"
+          - "cat"
+          - "grep"
+          - "find"
+          - "git log"
+          - "git status"
+          - "git diff"
+          - "./gradlew compileTestKotlin"
+          - "./gradlew compileTestJava"
+          - "./gradlew classes"
+          - "python3"
+          - "python"
+          - "mkdir"
+          - "touch"
+          - "pwd"
+          - "tree"
+
+        forbidden_commands:
+          - "rm -rf"
+          - "git push --force"
+          - "git reset --hard"
+          - "./gradlew test"      # Tests expected to fail — no full execution
+          - "./gradlew bootRun"
+          - "mvn test"
+
+    deliverables:
+      - name: "test-manifest.md"
+        type: "file"
+        description: "Manifest listing generated tests and their rationale"
+        path_pattern: "feature-requests/FR-\\d{3}-[a-z0-9-]+/test-manifest.md"
+        required: true
+        required_sections:
+          - "End-to-End Flow Tests"
+          - "Boundary Condition Tests"
+          - "Dependency Contract Tests"
+
+      - name: "test-files"
+        type: "validation"
+        description: "Test files that compile but are expected to fail"
+        validation:
+          - "At least one test file created in src/test/ or modules/**/src/test/"
+          - "Tests compile (gradlew compileTestKotlin passes)"
+
+    next_phase: "phase_5_implementation"
+    requires_manual_approval: true
+
+  # Phase 5: Implementation (Write code and update plan — was Phase 4 in v1)
+  phase_5_implementation:
+    name: "Implementation"
+    description: "Execute implementation plan using layer-specific sub-agents to make Phase 4 tests pass"
+    decision_support:
+      required_preflight:
+        - "python3 .claude/skills/feature-request-v2/scripts/meta_controller.py --phase 5 --json --out {feature_dir}/decision-support/preflight-meta-controller.json"
+      required_artifacts:
+        - "decision-support/preflight-meta-controller.json"
+      required_json_keys:
+        - "state"
+        - "execution"
+        - "planning"
+        - "cognition"
+        - "chunking"
+        - "reward_shaping"
+        - "recommendations"
+      recommended_postflight:
+        - "python3 .claude/skills/feature-request-v2/scripts/evaluate_meta_controller.py --fail-on-mismatch"
+        - "python3 -m unittest discover -s .claude/skills/feature-request-v2/tests -p 'test_*.py'"
+
+    permissions:
+      # Read permissions - can read anything
+      read:
+        - "**/*"
+
+      # Write permissions - can modify code and plan files
+      write:
+        - "src/**/*.java"
+        - "src/**/*.kt"
+        - "src/**/AGENTS.md"
+        - "src/**/*.properties"
+        - "src/**/*.yaml"
+        - "src/**/*.yml"
+        - "src/**/*.xml"
+        - "src/**/*.sql"
+        - "modules/**/*.kt"
+        - "modules/**/*.java"
+        - "modules/**/*.sql"
+        - "modules/**/*.yml"
+        - "modules/**/*.yaml"
+        - "modules/**/*.properties"
+        - "modules/**/*.xml"
+        - "feature-requests/FR-*/implementation-plan.md"  # Can update checkboxes
+        - "feature-requests/FR-*/summary.md"  # Create at end
+        - "pom.xml"  # If dependencies needed
+        - "*.gradle.kts"
+        - "**/*.gradle.kts"
+        - "settings.gradle.kts"
+        - "gradle.properties"
+        - "Dockerfile"
+        - ".github/**/*.yml"
+        - ".github/**/*.yaml"
+        - ".github/**/*.md"
+        - "k8s/**/*.yaml"
+        - "k8s/**/*.yml"
+        - "docs/**/*.md"
+
+      # Bash commands - full development workflow
+      bash:
+        allowed_commands:
+          - "ls"
+          - "cat"
+          - "grep"
+          - "find"
+          - "git log"
+          - "git status"
+          - "git diff"
+          - "git add"
+          - "git commit"
+          - "pwd"
+          - "tree"
+          - "mvn"
+          - "/Users/dennyjoy/git/springboot-wendys/.tools/apache-maven-3.9.12/bin/mvn"
+          - "gradle"
+          - "./gradlew"
+          - "python3"
+          - "python"
+          - "env"
+          - "mkdir"
+          - "touch"
+          - "chmod"
+
+        forbidden_commands:
+          - "rm -rf"
+          - "git push --force"
+          - "git reset --hard"
+
+    deliverables:
+      - name: "implementation-plan.md"
+        type: "file"
+        description: "Updated plan with all checkboxes checked"
+        path_pattern: "feature-requests/FR-\\d{3}-[a-z0-9-]+/implementation-plan.md"
+        required: true
+        validation:
+          - "All checkboxes must be checked (- [x] Task)"
+
+      - name: "summary.md"
+        type: "file"
+        description: "Implementation summary document"
+        path_pattern: "feature-requests/FR-\\d{3}-[a-z0-9-]+/summary.md"
+        required: true
+        count: 1  # Exactly one summary file
+        required_sections:
+          - "Feature Summary"
+          - "Changes Made"
+          - "Files Modified"
+          - "Testing Completed"
+          - "Deployment Notes"
+
+      - name: "code-changes"
+        type: "validation"
+        description: "Code changes must be committed"
+        validation:
+          - "At least one file in src/ modified"
+          - "Tests pass (./gradlew test)"
+
+    sub_agents:
+      enabled: true
+      orchestrator: "feature-orchestrator"
+
+      # v2: Dependency-ordered groups instead of all-parallel
+      agent_groups:
+        group_1_foundation:
+          agents:
+            - "config-agent"
+            - "common-agent"
+          description: "Entities, interfaces, configuration — must complete before Group 2"
+
+        group_2_domain_logic:
+          agents:
+            - "domain-agent"
+            - "proxy-agent"
+            - "security-agent"
+          description: "Business logic and adapters — depends on Group 1 outputs"
+
+        group_3_integration:
+          agents:
+            - "handler-agent"
+          description: "Controllers, integration wiring — depends on Group 2"
+
+      layer_agents:
+        - name: "handler-agent"
+          layer: "handler"
+          path_pattern: "src/main/java/**/handler/**/*.java"
+          description: "REST endpoints and controllers"
+
+        - name: "domain-agent"
+          layer: "domain"
+          path_pattern: "src/main/java/**/domain/**/*.java"
+          description: "Business logic and domain models"
+
+        - name: "proxy-agent"
+          layer: "proxy"
+          path_pattern: "src/main/java/**/proxy/**/*.java"
+          description: "External service clients"
+
+        - name: "security-agent"
+          layer: "security"
+          path_pattern: "src/main/java/**/security/**/*.java"
+          description: "Authentication and authorization"
+
+        - name: "config-agent"
+          layer: "config"
+          path_pattern: "src/main/java/**/config/**/*.java"
+          description: "Spring configuration and beans"
+
+        - name: "common-agent"
+          layer: "common"
+          path_pattern: "src/main/java/**/common/**/*.java"
+          description: "Shared DTOs, exceptions, utilities"
+
+    next_phase: "phase_6_review_fix_loop"
+    requires_manual_approval: false  # Auto-proceed to review loop
+
+  # Phase 6: Review-Fix Loop (PR review cycle — NEW in v2)
+  phase_6_review_fix_loop:
+    name: "Review-Fix Loop"
+    description: "PR review cycle until clean: create PR, assess/fix review comments, re-run tests"
+
+    permissions:
+      # Read permissions - can read anything
+      read:
+        - "**/*"
+
+      # Write permissions - same as Phase 5 (may need to fix code)
+      write:
+        - "src/**/*.java"
+        - "src/**/*.kt"
+        - "src/**/AGENTS.md"
+        - "src/**/*.properties"
+        - "src/**/*.yaml"
+        - "src/**/*.yml"
+        - "src/**/*.xml"
+        - "src/**/*.sql"
+        - "modules/**/*.kt"
+        - "modules/**/*.java"
+        - "modules/**/*.sql"
+        - "modules/**/*.yml"
+        - "modules/**/*.yaml"
+        - "modules/**/*.properties"
+        - "modules/**/*.xml"
+        - "feature-requests/FR-*/implementation-plan.md"
+        - "feature-requests/FR-*/summary.md"
+        - "pom.xml"
+        - "*.gradle.kts"
+        - "**/*.gradle.kts"
+        - "settings.gradle.kts"
+        - "gradle.properties"
+        - "Dockerfile"
+        - ".github/**/*.yml"
+        - ".github/**/*.yaml"
+        - ".github/**/*.md"
+        - "k8s/**/*.yaml"
+        - "k8s/**/*.yml"
+        - "docs/**/*.md"
+
+      # Bash commands - full development workflow + PR interaction
+      bash:
+        allowed_commands:
+          - "ls"
+          - "cat"
+          - "grep"
+          - "find"
+          - "git log"
+          - "git status"
+          - "git diff"
+          - "git add"
+          - "git commit"
+          - "git push"
+          - "pwd"
+          - "tree"
+          - "mvn"
+          - "./gradlew"
+          - "python3"
+          - "python"
+          - "gh pr create"
+          - "gh pr view"
+          - "gh pr checks"
+          - "gh api"
+          - "gh pr merge"
+          - "mkdir"
+          - "touch"
+          - "chmod"
+
+        forbidden_commands:
+          - "rm -rf"
+          - "git push --force"
+          - "git reset --hard"
+
+    deliverables:
+      - name: "clean-pr"
+        type: "validation"
+        description: "PR with no unresolved review comments and green CI"
+        validation:
+          - "PR created via gh pr create"
+          - "All CI checks pass"
+          - "No unresolved review comments"
+
+    next_phase: null  # Final phase
+    requires_manual_approval: false  # Exit criteria is automated
+
+# Validation Rules
+validation:
+  feature_name:
+    pattern: "^[a-z0-9-]+$"
+    min_length: 3
+    max_length: 50
+    forbidden_chars: ["_", " ", ".", "/", "\\"]
+    examples:
+      valid:
+        - "jwt-refresh-tokens"
+        - "rate-limiting"
+        - "health-check-endpoint"
+      invalid:
+        - "JWT_Tokens"  # No uppercase or underscores
+        - "rate limiting"  # No spaces
+        - "feature.name"  # No dots
+
+  fr_number:
+    pattern: "^FR-\\d{3}$"
+    auto_increment: true
+    start_number: 1
+    examples:
+      - "FR-001"
+      - "FR-042"
+      - "FR-999"
+
+  deliverable_immutability:
+    phase_2:
+      - file: "spec.md"
+        immutable_after_phase: 2
+        reason: "Specification should not change after approval"
+
+    phase_3:
+      - file: "implementation-plan.md"
+        mutable_in_phase: 5
+        reason: "Plan can be updated with checkbox status during implementation"
+
+    phase_4:
+      - file: "test-manifest.md"
+        immutable_after_phase: 4
+        reason: "Test manifest should not change after approval"
+
+# Transition Rules
+transitions:
+  phase_1_to_phase_2:
+    requires:
+      - "Valid feature name generated"
+      - "Manual user approval"
+    creates:
+      - "FR-{NNN}-{feature-name} directory"
+
+  phase_2_to_phase_3:
+    requires:
+      - "spec.md exists and validated"
+      - "Manual user approval"
+    validation:
+      - "spec.md has all required sections"
+      - "spec.md does not contain implementation details"
+
+  phase_3_to_phase_4:
+    requires:
+      - "implementation-plan.md exists and validated"
+      - "Manual user approval"
+    validation:
+      - "implementation-plan.md has all required sections"
+      - "At least one task checkbox exists"
+      - "Tasks grouped by architectural layer"
+
+  phase_4_to_phase_5:
+    requires:
+      - "test-manifest.md exists and validated"
+      - "Test files compile"
+      - "Manual user approval"
+    validation:
+      - "test-manifest.md has required sections"
+      - "At least one test file in src/test/ or modules/**/src/test/"
+
+  phase_5_to_phase_6:
+    requires:
+      - "All checkboxes in implementation-plan.md are checked"
+      - "summary.md created"
+      - "Tests pass"
+    validation:
+      - "Exactly 1 summary.md exists"
+      - "At least one code file modified in src/"
+
+  phase_6_complete:
+    requires:
+      - "PR created"
+      - "CI green"
+      - "No unresolved review comments"
+
+# Error Messages
+error_messages:
+  invalid_feature_name: "Feature name must be lowercase, alphanumeric with hyphens only (e.g., 'jwt-refresh-tokens')"
+  permission_denied_read: "Phase {phase} does not allow reading: {path}"
+  permission_denied_write: "Phase {phase} does not allow writing: {path}"
+  permission_denied_bash: "Phase {phase} does not allow bash command: {command}"
+  missing_deliverable: "Phase {phase} requires deliverable: {deliverable}"
+  invalid_transition: "Cannot transition from {from_phase} to {to_phase} - requirements not met"
+  immutable_file: "File {file} is immutable after phase {phase}"
+  missing_approval: "Manual approval required before proceeding to {next_phase}"

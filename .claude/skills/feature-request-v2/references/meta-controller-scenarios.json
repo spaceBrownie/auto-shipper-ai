@@ -1,0 +1,155 @@
+[
+  {
+    "name": "phase2_gate_forces_single",
+    "state": {
+      "phase": 2,
+      "task_count": 10,
+      "parallelizable_fraction": 0.95,
+      "coupling": 0.1,
+      "novelty": 0.2,
+      "confidence": 0.8,
+      "blast_radius": 0.2,
+      "failure_impact": 0.4,
+      "deadline_pressure": 0.8,
+      "compute_budget": 0.8
+    },
+    "expected": {
+      "execution_mode": "single_orchestrator",
+      "exact_parallel_agents": 1
+    }
+  },
+  {
+    "name": "phase4_test_gate_forces_single",
+    "state": {
+      "phase": 4,
+      "task_count": 10,
+      "parallelizable_fraction": 0.95,
+      "coupling": 0.1,
+      "novelty": 0.2,
+      "confidence": 0.8,
+      "blast_radius": 0.2,
+      "failure_impact": 0.4,
+      "deadline_pressure": 0.8,
+      "compute_budget": 0.8
+    },
+    "expected": {
+      "execution_mode": "single_orchestrator",
+      "exact_parallel_agents": 1
+    }
+  },
+  {
+    "name": "parallel_preferred_in_phase5",
+    "state": {
+      "phase": 5,
+      "task_count": 12,
+      "parallelizable_fraction": 0.92,
+      "coupling": 0.12,
+      "novelty": 0.25,
+      "confidence": 0.78,
+      "blast_radius": 0.25,
+      "failure_impact": 0.4,
+      "deadline_pressure": 0.9,
+      "compute_budget": 0.85
+    },
+    "expected": {
+      "execution_mode": "orchestrator_plus_parallel_agents",
+      "min_parallel_agents": 2
+    }
+  },
+  {
+    "name": "single_preferred_with_high_coupling",
+    "state": {
+      "phase": 5,
+      "task_count": 10,
+      "parallelizable_fraction": 0.55,
+      "coupling": 0.92,
+      "novelty": 0.82,
+      "confidence": 0.5,
+      "blast_radius": 0.8,
+      "failure_impact": 0.9,
+      "deadline_pressure": 0.6,
+      "compute_budget": 0.7
+    },
+    "expected": {
+      "execution_mode": "single_orchestrator",
+      "max_parallel_agents": 1,
+      "cognition_mode": "deliberative"
+    }
+  },
+  {
+    "name": "instinctual_mode_when_low_novelty_and_high_confidence",
+    "state": {
+      "phase": 5,
+      "task_count": 6,
+      "parallelizable_fraction": 0.7,
+      "coupling": 0.2,
+      "novelty": 0.1,
+      "confidence": 0.95,
+      "blast_radius": 0.08,
+      "failure_impact": 0.2,
+      "deadline_pressure": 0.5,
+      "compute_budget": 0.8
+    },
+    "expected": {
+      "cognition_mode": "instinctual",
+      "max_planning_depth": 3
+    }
+  },
+  {
+    "name": "deliberative_mode_when_high_blast_radius",
+    "state": {
+      "phase": 5,
+      "task_count": 8,
+      "parallelizable_fraction": 0.65,
+      "coupling": 0.5,
+      "novelty": 0.7,
+      "confidence": 0.6,
+      "blast_radius": 0.9,
+      "failure_impact": 0.8,
+      "deadline_pressure": 0.55,
+      "compute_budget": 0.75
+    },
+    "expected": {
+      "cognition_mode": "deliberative",
+      "min_planning_depth": 2
+    }
+  },
+  {
+    "name": "parallel_bonus_guardrail_blocks_bonus",
+    "state": {
+      "phase": 5,
+      "task_count": 9,
+      "parallelizable_fraction": 0.88,
+      "coupling": 0.95,
+      "novelty": 0.9,
+      "confidence": 0.55,
+      "blast_radius": 0.85,
+      "failure_impact": 0.95,
+      "deadline_pressure": 0.8,
+      "compute_budget": 0.8
+    },
+    "expected": {
+      "parallel_bonus_applied": false,
+      "cognition_mode": "deliberative"
+    }
+  },
+  {
+    "name": "phase6_review_fix_allows_parallel",
+    "state": {
+      "phase": 6,
+      "task_count": 8,
+      "parallelizable_fraction": 0.7,
+      "coupling": 0.2,
+      "novelty": 0.15,
+      "confidence": 0.85,
+      "blast_radius": 0.2,
+      "failure_impact": 0.3,
+      "deadline_pressure": 0.6,
+      "compute_budget": 0.8
+    },
+    "expected": {
+      "execution_mode": "orchestrator_plus_parallel_agents",
+      "min_parallel_agents": 2
+    }
+  }
+]
