@@ -111,17 +111,21 @@ cd frontend && npm install && npm run dev
 
 ## Feature Request Workflow
 
-This project uses a 4-phase feature request skill (`.claude/skills/feature-request/`):
+This project uses a 6-phase feature request skill (`.claude/skills/feature-request-v2/`):
 
 1. **Discovery** (read-only) — explore codebase, propose kebab-case feature name
 2. **Specification** — write `spec.md` in `feature-requests/FR-{NNN}-{name}/`
 3. **Planning** — write `implementation-plan.md` with task breakdown by architectural layer
-4. **Implementation** — execute plan using layer-specific sub-agents, update checkboxes, create `summary.md`
+4. **Test-First Gate** — generate runnable tests from spec + plan before implementation
+5. **Implementation** — execute plan using dependency-ordered sub-agents, make tests pass, update checkboxes, create `summary.md`
+6. **Review-Fix Loop** — PR review cycle until clean (no manual approval needed)
 
-Manual approval is required between phases. Use the validation script before any action:
+Manual approval is required between phases 1-5. Use the validation script before any action:
 ```bash
-python3 .claude/skills/feature-request/scripts/validate-phase.py --phase {N} --action {read|write|bash} --path "{file}"
+python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --phase {N} --action {read|write|bash} --path "{file}"
 ```
+
+The v1 skill (`.claude/skills/feature-request/`) is retained as a fallback. FR-001 through FR-023 were built under v1 (4-phase).
 
 ## Key Business Rules
 
