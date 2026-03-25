@@ -7,6 +7,7 @@ import com.autoshipper.shared.money.Currency
 import com.autoshipper.shared.money.Money
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker
 import io.github.resilience4j.retry.annotation.Retry
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Profile
@@ -19,14 +20,20 @@ import java.math.RoundingMode
 @Profile("!local")
 class UspsRateAdapter(
     @Qualifier("uspsRestClient") private val uspsRestClient: RestClient,
-    @Value("\${usps.api.oauth-token}") private val oauthToken: String
+    @Value("\${usps.api.oauth-token:}") private val oauthToken: String
 ) : CarrierRateProvider {
+
+    private val logger = LoggerFactory.getLogger(UspsRateAdapter::class.java)
 
     override val carrierName: String = "USPS"
 
     @CircuitBreaker(name = "usps-rate")
     @Retry(name = "usps-rate")
     override fun getRate(origin: Address, destination: Address, dims: PackageDimensions): Money {
+        if (oauthToken.isBlank()) {
+            logger.warn("USPS API oauth-token is blank — cannot fetch rates")
+            throw ProviderUnavailableException("USPS", IllegalStateException("USPS API oauth-token not configured"))
+        }
         try {
             val response = uspsRestClient.post()
                 .uri("/prices/v3/total-rates/search")

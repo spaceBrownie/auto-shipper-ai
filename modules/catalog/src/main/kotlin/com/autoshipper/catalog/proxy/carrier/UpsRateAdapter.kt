@@ -7,6 +7,7 @@ import com.autoshipper.shared.money.Currency
 import com.autoshipper.shared.money.Money
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker
 import io.github.resilience4j.retry.annotation.Retry
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Profile
@@ -18,15 +19,21 @@ import java.math.BigDecimal
 @Profile("!local")
 class UpsRateAdapter(
     @Qualifier("upsRestClient") private val upsRestClient: RestClient,
-    @Value("\${ups.api.client-id}") private val clientId: String,
-    @Value("\${ups.api.client-secret}") private val clientSecret: String
+    @Value("\${ups.api.client-id:}") private val clientId: String,
+    @Value("\${ups.api.client-secret:}") private val clientSecret: String
 ) : CarrierRateProvider {
+
+    private val logger = LoggerFactory.getLogger(UpsRateAdapter::class.java)
 
     override val carrierName: String = "UPS"
 
     @CircuitBreaker(name = "ups-rate")
     @Retry(name = "ups-rate")
     override fun getRate(origin: Address, destination: Address, dims: PackageDimensions): Money {
+        if (clientId.isBlank() || clientSecret.isBlank()) {
+            logger.warn("UPS API credentials are blank — cannot fetch rates")
+            throw ProviderUnavailableException("UPS", IllegalStateException("UPS API credentials not configured"))
+        }
         try {
             val token = fetchBearerToken()
             val response = upsRestClient.post()

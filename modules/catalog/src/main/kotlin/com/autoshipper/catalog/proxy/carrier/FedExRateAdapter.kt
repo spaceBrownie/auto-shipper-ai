@@ -7,26 +7,35 @@ import com.autoshipper.shared.money.Currency
 import com.autoshipper.shared.money.Money
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker
 import io.github.resilience4j.retry.annotation.Retry
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import java.math.BigDecimal
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 @Component
 @Profile("!local")
 class FedExRateAdapter(
     @Qualifier("fedexRestClient") private val fedexRestClient: RestClient,
-    @Value("\${fedex.api.client-id}") private val clientId: String,
-    @Value("\${fedex.api.client-secret}") private val clientSecret: String
+    @Value("\${fedex.api.client-id:}") private val clientId: String,
+    @Value("\${fedex.api.client-secret:}") private val clientSecret: String
 ) : CarrierRateProvider {
+
+    private val logger = LoggerFactory.getLogger(FedExRateAdapter::class.java)
 
     override val carrierName: String = "FedEx"
 
     @CircuitBreaker(name = "fedex-rate")
     @Retry(name = "fedex-rate")
     override fun getRate(origin: Address, destination: Address, dims: PackageDimensions): Money {
+        if (clientId.isBlank() || clientSecret.isBlank()) {
+            logger.warn("FedEx API credentials are blank — cannot fetch rates")
+            throw ProviderUnavailableException("FedEx", IllegalStateException("FedEx API credentials not configured"))
+        }
         try {
             val token = fetchBearerToken()
             val response = fedexRestClient.post()
@@ -50,7 +59,9 @@ class FedExRateAdapter(
         val tokenResponse = fedexRestClient.post()
             .uri("/oauth/token")
             .header("Content-Type", "application/x-www-form-urlencoded")
-            .body("grant_type=client_credentials&client_id=$clientId&client_secret=$clientSecret")
+            .body("grant_type=client_credentials" +
+                "&client_id=${URLEncoder.encode(clientId, StandardCharsets.UTF_8)}" +
+                "&client_secret=${URLEncoder.encode(clientSecret, StandardCharsets.UTF_8)}")
             .retrieve()
             .body(Map::class.java) as Map<String, Any>?
             ?: throw RuntimeException("Empty token response from FedEx")

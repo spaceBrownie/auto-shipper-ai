@@ -4,6 +4,7 @@ import com.autoshipper.catalog.domain.ProviderUnavailableException
 import com.autoshipper.shared.money.Money
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker
 import io.github.resilience4j.retry.annotation.Retry
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Profile
@@ -23,8 +24,10 @@ import java.math.RoundingMode
 @Profile("!local")
 class StripeProcessingFeeProvider(
     @Qualifier("stripeRestClient") private val stripeRestClient: RestClient,
-    @Value("\${stripe.api.secret-key}") private val secretKey: String
+    @Value("\${stripe.api.secret-key:}") private val secretKey: String
 ) : ProcessingFeeProvider {
+
+    private val logger = LoggerFactory.getLogger(StripeProcessingFeeProvider::class.java)
     companion object {
         private val STRIPE_PERCENTAGE_RATE = BigDecimal("0.029")  // 2.9%
         private val STRIPE_FIXED_FEE = BigDecimal("0.30")          // $0.30
@@ -33,6 +36,10 @@ class StripeProcessingFeeProvider(
     @CircuitBreaker(name = "stripe-fee")
     @Retry(name = "stripe-fee")
     override fun getFee(estimatedOrderValue: Money): Money {
+        if (secretKey.isBlank()) {
+            logger.warn("Stripe API secret-key is blank — cannot fetch processing fee")
+            throw ProviderUnavailableException("Stripe", IllegalStateException("Stripe API secret key not configured"))
+        }
         try {
             // Validate connectivity to Stripe by fetching account info
             stripeRestClient.get()

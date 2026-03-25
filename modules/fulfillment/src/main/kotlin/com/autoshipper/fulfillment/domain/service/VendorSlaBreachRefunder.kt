@@ -6,9 +6,11 @@ import com.autoshipper.fulfillment.proxy.notification.NotificationSender
 import com.autoshipper.fulfillment.proxy.payment.RefundProvider
 import com.autoshipper.shared.events.VendorSlaBreached
 import org.slf4j.LoggerFactory
-import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.event.TransactionPhase
+import org.springframework.transaction.event.TransactionalEventListener
 
 @Component
 class VendorSlaBreachRefunder(
@@ -18,8 +20,8 @@ class VendorSlaBreachRefunder(
 ) {
     private val logger = LoggerFactory.getLogger(VendorSlaBreachRefunder::class.java)
 
-    @EventListener
-    @Transactional
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun onVendorSlaBreached(event: VendorSlaBreached) {
         logger.warn(
             "Vendor SLA breached for vendor {}. Breach rate: {}. Initiating refunds for active orders.",

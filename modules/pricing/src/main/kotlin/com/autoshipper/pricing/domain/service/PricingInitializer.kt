@@ -65,6 +65,19 @@ class PricingInitializer(
         }
 
         pricingEngine.setInitialPrice(skuId, price, Percentage.of(margin), fullyBurdenedCost)
-        log.info("Initialized pricing for SKU {}: price={}, margin={}%, cost={}", skuId, price, margin, fullyBurdenedCost)
+
+        // Post-persist verification: confirm the SkuPriceEntity was actually written
+        val persisted = skuPriceRepository.findBySkuId(skuId.value)
+        if (persisted != null) {
+            log.info(
+                "Post-persist verification: SkuPriceEntity persisted for SKU {} — price={} {}, margin={}%",
+                skuId, persisted.currentPriceAmount, persisted.currency, persisted.currentMarginPercent
+            )
+        } else {
+            log.error(
+                "Post-persist verification FAILED: SkuPriceEntity NOT found for SKU {} after setInitialPrice()",
+                skuId
+            )
+        }
     }
 }
