@@ -32,19 +32,47 @@ This skill implements a phase-gated workflow that separates discovery from imple
 
 ### Key Principles
 
-- **Manual approval required between phases 1-5** - User reviews each deliverable before proceeding
+- **Auto-advance by default** - Phases 1-6 flow automatically without waiting for user approval. The user can interrupt at any phase boundary to review, redirect, or adjust — but the workflow does not stop and wait unless the user has explicitly requested a gate.
+- **Subagent per phase (1-4)** - Each of phases 1 through 4 runs in its own subagent to isolate context. The main orchestrator spawns the agent, receives the result, presents a brief summary to the user, then immediately spawns the next phase's agent. This keeps the main context window clean (~10% usage after a full 6-phase run).
+- **Unblocked context hydration** - Phases 1-4 query the Unblocked MCP (`unblocked_context_engine`) for organizational context (PRs, Slack, docs, code history). This serves two purposes: (1) seeding each phase with knowledge the codebase alone can't provide (rejected approaches, team conventions, in-progress work), and (2) validating assumptions as artifacts are created — e.g., checking whether a proposed spec contradicts a prior decision, whether a planned approach was already tried and abandoned, or whether existing test patterns should inform test design. Each artifact-producing phase should hydrate before drafting and again to gut-check key assumptions before finalizing. Phase 5 hydration is as-needed since it executes an already-validated plan.
 - **Test-first enforcement** - Phase 4 generates compilable tests before any production code is written; Phase 5 makes those tests pass
-- **Automated PR review loop** - Phase 6 creates a PR and iterates on review comments and CI failures until clean, with no manual approval gate
+- **Automated PR review loop** - Phase 6 creates a PR and iterates on review comments and CI failures until clean
 - **Auto-increment FR numbers** - Automatically finds next FR-XXX number
 - **Deterministic validation** - Python script validates every action before execution
 - **Layer-specific sub-agents** - Implementation phase spawns agents for handler, domain, proxy, security, config, common layers
 - **Living implementation plan** - Plan checkboxes updated as work progresses
+
+## Execution Model
+
+### Subagent Isolation (Phases 1-4)
+
+Phases 1 through 4 each run in their own subagent spawned by the main orchestrator. This keeps the main context window clean and prevents phase artifacts from consuming shared context. The orchestrator:
+
+1. Spawns a subagent with the full phase instructions and any prior phase output
+2. Receives the result (deliverable + summary)
+3. Presents a brief summary to the user
+4. Immediately spawns the next phase's subagent (no approval gate unless the user interrupts)
+
+The user can interrupt at any phase boundary by responding before the next agent is spawned. If the user provides feedback, address it before continuing.
+
+### Unblocked Hydration Pattern
+
+Each artifact-producing phase (1-4) should query `unblocked_context_engine` via the Unblocked MCP at two points:
+
+1. **Before drafting** — hydrate with organizational context for the ticket/feature area: related PRs, Slack discussions, prior attempts, team conventions. Query the Linear ticket ID and key entities (classes, modules, services) being touched.
+2. **Before finalizing** — gut-check key assumptions in the draft artifact. E.g., "Is this approach consistent with how the team has handled similar work?" or "Has anything like this been tried and rejected?"
+
+If Unblocked MCP is not available, proceed without it — the workflow should not block on MCP availability.
+
+---
 
 ## Workflow
 
 ### Phase 1: Discovery (Read-Only Exploration)
 
 **Goal:** Understand the codebase and generate a valid feature name.
+
+**Runs in:** Subagent (spawned by orchestrator)
 
 **Actions:**
 
@@ -53,7 +81,9 @@ This skill implements a phase-gated workflow that separates discovery from imple
    python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 1 --action info
    ```
 
-2. **Explore codebase** (read-only)
+2. **Hydrate from Unblocked** — query `unblocked_context_engine` with the Linear ticket ID and feature area. Look for: related PRs, prior attempts, Slack discussions, rejected approaches, and existing conventions relevant to this work.
+
+3. **Explore codebase** (read-only)
    - Before reading any file, validate:
      ```bash
      python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 1 --action read --path "src/main/java/Foo.java"
@@ -64,7 +94,7 @@ This skill implements a phase-gated workflow that separates discovery from imple
      python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 1 --action bash --command "ls"
      ```
 
-3. **Generate feature name**
+4. **Generate feature name**
    - Create kebab-case name (e.g., "jwt-refresh-tokens")
    - Validate name:
      ```bash
@@ -72,10 +102,7 @@ This skill implements a phase-gated workflow that separates discovery from imple
      ```
    - If validation fails, generate a new name
 
-4. **Request manual approval**
-   - Present feature name to user
-   - Wait for explicit approval: "I approve the feature name: [name]"
-   - If user requests changes, regenerate and re-validate
+5. **Gut-check with Unblocked** — before returning, verify the proposed feature name and scope don't conflict with in-progress work or existing features.
 
 **Deliverable:** Valid feature name (kebab-case, 3-50 chars, lowercase alphanumeric with hyphens)
 
@@ -91,6 +118,8 @@ This skill implements a phase-gated workflow that separates discovery from imple
 
 **Goal:** Document feature requirements in spec.md.
 
+**Runs in:** Subagent (spawned by orchestrator)
+
 **Actions:**
 
 1. **Get next FR number**
@@ -98,12 +127,14 @@ This skill implements a phase-gated workflow that separates discovery from imple
    python .claude/skills/feature-request-v2/scripts/validate-phase.py --next-fr-number
    ```
 
-2. **Create feature directory**
+2. **Hydrate from Unblocked** — query `unblocked_context_engine` with the feature area and key entities. Look for: prior specs for similar features, business requirements discussions, and stakeholder constraints that may not be in the codebase.
+
+3. **Create feature directory**
    ```bash
    mkdir -p feature-requests/FR-{NNN}-{feature-name}
    ```
 
-3. **Write spec.md**
+4. **Write spec.md**
    - Before writing, validate:
      ```bash
      python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 2 --action write --path "feature-requests/FR-001-jwt-refresh-tokens/spec.md"
@@ -119,16 +150,12 @@ This skill implements a phase-gated workflow that separates discovery from imple
      - Technical Design
      - Code Changes
 
-4. **Validate deliverables**
+5. **Gut-check with Unblocked** — before finalizing, verify key assumptions: Do the business requirements align with prior team decisions? Does the scope conflict with in-progress work?
+
+6. **Validate deliverables**
    ```bash
    python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 2 --check-deliverables --feature-dir "feature-requests/FR-001-jwt-refresh-tokens"
    ```
-
-5. **Request manual approval**
-   - Present spec.md to user
-   - Wait for explicit approval: "I approve the specification"
-   - If user requests changes, update spec.md and re-validate
-   - **Once approved, spec.md becomes immutable**
 
 **Deliverable:** `feature-requests/FR-{NNN}-{feature-name}/spec.md`
 
@@ -144,16 +171,20 @@ This skill implements a phase-gated workflow that separates discovery from imple
 
 **Goal:** Design technical solution and create task breakdown.
 
+**Runs in:** Subagent (spawned by orchestrator)
+
 **Actions:**
 
 1. **Read spec.md** for requirements
 
-2. **Design technical solution**
+2. **Hydrate from Unblocked** — query `unblocked_context_engine` for the key entities being modified (classes, services, modules). Look for: team conventions for this area, patterns used in similar implementations, and any architectural decisions that would constrain the design.
+
+3. **Design technical solution**
    - Follow DDD/hexagonal architecture
    - Identify affected layers: handler, domain, proxy, security, config, common
    - Consult layer-specific AGENTS.md files for constraints
 
-3. **Write implementation-plan.md**
+4. **Write implementation-plan.md**
    - Before writing, validate:
      ```bash
      python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 3 --action write --path "feature-requests/FR-001-jwt-refresh-tokens/implementation-plan.md"
@@ -186,11 +217,12 @@ This skill implements a phase-gated workflow that separates discovery from imple
    python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 3 --check-deliverables --feature-dir "feature-requests/FR-001-jwt-refresh-tokens"
    ```
 
-5. **Request manual approval**
-   - Present implementation-plan.md to user
-   - Wait for explicit approval: "I approve the implementation plan"
-   - If user requests changes, update plan and re-validate
-   - Next phase: **Phase 4: Test-First Gate**
+5. **Gut-check with Unblocked** — before finalizing, verify the technical approach hasn't been tried and rejected, and that the architecture decisions align with team patterns.
+
+6. **Validate deliverables**
+   ```bash
+   python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 3 --check-deliverables --feature-dir "feature-requests/FR-001-jwt-refresh-tokens"
+   ```
 
 **Deliverable:** `feature-requests/FR-{NNN}-{feature-name}/implementation-plan.md`
 
@@ -206,6 +238,8 @@ This skill implements a phase-gated workflow that separates discovery from imple
 
 **Goal:** Generate runnable tests from spec + implementation plan before any production code is written.
 
+**Runs in:** Subagent (spawned by orchestrator)
+
 **Actions:**
 
 1. **Read spec.md and implementation-plan.md**
@@ -216,7 +250,9 @@ This skill implements a phase-gated workflow that separates discovery from imple
      python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 4 --action read --path "feature-requests/FR-001-jwt-refresh-tokens/implementation-plan.md"
      ```
 
-2. **Generate tests in 3 categories**
+2. **Hydrate from Unblocked** — query `unblocked_context_engine` for existing test patterns in the modules being touched. Look for: test conventions, fixture patterns, common assertion styles, and any tests that were previously written for similar features.
+
+3. **Generate tests in 3 categories**
    - Before writing any test file, validate:
      ```bash
      python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 4 --action write --path "modules/catalog/src/test/kotlin/com/example/catalog/SomeTest.kt"
@@ -247,11 +283,6 @@ This skill implements a phase-gated workflow that separates discovery from imple
    ```bash
    python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 4 --check-deliverables --feature-dir "feature-requests/FR-001-jwt-refresh-tokens"
    ```
-
-6. **Request manual approval**
-   - Present test-manifest.md and test file summary to user
-   - Wait for explicit approval: "I approve the test-first gate"
-   - If user requests changes, update tests and re-validate
 
 **Deliverables:**
 - Test files that compile (under `src/test/` or `modules/**/src/test/`)

@@ -81,7 +81,7 @@ phases:
         required: true
 
     next_phase: "phase_2_specification"
-    requires_manual_approval: true
+    requires_manual_approval: false
 
   # Phase 2: Specification (Write spec.md only)
   phase_2_specification:
@@ -136,7 +136,7 @@ phases:
           - "Code Changes"
 
     next_phase: "phase_3_planning"
-    requires_manual_approval: true
+    requires_manual_approval: false
 
   # Phase 3: Implementation Planning (Write implementation-plan.md only)
   phase_3_planning:
@@ -191,7 +191,7 @@ phases:
           - "Layer groupings (handler, domain, proxy, security, config, common)"
 
     next_phase: "phase_4_test_first_gate"
-    requires_manual_approval: true
+    requires_manual_approval: false
 
   # Phase 4: Test-First Gate (Write test files only — NEW in v2)
   phase_4_test_first_gate:
@@ -270,7 +270,7 @@ phases:
           - "Tests compile (gradlew compileTestKotlin passes)"
 
     next_phase: "phase_5_implementation"
-    requires_manual_approval: true
+    requires_manual_approval: false
 
   # Phase 5: Implementation (Write code and update plan — was Phase 4 in v1)
   phase_5_implementation:
@@ -317,6 +317,9 @@ phases:
         - "modules/**/*.xml"
         - "feature-requests/FR-*/implementation-plan.md"  # Can update checkboxes
         - "feature-requests/FR-*/summary.md"  # Create at end
+        - "feature-requests/FR-*/*.md"  # Investigation docs, decision records, etc.
+        - "CLAUDE.md"  # FRs that add engineering constraints
+        - "docs/**/*.md"  # Investigation deliverables and documentation BRs
         - "pom.xml"  # If dependencies needed
         - "*.gradle.kts"
         - "**/*.gradle.kts"
@@ -581,14 +584,14 @@ transitions:
   phase_1_to_phase_2:
     requires:
       - "Valid feature name generated"
-      - "Manual user approval"
+      - "User has not interrupted to request changes"
     creates:
       - "FR-{NNN}-{feature-name} directory"
 
   phase_2_to_phase_3:
     requires:
       - "spec.md exists and validated"
-      - "Manual user approval"
+      - "User has not interrupted to request changes"
     validation:
       - "spec.md has all required sections"
       - "spec.md does not contain implementation details"
@@ -596,7 +599,7 @@ transitions:
   phase_3_to_phase_4:
     requires:
       - "implementation-plan.md exists and validated"
-      - "Manual user approval"
+      - "User has not interrupted to request changes"
     validation:
       - "implementation-plan.md has all required sections"
       - "At least one task checkbox exists"
@@ -606,7 +609,7 @@ transitions:
     requires:
       - "test-manifest.md exists and validated"
       - "Test files compile"
-      - "Manual user approval"
+      - "User has not interrupted to request changes"
     validation:
       - "test-manifest.md has required sections"
       - "At least one test file in src/test/ or modules/**/src/test/"
@@ -635,4 +638,4 @@ error_messages:
   missing_deliverable: "Phase {phase} requires deliverable: {deliverable}"
   invalid_transition: "Cannot transition from {from_phase} to {to_phase} - requirements not met"
   immutable_file: "File {file} is immutable after phase {phase}"
-  missing_approval: "Manual approval required before proceeding to {next_phase}"
+  missing_approval: "User interrupted — address feedback before proceeding to {next_phase}"
