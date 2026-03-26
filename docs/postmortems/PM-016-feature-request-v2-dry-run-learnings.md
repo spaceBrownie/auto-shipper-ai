@@ -133,15 +133,15 @@ No production impact. The FR-024 changes are correct and CI-verified. The gaps i
 
 ### P1: Prescribe Unblocked Hydration in Workflow
 
-- [ ] **Add Unblocked hydration step to Phase 1 (Discovery):** Before codebase exploration, query `unblocked_context_engine` for the Linear ticket's related PRs, Slack discussions, and prior attempts. This catches rejected approaches and existing conventions.
-- [ ] **Add Unblocked hydration step to Phase 3 (Planning):** After drafting the technical design, query Unblocked for the key entities being modified (classes, services, modules). This catches team conventions and patterns not in code.
-- [ ] **Consider Unblocked in Phase 5 pre-flight:** For cross-module changes, query Unblocked for the modules being touched to catch in-progress work that might conflict.
+- [x] **Add Unblocked hydration step to Phase 1 (Discovery):** Before codebase exploration, query `unblocked_context_engine` for the Linear ticket's related PRs, Slack discussions, and prior attempts. This catches rejected approaches and existing conventions. *(Applied in PR #36)*
+- [x] **Add Unblocked hydration step to Phases 2, 3, and 4:** Hydrate before drafting and gut-check assumptions before finalizing each artifact. Phase 4 benefits from existing test patterns. *(Applied in PR #36)*
+- [x] **Phase 5 hydration is as-needed** since it executes an already-validated plan. *(Applied in PR #36)*
 
 ### P2: Expand Phase 5 Validation Script Write Patterns
 
-- [ ] **Add `feature-requests/FR-*/*.md` to Phase 5 write patterns** — not just `implementation-plan.md` and `summary.md`. Investigation docs, decision records, and other FR-scoped documents are legitimate Phase 5 outputs.
-- [ ] **Add `CLAUDE.md` to Phase 5 write patterns** — FRs that add engineering constraints (like BR-7) need to modify this file.
-- [ ] **Add `docs/**/*.md` to Phase 5 write patterns** — for investigation deliverables and documentation BRs.
+- [x] **Add `feature-requests/FR-*/*.md` to Phase 5 write patterns** — not just `implementation-plan.md` and `summary.md`. Investigation docs, decision records, and other FR-scoped documents are legitimate Phase 5 outputs. *(Applied in PR #36)*
+- [x] **Add `CLAUDE.md` to Phase 5 write patterns** — FRs that add engineering constraints (like BR-7) need to modify this file. *(Applied in PR #36)*
+- [x] **Add `docs/**/*.md` to Phase 5 write patterns** — for investigation deliverables and documentation BRs. *(Applied in PR #36)*
 
 ### P3: Phase 6 Stress Testing
 
