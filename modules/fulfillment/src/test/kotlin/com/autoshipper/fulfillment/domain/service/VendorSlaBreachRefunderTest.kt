@@ -52,6 +52,7 @@ class VendorSlaBreachRefunderTest {
         customerId = UUID.randomUUID(),
         totalAmount = BigDecimal("39.9900"),
         totalCurrency = Currency.USD,
+        quantity = 1,
         paymentIntentId = "pi_test_${UUID.randomUUID()}",
         status = status
     )

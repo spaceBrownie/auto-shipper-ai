@@ -1,0 +1,39 @@
+{
+  "id": 820982911946154500,
+  "name": "#1001",
+  "email": "customer@example.com",
+  "currency": "USD",
+  "financial_status": "paid",
+  "fulfillment_status": null,
+  "customer": {
+    "id": 115310627314723950,
+    "email": "customer@example.com",
+    "first_name": "John",
+    "last_name": "Doe"
+  },
+  "line_items": [
+    {
+      "id": 866550311766439000,
+      "product_id": 7513594,
+      "variant_id": 34505432,
+      "title": "Premium Widget",
+      "quantity": 3,
+      "price": "29.99",
+      "sku": "WIDGET-001"
+    }
+  ],
+  "shipping_address": {
+    "first_name": "John",
+    "last_name": "Doe",
+    "address1": "123 Main St",
+    "address2": "Apt 4B",
+    "city": "Anytown",
+    "province": "California",
+    "province_code": "CA",
+    "country": "United States",
+    "country_code": "US",
+    "zip": "90210",
+    "phone": "+1-555-123-4567"
+  },
+  "payment_gateway_names": ["shopify_payments"]
+}

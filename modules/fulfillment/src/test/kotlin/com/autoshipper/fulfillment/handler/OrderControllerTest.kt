@@ -55,6 +55,7 @@ class OrderControllerTest {
         customerId = customerId,
         totalAmount = BigDecimal("49.9900"),
         totalCurrency = Currency.USD,
+        quantity = 1,
         paymentIntentId = "pi_test_abc123",
         status = status,
         shipmentDetails = ShipmentDetails(

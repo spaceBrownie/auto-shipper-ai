@@ -52,6 +52,7 @@ class ShipmentTrackerTest {
         customerId = UUID.randomUUID(),
         totalAmount = BigDecimal("29.9900"),
         totalCurrency = Currency.USD,
+        quantity = 1,
         paymentIntentId = "pi_test_${UUID.randomUUID()}",
         status = OrderStatus.SHIPPED,
         shipmentDetails = ShipmentDetails(

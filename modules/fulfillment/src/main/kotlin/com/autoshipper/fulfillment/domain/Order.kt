@@ -38,6 +38,9 @@ class Order(
     @Column(name = "total_currency", nullable = false)
     val totalCurrency: Currency,
 
+    @Column(name = "quantity", nullable = false)
+    val quantity: Int,
+
     @Column(name = "payment_intent_id", nullable = false)
     val paymentIntentId: String,
 
@@ -47,6 +50,9 @@ class Order(
 
     @Embedded
     var shipmentDetails: ShipmentDetails = ShipmentDetails(),
+
+    @Embedded
+    var shippingAddress: ShippingAddress? = null,
 
     @Version
     var version: Long = 0,
@@ -62,6 +68,12 @@ class Order(
 
     @Column(name = "channel_order_number")
     var channelOrderNumber: String? = null,
+
+    @Column(name = "supplier_order_id")
+    var supplierOrderId: String? = null,
+
+    @Column(name = "failure_reason")
+    var failureReason: String? = null,
 
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now()
@@ -98,11 +110,12 @@ class Order(
     companion object {
         private val VALID_TRANSITIONS: Map<OrderStatus, Set<OrderStatus>> = mapOf(
             OrderStatus.PENDING to setOf(OrderStatus.CONFIRMED, OrderStatus.REFUNDED),
-            OrderStatus.CONFIRMED to setOf(OrderStatus.SHIPPED, OrderStatus.REFUNDED),
+            OrderStatus.CONFIRMED to setOf(OrderStatus.SHIPPED, OrderStatus.REFUNDED, OrderStatus.FAILED),
             OrderStatus.SHIPPED to setOf(OrderStatus.DELIVERED, OrderStatus.REFUNDED),
             OrderStatus.DELIVERED to setOf(OrderStatus.RETURNED, OrderStatus.REFUNDED),
             OrderStatus.REFUNDED to emptySet(),
-            OrderStatus.RETURNED to emptySet()
+            OrderStatus.RETURNED to emptySet(),
+            OrderStatus.FAILED to emptySet()
         )
     }
 }

@@ -75,6 +75,10 @@ resilience4j:
         sliding-window-size: 10
         failure-rate-threshold: 50
         wait-duration-in-open-state: 30s
+      cj-order:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
   retry:
     instances:
       ups-rate:
@@ -108,6 +112,11 @@ resilience4j:
         enable-exponential-backoff: true
         exponential-backoff-multiplier: 2
       shopify-listing:
+        max-attempts: 3
+        wait-duration: 1s
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+      cj-order:
         max-attempts: 3
         wait-duration: 1s
         enable-exponential-backoff: true
@@ -198,6 +207,9 @@ cj-dropshipping:
   api:
     base-url: ${CJ_API_BASE_URL:https://developers.cjdropshipping.com/api2.0/v1}
     access-token: ${CJ_ACCESS_TOKEN:}
+  order:
+    logistic-name: ${CJ_LOGISTIC_NAME:CJPacket}
+    from-country-code: ${CJ_FROM_COUNTRY_CODE:CN}
 
 # YouTube Data API v3
 youtube:

@@ -100,6 +100,7 @@ class OrderLifecycleTest {
             skuId = skuId,
             vendorId = vendorUUID,
             customerId = customerId,
+            quantity = 1,
             totalAmount = Money.of(BigDecimal("59.99"), Currency.USD),
             paymentIntentId = "pi_lifecycle_1",
             idempotencyKey = "lifecycle-test-1"
@@ -139,9 +140,14 @@ class OrderLifecycleTest {
 
         // Verify delivered
         assert(store[order.id]!!.status == OrderStatus.DELIVERED)
-        verify(eventPublisher).publishEvent(argThat<OrderFulfilled> {
-            this.orderId.value == order.id
-        })
+        // routeToVendor publishes OrderConfirmed, markDelivered publishes OrderFulfilled.
+        // Use argumentCaptor to verify OrderFulfilled was published among all events.
+        val captor = argumentCaptor<Any>()
+        verify(eventPublisher, atLeast(2)).publishEvent(captor.capture())
+        val fulfilledEvents = captor.allValues.filterIsInstance<OrderFulfilled>()
+        assert(fulfilledEvents.any { it.orderId.value == order.id }) {
+            "Expected at least one OrderFulfilled event for order ${order.id}"
+        }
     }
 
     @Test
@@ -155,11 +161,11 @@ class OrderLifecycleTest {
 
         // Create and confirm two orders
         val amount = Money.of(BigDecimal("39.99"), Currency.USD)
-        val cmd1 = CreateOrderCommand(skuId, vendorUUID, customerId, amount, "pi_breach_1", "breach-test-1")
+        val cmd1 = CreateOrderCommand(skuId, vendorUUID, customerId, 1, amount, "pi_breach_1", "breach-test-1")
         val (order1, _) = orderService.create(cmd1)
         orderService.routeToVendor(order1.id)
 
-        val cmd2 = CreateOrderCommand(skuId, vendorUUID, customerId, amount, "pi_breach_2", "breach-test-2")
+        val cmd2 = CreateOrderCommand(skuId, vendorUUID, customerId, 1, amount, "pi_breach_2", "breach-test-2")
         val (order2, _) = orderService.create(cmd2)
         orderService.routeToVendor(order2.id)
 
@@ -198,6 +204,7 @@ class OrderLifecycleTest {
             skuId = skuId,
             vendorId = vendorUUID,
             customerId = customerId,
+            quantity = 1,
             totalAmount = Money.of(BigDecimal("19.99"), Currency.USD),
             paymentIntentId = "pi_no_inv",
             idempotencyKey = "no-inventory-test"
@@ -220,7 +227,7 @@ class OrderLifecycleTest {
         val orderService = OrderService(orderRepository, inventoryChecker, eventPublisher)
 
         // Create, route, and ship
-        val cmd = CreateOrderCommand(skuId, vendorUUID, customerId, Money.of(BigDecimal("29.99"), Currency.USD), "pi_delay_1", "delay-test-1")
+        val cmd = CreateOrderCommand(skuId, vendorUUID, customerId, 1, Money.of(BigDecimal("29.99"), Currency.USD), "pi_delay_1", "delay-test-1")
         val (order, _) = orderService.create(cmd)
         orderService.routeToVendor(order.id)
         orderService.markShipped(order.id, "DELAY-TRACK", "UPS")

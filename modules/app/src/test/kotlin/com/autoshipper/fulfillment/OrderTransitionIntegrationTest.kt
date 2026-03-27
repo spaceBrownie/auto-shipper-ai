@@ -3,7 +3,10 @@ package com.autoshipper.fulfillment
 import com.autoshipper.catalog.domain.Sku
 import com.autoshipper.catalog.domain.SkuState
 import com.autoshipper.catalog.persistence.SkuRepository
+import com.autoshipper.fulfillment.handler.SupplierOrderPlacementListener
 import com.autoshipper.fulfillment.proxy.inventory.InventoryChecker
+import com.autoshipper.fulfillment.proxy.supplier.SupplierOrderAdapter
+import com.autoshipper.fulfillment.proxy.supplier.SupplierOrderResult
 import com.autoshipper.vendor.domain.Vendor
 import com.autoshipper.vendor.domain.VendorActivationChecklist
 import com.autoshipper.vendor.domain.VendorStatus
@@ -51,9 +54,19 @@ class OrderTransitionIntegrationTest {
     @MockBean
     lateinit var inventoryChecker: InventoryChecker
 
+    @MockBean
+    lateinit var supplierOrderAdapter: SupplierOrderAdapter
+
+    /** Prevent SupplierOrderPlacementListener from marking orders FAILED (no CJ mapping in test DB) */
+    @MockBean
+    lateinit var supplierOrderPlacementListener: SupplierOrderPlacementListener
+
     @BeforeEach
     fun setup() {
         `when`(inventoryChecker.isAvailable(any())).thenReturn(true)
+        `when`(supplierOrderAdapter.placeOrder(any())).thenReturn(
+            SupplierOrderResult(supplierOrderId = "stub_cj_test", status = "CREATED")
+        )
     }
 
     @AfterEach

@@ -12,7 +12,8 @@ data class ChannelOrder(
     val channelName: String,
     val customerEmail: String,
     val currencyCode: String,
-    val lineItems: List<ChannelLineItem>
+    val lineItems: List<ChannelLineItem>,
+    val shippingAddress: ChannelShippingAddress? = null
 )
 
 data class ChannelLineItem(

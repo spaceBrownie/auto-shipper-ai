@@ -1,0 +1,7 @@
+{
+  "code": 1600400,
+  "result": false,
+  "message": "Product variant unavailable or out of stock",
+  "data": null,
+  "requestId": "req-def456"
+}

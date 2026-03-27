@@ -65,7 +65,7 @@ class LineItemOrderCreatorTest {
             idempotencyKey = "shopify:order:12345:item:0",
             skuId = skuId, vendorId = vendorId, customerId = customerId,
             totalAmount = expectedTotal.normalizedAmount, totalCurrency = expectedTotal.currency,
-            paymentIntentId = "shopify:order:12345", status = OrderStatus.PENDING
+            quantity = 2, paymentIntentId = "shopify:order:12345", status = OrderStatus.PENDING
         )
         whenever(orderService.create(any<CreateOrderCommand>())).thenReturn(Pair(order, true))
         whenever(orderService.setChannelMetadata(any(), any(), any(), any())).thenReturn(order)
@@ -113,7 +113,7 @@ class LineItemOrderCreatorTest {
             idempotencyKey = "shopify:order:12345:item:0",
             skuId = skuId, vendorId = vendorId, customerId = customerId,
             totalAmount = BigDecimal("59.98"), totalCurrency = Currency.USD,
-            paymentIntentId = "shopify:order:12345", status = OrderStatus.PENDING
+            quantity = 2, paymentIntentId = "shopify:order:12345", status = OrderStatus.PENDING
         )
         whenever(orderService.create(any<CreateOrderCommand>())).thenReturn(Pair(existingOrder, false))
 

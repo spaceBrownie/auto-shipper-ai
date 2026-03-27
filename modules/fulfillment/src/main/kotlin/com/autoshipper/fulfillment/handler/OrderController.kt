@@ -25,6 +25,7 @@ class OrderController(private val orderService: OrderService) {
             skuId = UUID.fromString(request.skuId),
             vendorId = UUID.fromString(request.vendorId),
             customerId = UUID.fromString(request.customerId),
+            quantity = request.quantity,
             totalAmount = Money.of(BigDecimal(request.totalAmount), Currency.valueOf(request.totalCurrency)),
             paymentIntentId = request.paymentIntentId,
             idempotencyKey = request.idempotencyKey
@@ -102,6 +103,7 @@ class OrderController(private val orderService: OrderService) {
         skuId = skuId.toString(),
         vendorId = vendorId.toString(),
         customerId = customerId.toString(),
+        quantity = quantity,
         totalAmount = totalAmount.toPlainString(),
         totalCurrency = totalCurrency.name,
         status = status.name,
@@ -111,6 +113,8 @@ class OrderController(private val orderService: OrderService) {
         channel = channel,
         channelOrderId = channelOrderId,
         channelOrderNumber = channelOrderNumber,
+        supplierOrderId = supplierOrderId,
+        failureReason = failureReason,
         createdAt = createdAt.toString(),
         updatedAt = updatedAt.toString()
     )

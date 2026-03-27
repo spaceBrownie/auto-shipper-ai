@@ -1,0 +1,11 @@
+{
+  "code": 200,
+  "result": true,
+  "message": "success",
+  "data": {
+    "orderId": "CJ-ORD-2026032700001",
+    "orderNum": "CJ-2026032700001",
+    "status": "CREATED"
+  },
+  "requestId": "req-abc123"
+}

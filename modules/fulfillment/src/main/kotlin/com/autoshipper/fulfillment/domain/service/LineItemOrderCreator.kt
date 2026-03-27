@@ -1,6 +1,7 @@
 package com.autoshipper.fulfillment.domain.service
 
 import com.autoshipper.fulfillment.domain.channel.ChannelOrder
+import com.autoshipper.fulfillment.domain.channel.toShippingAddress
 import com.autoshipper.fulfillment.proxy.platform.PlatformListingResolver
 import com.autoshipper.fulfillment.proxy.platform.VendorSkuResolver
 import com.autoshipper.shared.money.Currency
@@ -66,9 +67,11 @@ class LineItemOrderCreator(
             skuId = skuId,
             vendorId = vendorId,
             customerId = customerUUID,
+            quantity = lineItem.quantity,
             totalAmount = totalAmount,
             paymentIntentId = "shopify:order:${channelOrder.channelOrderId}",
-            idempotencyKey = "shopify:order:${channelOrder.channelOrderId}:item:$index"
+            idempotencyKey = "shopify:order:${channelOrder.channelOrderId}:item:$index",
+            shippingAddress = channelOrder.shippingAddress?.toShippingAddress()
         )
 
         val (order, isNew) = orderService.create(command)

@@ -1,0 +1,7 @@
+{
+  "code": 1600001,
+  "result": false,
+  "message": "Unauthorized: invalid or expired access token",
+  "data": null,
+  "requestId": "req-ghi789"
+}

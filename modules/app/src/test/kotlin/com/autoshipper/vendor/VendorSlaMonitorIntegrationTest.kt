@@ -103,6 +103,7 @@ class VendorSlaMonitorIntegrationTest {
                     customerId = UUID.randomUUID(),
                     totalAmount = BigDecimal("50.0000"),
                     totalCurrency = Currency.USD,
+                    quantity = 1,
                     paymentIntentId = "pi_sla_${UUID.randomUUID()}",
                     status = OrderStatus.DELIVERED,
                     shipmentDetails = ShipmentDetails(

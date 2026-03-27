@@ -1,0 +1,39 @@
+{
+  "id": 820982911946154501,
+  "name": "#1002",
+  "email": "quantity-test@example.com",
+  "currency": "USD",
+  "financial_status": "paid",
+  "fulfillment_status": null,
+  "customer": {
+    "id": 115310627314723951,
+    "email": "quantity-test@example.com",
+    "first_name": "Jane",
+    "last_name": "Smith"
+  },
+  "line_items": [
+    {
+      "id": 866550311766439001,
+      "product_id": 9999001,
+      "variant_id": 55501001,
+      "title": "Bulk Order Product",
+      "quantity": 5,
+      "price": "19.99",
+      "sku": "BULK-001"
+    }
+  ],
+  "shipping_address": {
+    "first_name": "Jane",
+    "last_name": "Smith",
+    "address1": "456 Oak Ave",
+    "address2": null,
+    "city": "Springfield",
+    "province": "Illinois",
+    "province_code": "IL",
+    "country": "United States",
+    "country_code": "US",
+    "zip": "62701",
+    "phone": "+1-555-987-6543"
+  },
+  "payment_gateway_names": ["shopify_payments"]
+}

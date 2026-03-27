@@ -44,6 +44,7 @@ class OrderServiceTest {
             skuId = skuId,
             vendorId = vendorId,
             customerId = customerId,
+            quantity = 1,
             totalAmount = Money.of(BigDecimal("49.99"), Currency.USD),
             paymentIntentId = "pi_test_123",
             idempotencyKey = idempotencyKey
@@ -56,6 +57,7 @@ class OrderServiceTest {
         customerId = customerId,
         totalAmount = BigDecimal("49.9900"),
         totalCurrency = Currency.USD,
+        quantity = 1,
         paymentIntentId = "pi_test_123",
         status = OrderStatus.PENDING
     )

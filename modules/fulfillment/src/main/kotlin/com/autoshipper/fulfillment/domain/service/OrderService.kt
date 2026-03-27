@@ -5,7 +5,10 @@ import com.autoshipper.fulfillment.domain.OrderStatus
 import com.autoshipper.fulfillment.domain.ShipmentDetails
 import com.autoshipper.fulfillment.persistence.OrderRepository
 import com.autoshipper.fulfillment.proxy.inventory.InventoryChecker
+import com.autoshipper.shared.events.OrderConfirmed
 import com.autoshipper.shared.events.OrderFulfilled
+import com.autoshipper.shared.identity.OrderId
+import com.autoshipper.shared.identity.SkuId
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
@@ -47,8 +50,10 @@ class OrderService(
             customerId = request.customerId,
             totalAmount = request.totalAmount.normalizedAmount,
             totalCurrency = request.totalAmount.currency,
+            quantity = request.quantity,
             paymentIntentId = request.paymentIntentId,
-            status = OrderStatus.PENDING
+            status = OrderStatus.PENDING,
+            shippingAddress = request.shippingAddress
         )
 
         val saved = orderRepository.save(order)
@@ -75,6 +80,12 @@ class OrderService(
 
         order.updateStatus(OrderStatus.CONFIRMED)
         val saved = orderRepository.save(order)
+        eventPublisher.publishEvent(
+            OrderConfirmed(
+                orderId = OrderId(saved.id),
+                skuId = SkuId(saved.skuId)
+            )
+        )
         logger.info("Order {} routed to vendor {}, status -> CONFIRMED", orderId, order.vendorId)
         return saved
     }
@@ -115,6 +126,30 @@ class OrderService(
         order.channel = channel
         order.channelOrderId = channelOrderId
         order.channelOrderNumber = channelOrderNumber
+        order.updatedAt = Instant.now()
+        return orderRepository.save(order)
+    }
+
+    /**
+     * Marks an order as FAILED with a recorded reason (e.g., CJ API error).
+     */
+    @Transactional
+    fun markFailed(orderId: UUID, reason: String): Order {
+        val order = orderRepository.findById(orderId)
+            .orElseThrow { IllegalArgumentException("Order $orderId not found") }
+        order.updateStatus(OrderStatus.FAILED)
+        order.failureReason = reason
+        return orderRepository.save(order)
+    }
+
+    /**
+     * Stores the external supplier order ID on an existing order.
+     */
+    @Transactional
+    fun setSupplierOrderId(orderId: UUID, supplierOrderId: String): Order {
+        val order = orderRepository.findById(orderId)
+            .orElseThrow { IllegalArgumentException("Order $orderId not found") }
+        order.supplierOrderId = supplierOrderId
         order.updatedAt = Instant.now()
         return orderRepository.save(order)
     }
