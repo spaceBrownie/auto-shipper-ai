@@ -7,5 +7,6 @@ data class CreateOrderRequest(
     val totalAmount: String,
     val totalCurrency: String,
     val paymentIntentId: String,
-    val idempotencyKey: String
+    val idempotencyKey: String,
+    val quantity: Int = 1
 )

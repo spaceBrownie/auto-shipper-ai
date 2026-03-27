@@ -27,7 +27,8 @@ class OrderController(private val orderService: OrderService) {
             customerId = UUID.fromString(request.customerId),
             totalAmount = Money.of(BigDecimal(request.totalAmount), Currency.valueOf(request.totalCurrency)),
             paymentIntentId = request.paymentIntentId,
-            idempotencyKey = request.idempotencyKey
+            idempotencyKey = request.idempotencyKey,
+            quantity = request.quantity
         )
         val (order, created) = orderService.create(command)
         val status = if (created) HttpStatus.CREATED else HttpStatus.OK

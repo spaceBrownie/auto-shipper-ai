@@ -46,7 +46,8 @@ class OrderServiceTest {
             customerId = customerId,
             totalAmount = Money.of(BigDecimal("49.99"), Currency.USD),
             paymentIntentId = "pi_test_123",
-            idempotencyKey = idempotencyKey
+            idempotencyKey = idempotencyKey,
+            quantity = 1
         )
 
     private fun pendingOrder(idempotencyKey: String = "idem-key"): Order = Order(
