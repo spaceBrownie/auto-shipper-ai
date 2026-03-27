@@ -49,7 +49,8 @@ class OrderService(
             totalAmount = request.totalAmount.normalizedAmount,
             totalCurrency = request.totalAmount.currency,
             paymentIntentId = request.paymentIntentId,
-            status = OrderStatus.PENDING
+            status = OrderStatus.PENDING,
+            quantity = request.quantity
         )
         request.shippingAddress?.let { order.shippingAddress = it }
 

@@ -83,7 +83,8 @@ class LineItemOrderCreator(
             totalAmount = totalAmount,
             paymentIntentId = "shopify:order:${channelOrder.channelOrderId}",
             idempotencyKey = "shopify:order:${channelOrder.channelOrderId}:item:$index",
-            shippingAddress = shippingAddr
+            shippingAddress = shippingAddr,
+            quantity = lineItem.quantity
         )
 
         val (order, isNew) = orderService.create(command)

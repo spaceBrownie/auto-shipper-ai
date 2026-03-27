@@ -13,7 +13,6 @@ import org.springframework.context.annotation.Profile
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
-import org.springframework.web.client.RestClientException
 
 @Component
 @Profile("!local")
@@ -55,38 +54,33 @@ class CjOrderAdapter(
             )
         )
 
-        return try {
-            val response = restClient.post()
-                .uri("/api2.0/v1/shopping/order/createOrderV2")
-                .header("CJ-Access-Token", accessToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(requestBody)
-                .retrieve()
-                .body(JsonNode::class.java)
+        val response = restClient.post()
+            .uri("/api2.0/v1/shopping/order/createOrderV2")
+            .header("CJ-Access-Token", accessToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(requestBody)
+            .retrieve()
+            .body(JsonNode::class.java)
 
-            // CJ returns HTTP 200 for ALL responses -- check JSON code field
-            val code = response?.get("code")?.asInt() ?: -1
-            if (code == 200) {
-                val orderId = response?.get("data")?.get("orderId")?.asText()
-                    ?: return SupplierOrderResult.Failure(FailureReason.UNKNOWN, "CJ returned success but missing orderId")
-                return SupplierOrderResult.Success(supplierOrderId = orderId)
-            }
-
-            // Map CJ error codes to FailureReason
-            val message = response?.get("message")?.asText() ?: "Unknown CJ API error"
-            val reason = when (code) {
-                1600001, 1600100 -> FailureReason.API_AUTH_FAILURE
-                1600200 -> FailureReason.NETWORK_ERROR
-                else -> when {
-                    message.contains("stock", ignoreCase = true) -> FailureReason.OUT_OF_STOCK
-                    message.contains("address", ignoreCase = true) -> FailureReason.INVALID_ADDRESS
-                    else -> FailureReason.UNKNOWN
-                }
-            }
-            SupplierOrderResult.Failure(reason, message)
-        } catch (e: RestClientException) {
-            logger.error("CJ API call failed for order {}: {}", request.orderNumber, e.message)
-            SupplierOrderResult.Failure(FailureReason.NETWORK_ERROR, e.message ?: "Network error")
+        // CJ returns HTTP 200 for ALL responses -- check JSON code field
+        val code = response?.get("code")?.asInt() ?: -1
+        if (code == 200) {
+            val orderId = response?.get("data")?.get("orderId")?.asText()
+                ?: return SupplierOrderResult.Failure(FailureReason.UNKNOWN, "CJ returned success but missing orderId")
+            return SupplierOrderResult.Success(supplierOrderId = orderId)
         }
+
+        // Map CJ error codes to FailureReason
+        val message = response?.get("message")?.asText() ?: "Unknown CJ API error"
+        val reason = when (code) {
+            1600001, 1600100 -> FailureReason.API_AUTH_FAILURE
+            1600200 -> FailureReason.NETWORK_ERROR
+            else -> when {
+                message.contains("stock", ignoreCase = true) -> FailureReason.OUT_OF_STOCK
+                message.contains("address", ignoreCase = true) -> FailureReason.INVALID_ADDRESS
+                else -> FailureReason.UNKNOWN
+            }
+        }
+        return SupplierOrderResult.Failure(reason, message)
     }
 }

@@ -138,10 +138,15 @@ class CjOrderAdapterContractTest {
     }
 
     /**
-     * Test: CJ network timeout -> NETWORK_ERROR failure result.
+     * Test: NETWORK_ERROR failure result data contract.
+     *
+     * Note: The CjOrderAdapter no longer catches RestClientException internally --
+     * network errors propagate to Resilience4j for retry/circuit-breaker, then the
+     * SupplierOrderPlacementListener catches the exception and marks the order FAILED
+     * with NETWORK_ERROR reason.
      */
     @Test
-    fun `network timeout produces NETWORK_ERROR failure result`() {
+    fun `NETWORK_ERROR failure result carries reason and message`() {
         val failureResult = SupplierOrderResult.Failure(
             reason = FailureReason.NETWORK_ERROR,
             message = "Connection timed out after 10000ms"

@@ -91,12 +91,22 @@ class SupplierOrderPlacementListener(
             zip = addr.zip ?: "",
             phone = addr.phone ?: "",
             supplierVariantId = mapping.supplierVariantId,
-            quantity = 1
+            quantity = order.quantity
         )
 
-        // Place order
+        // Place order — let RestClientException propagate to Resilience4j @Retry/@CircuitBreaker,
+        // then catch here after retries are exhausted
         val timer = meterRegistry.timer("supplier.order.placement.duration", "supplier", mapping.supplier)
-        val result = timer.recordCallable { adapter.placeOrder(request) }!!
+        val result = try {
+            timer.recordCallable { adapter.placeOrder(request) }!!
+        } catch (e: Exception) {
+            logger.error("Supplier order placement failed for order {} after retries: {}", orderId, e.message)
+            order.updateStatus(OrderStatus.FAILED)
+            order.failureReason = "NETWORK_ERROR"
+            orderRepository.save(order)
+            meterRegistry.counter("supplier.order.placed", "supplier", mapping.supplier, "outcome", "failure").increment()
+            return
+        }
 
         when (result) {
             is SupplierOrderResult.Success -> {

@@ -262,6 +262,44 @@ class SupplierOrderBoundaryTest {
         }
     }
 
+    // ===== Network Error Handling =====
+
+    /**
+     * Test: Adapter throws exception (after Resilience4j retries exhausted) ->
+     * order marked FAILED with NETWORK_ERROR reason.
+     */
+    @Test
+    fun `adapter exception after retries exhausted transitions order to FAILED with NETWORK_ERROR`() {
+        val orderId = UUID.randomUUID()
+        val skuId = UUID.randomUUID()
+        val order = createTestOrder(orderId, skuId, OrderStatus.CONFIRMED)
+
+        val mapping = SupplierProductMapping(
+            skuId = skuId,
+            supplier = "CJ_DROPSHIPPING",
+            supplierProductId = "pid-123",
+            supplierVariantId = "vid-456"
+        )
+
+        val adapter: SupplierOrderAdapter = mock {
+            on { supplierName() } doReturn "CJ_DROPSHIPPING"
+            on { placeOrder(any()) } doThrow RuntimeException("Connection timed out after 10000ms")
+        }
+
+        whenever(orderRepository.findById(orderId)).thenReturn(Optional.of(order))
+        whenever(supplierProductMappingRepository.findBySkuId(skuId)).thenReturn(mapping)
+        whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+
+        val listener = SupplierOrderPlacementListener(
+            orderRepository, supplierProductMappingRepository, listOf(adapter), meterRegistry
+        )
+        listener.onOrderConfirmed(OrderConfirmed(OrderId(orderId), SkuId(skuId)))
+
+        assertEquals(OrderStatus.FAILED, order.status)
+        assertEquals("NETWORK_ERROR", order.failureReason)
+        verify(orderRepository).save(order)
+    }
+
     // ===== OrderStatus.FAILED Transitions =====
 
     /**

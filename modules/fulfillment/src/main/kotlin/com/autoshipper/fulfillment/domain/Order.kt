@@ -66,6 +66,9 @@ class Order(
     @Embedded
     var shippingAddress: ShippingAddress = ShippingAddress(),
 
+    @Column(name = "quantity", nullable = false)
+    val quantity: Int = 1,
+
     @Column(name = "supplier_order_id")
     var supplierOrderId: String? = null,
 

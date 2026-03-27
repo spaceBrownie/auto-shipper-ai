@@ -11,5 +11,6 @@ data class CreateOrderCommand(
     val totalAmount: Money,
     val paymentIntentId: String,
     val idempotencyKey: String,
-    val shippingAddress: ShippingAddress? = null
+    val shippingAddress: ShippingAddress? = null,
+    val quantity: Int = 1
 )
