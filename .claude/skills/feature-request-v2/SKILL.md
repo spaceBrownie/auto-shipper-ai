@@ -94,7 +94,16 @@ If Unblocked MCP is not available, proceed without it — the workflow should no
      python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 1 --action bash --command "ls"
      ```
 
-4. **Generate feature name**
+4. **API contract gap analysis** (when the feature involves calling an external API)
+   - List every field in the external API's request body
+   - For each field, answer:
+     1. **Source:** Where does this value originate? (webhook, user input, derived calculation, config)
+     2. **Stored:** Is it persisted in the data model? Which entity/column?
+     3. **Accessible:** Can the code that builds the API request access it at call time?
+   - Document any field where the answer to (2) or (3) is "no" as a **data model gap** — these require new columns, new entities, or new data flow before the feature can work
+   - Include this analysis in the Discovery deliverable alongside the existing gap analysis
+
+5. **Generate feature name**
    - Create kebab-case name (e.g., "jwt-refresh-tokens")
    - Validate name:
      ```bash
@@ -102,7 +111,7 @@ If Unblocked MCP is not available, proceed without it — the workflow should no
      ```
    - If validation fails, generate a new name
 
-5. **Gut-check with Unblocked** — before returning, verify the proposed feature name and scope don't conflict with in-progress work or existing features.
+6. **Gut-check with Unblocked** — before returning, verify the proposed feature name and scope don't conflict with in-progress work or existing features.
 
 **Deliverable:** Valid feature name (kebab-case, 3-50 chars, lowercase alphanumeric with hyphens)
 
@@ -184,7 +193,12 @@ If Unblocked MCP is not available, proceed without it — the workflow should no
    - Identify affected layers: handler, domain, proxy, security, config, common
    - Consult layer-specific AGENTS.md files for constraints
 
-4. **Write implementation-plan.md**
+4. **Behavioral consistency check** — before finalizing the plan, verify:
+   - **Resilience vs error handling:** If a method has `@Retry` or `@CircuitBreaker`, it must NOT catch the exception types those annotations should intercept (e.g., `RestClientException`). Flag contradictions: "Method has @Retry but catches the exception internally — retries will never fire." See CLAUDE.md #18.
+   - **Transaction boundaries vs event patterns:** If a listener uses `@TransactionalEventListener(AFTER_COMMIT)`, verify it also has `@Transactional(REQUIRES_NEW)` per CLAUDE.md #6.
+   - **Default values on commands/DTOs:** If a field is business-critical (e.g., quantity, price, currency), it must be a required parameter (no default) on command objects. Defaults mask missing data flow.
+
+5. **Write implementation-plan.md**
    - Before writing, validate:
      ```bash
      python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 3 --action write --path "feature-requests/FR-001-jwt-refresh-tokens/implementation-plan.md"
@@ -212,14 +226,14 @@ If Unblocked MCP is not available, proceed without it — the workflow should no
      - **Testing Strategy** - Unit, integration, e2e tests
      - **Rollout Plan** - Deployment steps, rollback procedure
 
-4. **Validate deliverables**
+6. **Validate deliverables**
    ```bash
    python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 3 --check-deliverables --feature-dir "feature-requests/FR-001-jwt-refresh-tokens"
    ```
 
-5. **Gut-check with Unblocked** — before finalizing, verify the technical approach hasn't been tried and rejected, and that the architecture decisions align with team patterns.
+7. **Gut-check with Unblocked** — before finalizing, verify the technical approach hasn't been tried and rejected, and that the architecture decisions align with team patterns.
 
-6. **Validate deliverables**
+8. **Validate deliverables**
    ```bash
    python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 3 --check-deliverables --feature-dir "feature-requests/FR-001-jwt-refresh-tokens"
    ```
@@ -252,7 +266,7 @@ If Unblocked MCP is not available, proceed without it — the workflow should no
 
 2. **Hydrate from Unblocked** — query `unblocked_context_engine` for existing test patterns in the modules being touched. Look for: test conventions, fixture patterns, common assertion styles, and any tests that were previously written for similar features.
 
-3. **Generate tests in 3 categories**
+3. **Generate tests in the following categories**
    - Before writing any test file, validate:
      ```bash
      python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 4 --action write --path "modules/catalog/src/test/kotlin/com/example/catalog/SomeTest.kt"
@@ -260,26 +274,38 @@ If Unblocked MCP is not available, proceed without it — the workflow should no
    - **End-to-End Flow Tests** - Verify the complete feature workflow from entry point to final state. These tests exercise the full path through the system for the happy-path scenarios described in the spec's success criteria.
    - **Boundary Condition Tests** - Cover edge cases, error paths, and threshold behavior. Include stress-test margin boundaries, invalid state transitions, missing/malformed inputs, and any "must reject" criteria from the spec.
    - **Dependency Contract Tests** - Verify interactions with collaborating modules and external adapters. Use mocks/stubs to assert that the feature calls dependencies with correct arguments and handles their responses (including failures) properly.
+   - **Data Lineage Tests** — For features that send data to external APIs, verify that every business-critical field in the API request traces back to its origin. For each field in the external API request body, write a test that:
+     1. Sets a specific value at the data origin (e.g., `quantity = 3` in a Shopify webhook payload)
+     2. Processes it through all intermediate representations (ChannelOrder → CreateOrderCommand → Order entity)
+     3. Asserts the exact same value appears in the outbound API request
+     Test name pattern: `{field} propagates from {origin} to {destination}` (e.g., `quantity propagates from Shopify line item to CJ order request`)
+     These tests catch "data evaporation" bugs where a value exists at the source but is lost or hardcoded at an intermediate step.
 
-3. **Verify test compilation**
+4. **Verify test compilation**
    ```bash
    python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 4 --action bash --command "./gradlew compileTestKotlin"
    ./gradlew compileTestKotlin
    ```
    - Tests must compile successfully. They are expected to **fail** when run (since production code does not exist yet), so do NOT execute `./gradlew test`.
 
-4. **Write test-manifest.md**
+5. **Write test-manifest.md**
    - Before writing, validate:
      ```bash
      python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 4 --action write --path "feature-requests/FR-001-jwt-refresh-tokens/test-manifest.md"
      ```
    - Include:
      - **Test File Inventory** - List of all test files created with their paths
-     - **Category Mapping** - Which tests cover end-to-end flow, boundary conditions, and dependency contracts
+     - **Category Mapping** - Which tests cover end-to-end flow, boundary conditions, dependency contracts, and data lineage
      - **Spec Traceability** - Map each test back to the spec requirement or success criterion it validates
+     - **Data Lineage Traceability** — For each external API field, map: source → intermediate representations → destination, and the test that validates the flow
      - **Expected Failures** - Confirm that all tests are expected to fail until Phase 5 implementation
 
-5. **Validate deliverables**
+   **Test quality rules:**
+   - **Minimize `TODO()` usage.** Tests containing `TODO()` are requirements documents, not tests — they cannot catch bugs. Prefer tests that fail with meaningful assertion errors. If a test cannot execute without production code, write it to assert against the planned interface contract with concrete values, not as a `TODO()` placeholder.
+   - **Create minimal type definitions in main source when possible.** Instead of creating compilation stubs in the test source set, create the actual interfaces, value types, and enums in main source (no implementations). This ensures tests compile against real type signatures and Phase 5 implements against the same contracts.
+   - **Every test must have at least one concrete assertion.** A test that only contains `TODO()` or only asserts trivially true conditions (e.g., `assert(status.name == "CONFIRMED")`) is not a real test.
+
+6. **Validate deliverables**
    ```bash
    python .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 4 --check-deliverables --feature-dir "feature-requests/FR-001-jwt-refresh-tokens"
    ```
