@@ -1,9 +1,9 @@
 # E2E Test Playbook
 
 End-to-end manual test script for the full SKU lifecycle through capital protection, compliance guards, and portfolio orchestration.
-Covers: SKU creation, compliance checks, state machine, cost gate, stress test, pricing, platform listing (FR-020), Shopify webhook order creation (FR-023), orders, reserve management, margin monitoring, automated shutdown rules, portfolio experiments, kill window monitoring, priority ranking, demand scan job, and demand signal smoke test (FR-017).
+Covers: SKU creation, compliance checks, state machine, cost gate, stress test, pricing, platform listing (FR-020), Shopify webhook order creation (FR-023), supplier order placement (FR-025), orders, reserve management, margin monitoring, automated shutdown rules, portfolio experiments, kill window monitoring, priority ranking, demand scan job, and demand signal smoke test (FR-017).
 
-**Last validated:** 2026-03-21 on branch `feat/RAT-24-shopify-admin-api-contract-tests`
+**Last validated:** 2026-03-27 on branch `main`
 
 ---
 
@@ -39,7 +39,7 @@ PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
                  compliance_audit, experiments, kill_recommendations,
                  priority_ranking_log, scaling_flags, refund_alerts, discovery_blacklist,
                  demand_candidates, candidate_rejections, demand_scan_runs,
-                 platform_listings, webhook_events
+                 platform_listings, webhook_events, supplier_product_mappings
   CASCADE;
 "
 ```
@@ -327,6 +327,30 @@ This phase tests the Shopify `orders/create` webhook flow: HMAC verification, de
 
 ### Prerequisites
 
+**Vendor and assignment setup:** The webhook order creator resolves the SKU's vendor via `vendor_sku_assignments`. Create a vendor and assignment before sending the webhook:
+
+```bash
+# Create vendor
+curl -s -X POST "http://localhost:8080/api/vendors" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test Vendor","contactEmail":"vendor@test.com","leadTimeDays":5}' | python3 -m json.tool
+
+VENDOR_ID="<id from response>"
+
+# Complete checklist + activate
+curl -s -X PATCH "http://localhost:8080/api/vendors/$VENDOR_ID/checklist" \
+  -H "Content-Type: application/json" \
+  -d '{"slaConfirmed":true,"defectRateDocumented":true,"scalabilityConfirmed":true,"fulfillmentTimesConfirmed":true,"refundPolicyConfirmed":true}' | python3 -m json.tool
+
+curl -s -X POST "http://localhost:8080/api/vendors/$VENDOR_ID/activate" | python3 -m json.tool
+
+# Assign vendor to SKU
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
+  INSERT INTO vendor_sku_assignments (id, vendor_id, sku_id, assigned_at, active)
+  VALUES (gen_random_uuid(), '$VENDOR_ID', '$SKU_ID', NOW(), true);
+"
+```
+
 Set the webhook secret in the environment before starting the application:
 
 ```bash
@@ -342,29 +366,49 @@ pkill -f "bootRun"
 
 ### 1b.1 Compute HMAC for Test Payload
 
-The test payload must be signed with the configured secret. Compute the HMAC using `openssl`:
+The test payload must be signed with the configured secret. The `product_id` and `variant_id` must match the platform listing's `external_listing_id` and `external_variant_id` from Phase 1.7. The payload must include `shipping_address` (FR-025 requires it for supplier order placement).
 
 ```bash
-# Define the test payload
-WEBHOOK_PAYLOAD='{
-  "id": 820982911946154508,
-  "name": "#1001",
-  "currency": "USD",
-  "customer": {"email": "buyer@example.com"},
-  "line_items": [{
-    "product_id": 788032119674292922,
-    "variant_id": 788032119674292923,
-    "quantity": 1,
-    "price": "199.99",
-    "title": "E2E Test SKU"
+# Get external IDs from platform listing
+LISTING_IDS=$(PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -t -A -F'|' -c \
+  "SELECT external_listing_id, external_variant_id FROM platform_listings WHERE sku_id = '$SKU_ID';")
+EXTERNAL_LISTING_ID=$(echo "$LISTING_IDS" | cut -d'|' -f1)
+EXTERNAL_VARIANT_ID=$(echo "$LISTING_IDS" | cut -d'|' -f2)
+echo "EXTERNAL_LISTING_ID: $EXTERNAL_LISTING_ID"
+echo "EXTERNAL_VARIANT_ID: $EXTERNAL_VARIANT_ID"
+
+# Define the test payload (product_id/variant_id must match platform listing)
+WEBHOOK_PAYLOAD="{
+  \"id\": 820982911946154508,
+  \"name\": \"#1001\",
+  \"currency\": \"USD\",
+  \"customer\": {\"email\": \"buyer@example.com\"},
+  \"shipping_address\": {
+    \"name\": \"Jane Doe\",
+    \"address1\": \"123 Test St\",
+    \"city\": \"New York\",
+    \"province\": \"NY\",
+    \"country\": \"United States\",
+    \"country_code\": \"US\",
+    \"zip\": \"10001\",
+    \"phone\": \"+15551234567\"
+  },
+  \"line_items\": [{
+    \"product_id\": \"$EXTERNAL_LISTING_ID\",
+    \"variant_id\": \"$EXTERNAL_VARIANT_ID\",
+    \"quantity\": 1,
+    \"price\": \"199.99\",
+    \"title\": \"E2E Test SKU\"
   }]
-}'
+}"
 
 # Compute HMAC-SHA256 and Base64-encode
 HMAC=$(printf '%s' "$WEBHOOK_PAYLOAD" | openssl dgst -sha256 -hmac "e2e-test-webhook-secret" -binary | openssl base64)
 
 echo "HMAC: $HMAC"
 ```
+
+**Note:** The stub platform adapter generates deterministic UUIDs for `external_listing_id`/`external_variant_id` based on the SKU ID. The webhook payload's `product_id`/`variant_id` must match these UUIDs exactly for `PlatformListingResolver` to resolve the SKU.
 
 ### 1b.2 Send Valid Webhook
 
@@ -397,11 +441,11 @@ PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
 
 ### 1b.4 Verify Internal Order Created
 
-If the platform listing from Phase 1.7 has `external_listing_id` matching the webhook's `product_id`, an internal Order should be created in PENDING status:
+The `PlatformListingResolver` matches the webhook's `product_id`/`variant_id` against `platform_listings.external_listing_id`/`external_variant_id`, and `VendorSkuResolver` finds the vendor via `vendor_sku_assignments`. Both must resolve for the order to be created.
 
 ```bash
 PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
-  "SELECT id, status, channel, channel_order_id, channel_order_number FROM orders WHERE channel = 'shopify' AND channel_order_id = '820982911946154508';"
+  "SELECT id, status, channel, channel_order_id, channel_order_number, shipping_customer_name, shipping_address, shipping_city, shipping_zip FROM orders WHERE channel = 'shopify' AND channel_order_id = '820982911946154508';"
 ```
 
 | Column | Expected |
@@ -410,8 +454,19 @@ PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
 | `channel` | `shopify` |
 | `channel_order_id` | `820982911946154508` |
 | `channel_order_number` | `#1001` |
+| `shipping_customer_name` | `Jane Doe` |
+| `shipping_address` | `123 Test St` |
+| `shipping_city` | `New York` |
+| `shipping_zip` | `10001` |
 
-**Note:** If no order is created, check that `PlatformListingResolver` can resolve the `product_id` from the webhook to an internal SKU. The stub adapter's deterministic IDs may not match the test payload's `product_id` — adjust the payload accordingly.
+Save the order `id` for Phase 2:
+```bash
+WEBHOOK_ORDER_ID="<id from response>"
+```
+
+**Checkpoint:** If no order is created, verify: (1) the webhook payload's `product_id`/`variant_id` match `external_listing_id`/`external_variant_id` in `platform_listings`, (2) a `vendor_sku_assignments` row exists for the SKU with `active = true`.
+
+**Checkpoint:** If shipping address columns are all NULL, the `ShopifyOrderAdapter` is not parsing the `shipping_address` block from the webhook payload.
 
 ### 1b.5 Verify Idempotency (Send Same Webhook Again)
 
@@ -467,43 +522,60 @@ PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
 
 ---
 
-## Phase 2: Vendor and Order Setup
+## Phase 2: Supplier Order Placement and Order Lifecycle (FR-025)
 
-Orders require an active vendor. This phase creates a vendor, activates it, and creates an order.
+This phase tests the supplier order placement flow introduced by FR-025. When an order is confirmed, the `SupplierOrderPlacementListener` fires (AFTER_COMMIT + REQUIRES_NEW) and places a supplier order via the CJ adapter (stub in local profile). The order from Phase 1b.4 (created by the Shopify webhook) has a shipping address and is ready for the full lifecycle.
 
-### 2.1 Create and Activate Vendor
+**Prerequisite:** Phase 1b must be complete. `$WEBHOOK_ORDER_ID` must be set from Phase 1b.4. The vendor and `vendor_sku_assignments` were created in the Phase 1b prerequisites.
 
-```bash
-# Create vendor
-curl -s -X POST "http://localhost:8080/api/vendors" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Test Vendor","contactEmail":"vendor@test.com","leadTimeDays":5}' | python3 -m json.tool
-```
+### 2.1 Seed Supplier Product Mapping
 
-Save the vendor `id`:
-```bash
-VENDOR_ID="<id from response>"
-```
+The `SupplierOrderPlacementListener` looks up the supplier variant for the SKU in `supplier_product_mappings`. Without this row, confirmed orders transition to `FAILED`.
 
 ```bash
-# Complete checklist
-curl -s -X PATCH "http://localhost:8080/api/vendors/$VENDOR_ID/checklist" \
-  -H "Content-Type: application/json" \
-  -d '{"slaConfirmed":true,"defectRateDocumented":true,"scalabilityConfirmed":true,"fulfillmentTimesConfirmed":true,"refundPolicyConfirmed":true}' | python3 -m json.tool
-
-# Activate
-curl -s -X POST "http://localhost:8080/api/vendors/$VENDOR_ID/activate" | python3 -m json.tool
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
+  INSERT INTO supplier_product_mappings (id, sku_id, supplier, supplier_product_id, supplier_variant_id, created_at)
+  VALUES (gen_random_uuid(), '$SKU_ID', 'CJ_DROPSHIPPING', 'cj-product-001', 'cj-variant-001', NOW());
+"
 ```
 
-| Field | Expected |
+### 2.2 Confirm Order (Triggers Supplier Placement)
+
+Use the webhook-created order from Phase 1b.4. Confirming it triggers the `SupplierOrderPlacementListener`, which places a supplier order via the stub CJ adapter.
+
+```bash
+# Confirm order
+curl -s -X POST "http://localhost:8080/api/orders/$WEBHOOK_ORDER_ID/confirm" | python3 -m json.tool
+# Expected: status = "CONFIRMED"
+```
+
+Wait 3 seconds for the AFTER_COMMIT listener to fire, then verify the supplier order was placed:
+
+```bash
+sleep 3
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
+  "SELECT id, status, supplier_order_id, failure_reason FROM orders WHERE id = '$WEBHOOK_ORDER_ID';"
+```
+
+| Column | Expected |
 |---|---|
-| `status` | `ACTIVE` |
+| `status` | `CONFIRMED` |
+| `supplier_order_id` | `stub_cj_<uuid>` (non-null) |
+| `failure_reason` | NULL |
 
-### 2.2 Create Order
+**Checkpoint:** If `supplier_order_id` is NULL and `failure_reason` is set, the listener failed. Check:
+- `failure_reason = "No supplier product mapping found for SKU"` → missing `supplier_product_mappings` row (Step 2.1)
+- `failure_reason = "INVALID_ADDRESS"` → order has no shipping address (use webhook-created orders, not REST-created)
+- `failure_reason = "No adapter found for supplier ..."` → stub adapter not registered (wrong profile)
+
+### 2.2b Test FAILED Path (No Supplier Mapping)
+
+Create a separate order via REST (no shipping address, no mapping) to verify the failure path:
 
 ```bash
 CUSTOMER_ID="$(python3 -c 'import uuid; print(uuid.uuid4())')"
 
+# Create order via REST (no shipping address)
 curl -s -X POST "http://localhost:8080/api/orders" \
   -H "Content-Type: application/json" \
   -d "{
@@ -512,38 +584,54 @@ curl -s -X POST "http://localhost:8080/api/orders" \
     \"customerId\": \"$CUSTOMER_ID\",
     \"totalAmount\": \"199.99\",
     \"totalCurrency\": \"USD\",
-    \"paymentIntentId\": \"pi_test_001\",
-    \"idempotencyKey\": \"e2e-order-001\"
+    \"paymentIntentId\": \"pi_test_fail\",
+    \"idempotencyKey\": \"e2e-order-fail-001\"
   }" | python3 -m json.tool
+
+FAIL_ORDER_ID="<id from response>"
+
+# Delete the supplier mapping to force failure
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
+  "DELETE FROM supplier_product_mappings WHERE sku_id = '$SKU_ID';"
+
+# Confirm the order — listener should fail it
+curl -s -X POST "http://localhost:8080/api/orders/$FAIL_ORDER_ID/confirm" | python3 -m json.tool
+
+sleep 3
+
+# Verify order transitioned to FAILED
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
+  "SELECT id, status, failure_reason FROM orders WHERE id = '$FAIL_ORDER_ID';"
 ```
 
-| Field | Expected |
+| Column | Expected |
 |---|---|
-| `status` | `PENDING` |
-| HTTP status | `201` |
+| `status` | `FAILED` |
+| `failure_reason` | `No supplier product mapping found for SKU` |
 
-Save the order `id`:
 ```bash
-ORDER_ID="<id from response>"
+# Re-seed the mapping for subsequent phases
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
+  INSERT INTO supplier_product_mappings (id, sku_id, supplier, supplier_product_id, supplier_variant_id, created_at)
+  VALUES (gen_random_uuid(), '$SKU_ID', 'CJ_DROPSHIPPING', 'cj-product-001', 'cj-variant-001', NOW());
+"
 ```
 
-### 2.3 Advance Order to DELIVERED (via REST)
+**Checkpoint:** If the order stays in `CONFIRMED` (not `FAILED`), the `SupplierOrderPlacementListener` AFTER_COMMIT + REQUIRES_NEW pattern is broken.
 
-Use the order state transition REST endpoints to advance the order through its lifecycle. This exercises the full `OrderService` methods, including domain event publishing.
+### 2.3 Advance Order to DELIVERED
+
+Continue with the webhook-created order from Phase 2.2 (which has `supplier_order_id` set):
 
 ```bash
-# Confirm order
-curl -s -X POST "http://localhost:8080/api/orders/$ORDER_ID/confirm" | python3 -m json.tool
-# Expected: status = "CONFIRMED"
-
 # Ship order
-curl -s -X POST "http://localhost:8080/api/orders/$ORDER_ID/ship" \
+curl -s -X POST "http://localhost:8080/api/orders/$WEBHOOK_ORDER_ID/ship" \
   -H "Content-Type: application/json" \
   -d '{"trackingNumber":"TRK123456","carrier":"UPS"}' | python3 -m json.tool
 # Expected: status = "SHIPPED", trackingNumber = "TRK123456"
 
 # Deliver order
-curl -s -X POST "http://localhost:8080/api/orders/$ORDER_ID/deliver" | python3 -m json.tool
+curl -s -X POST "http://localhost:8080/api/orders/$WEBHOOK_ORDER_ID/deliver" | python3 -m json.tool
 # Expected: status = "DELIVERED"
 ```
 
@@ -552,12 +640,12 @@ curl -s -X POST "http://localhost:8080/api/orders/$ORDER_ID/deliver" | python3 -
 ```bash
 # Check that capital_order_records was created automatically
 PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
-  "SELECT order_id, sku_id, total_amount, status, refunded FROM capital_order_records WHERE order_id = '$ORDER_ID';"
+  "SELECT order_id, sku_id, total_amount, status, refunded FROM capital_order_records WHERE order_id = '$WEBHOOK_ORDER_ID';"
 ```
 
 | Column | Expected |
 |---|---|
-| `order_id` | `$ORDER_ID` |
+| `order_id` | `$WEBHOOK_ORDER_ID` |
 | `total_amount` | `199.9900` |
 | `status` | `DELIVERED` |
 | `refunded` | `false` |
@@ -1121,7 +1209,7 @@ Expected: Similar product names from different sources (e.g., CJ and YouTube/Red
 | `POST` | `/api/vendors/{id}/activate` | Activate vendor |
 | `POST` | `/api/vendors/{id}/score` | Trigger vendor reliability scoring |
 | `POST` | `/api/orders` | Create order |
-| `POST` | `/api/orders/{id}/confirm` | Confirm order (PENDING -> CONFIRMED) |
+| `POST` | `/api/orders/{id}/confirm` | Confirm order (PENDING -> CONFIRMED); triggers supplier order placement (FR-025) |
 | `POST` | `/api/orders/{id}/ship` | Ship order with tracking (CONFIRMED -> SHIPPED) |
 | `POST` | `/api/orders/{id}/deliver` | Deliver order (SHIPPED -> DELIVERED) |
 | `GET` | `/api/capital/reserve` | Reserve balance + health |
@@ -1154,6 +1242,9 @@ Expected: Similar product names from different sources (e.g., CJ and YouTube/Red
 | No REST endpoint to trigger `KillWindowMonitor` on demand | Must restart app or wait for 1 AM cron | Restart the application; or insert qualifying data and check after next scheduled run |
 | Kill recommendation confirm does not auto-terminate SKU | Manual step needed after confirming recommendation | Call `POST /api/skus/{id}/state` with `TERMINATED` after confirming |
 | Compliance `SourcingCheckService` needs vendor data not in Sku entity | `vendorId` must be passed manually in the request body | Provide `vendorId` in `ManualCheckRequest` or use auto-check via `SkuReadyForComplianceCheck` event |
+| `OrderResponse` DTO does not include `supplierOrderId` or `failureReason` | Cannot verify supplier placement via REST response alone | Query `orders` table directly via `psql` to check `supplier_order_id` and `failure_reason` columns |
+| REST `CreateOrderRequest` does not accept shipping address fields | Orders created via `POST /api/orders` have no shipping address; `SupplierOrderPlacementListener` fails with `INVALID_ADDRESS` | Use Shopify webhook-created orders (which include shipping address) for the happy-path supplier placement test |
+| `demand-scan.smoke-test-enabled` defaults to `false` | Phase 8.2 smoke test endpoint returns 404 | Start app with `-Ddemand-scan.smoke-test-enabled=true` or skip Phase 8.2 |
 
 ---
 
@@ -1174,5 +1265,6 @@ These are the cross-module event listener patterns that must hold for the system
 | `ComplianceOrchestrator` | `SkuReadyForComplianceCheck` | `AFTER_COMMIT` + `REQUIRES_NEW` | Compliance check never triggered on SKU creation (FR-011) |
 | `PlatformListingListener` | `SkuStateChanged` | `AFTER_COMMIT` + `REQUIRES_NEW` | Platform listing never created/paused/archived on SKU transition (FR-020) |
 | `ShopifyOrderProcessingService` | `ShopifyOrderReceivedEvent` | `AFTER_COMMIT` + `REQUIRES_NEW` | Shopify webhook accepted but orders never created (FR-023) |
+| `SupplierOrderPlacementListener` | `OrderConfirmed` | `AFTER_COMMIT` + `REQUIRES_NEW` | Supplier order never placed on confirmation; order stays CONFIRMED without `supplier_order_id` (FR-025) |
 
 **Rule:** Any `@TransactionalEventListener(AFTER_COMMIT)` handler that writes to the database **must** use `@Transactional(propagation = Propagation.REQUIRES_NEW)`. Without it, JPA operations silently succeed but are never flushed.
