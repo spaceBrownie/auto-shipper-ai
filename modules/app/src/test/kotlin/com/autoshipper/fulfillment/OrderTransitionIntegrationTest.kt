@@ -3,6 +3,7 @@ package com.autoshipper.fulfillment
 import com.autoshipper.catalog.domain.Sku
 import com.autoshipper.catalog.domain.SkuState
 import com.autoshipper.catalog.persistence.SkuRepository
+import com.autoshipper.fulfillment.domain.service.SupplierOrderPlacementListener
 import com.autoshipper.fulfillment.proxy.inventory.InventoryChecker
 import com.autoshipper.vendor.domain.Vendor
 import com.autoshipper.vendor.domain.VendorActivationChecklist
@@ -51,6 +52,9 @@ class OrderTransitionIntegrationTest {
     @MockBean
     lateinit var inventoryChecker: InventoryChecker
 
+    @MockBean
+    lateinit var supplierOrderPlacementListener: SupplierOrderPlacementListener
+
     @BeforeEach
     fun setup() {
         `when`(inventoryChecker.isAvailable(any())).thenReturn(true)
@@ -59,7 +63,7 @@ class OrderTransitionIntegrationTest {
     @AfterEach
     fun cleanup() {
         jdbcTemplate.execute(
-            "TRUNCATE TABLE capital_order_records, reserve_accounts, orders, vendor_sku_assignments, vendors, platform_listings, sku_state_history, skus CASCADE"
+            "TRUNCATE TABLE capital_order_records, reserve_accounts, supplier_product_mappings, orders, vendor_sku_assignments, vendors, platform_listings, sku_state_history, skus CASCADE"
         )
     }
 

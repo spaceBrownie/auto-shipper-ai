@@ -1,5 +1,6 @@
 package com.autoshipper.fulfillment.domain.service
 
+import com.autoshipper.fulfillment.domain.ShippingAddress
 import com.autoshipper.fulfillment.domain.channel.ChannelOrder
 import com.autoshipper.fulfillment.proxy.platform.PlatformListingResolver
 import com.autoshipper.fulfillment.proxy.platform.VendorSkuResolver
@@ -62,13 +63,27 @@ class LineItemOrderCreator(
             currency
         )
 
+        val shippingAddr = channelOrder.shippingAddress?.let { addr ->
+            ShippingAddress(
+                customerName = addr.customerName,
+                address = listOfNotNull(addr.address1, addr.address2).joinToString(", "),
+                city = addr.city,
+                province = addr.province,
+                country = addr.country,
+                countryCode = addr.countryCode,
+                zip = addr.zip,
+                phone = addr.phone
+            )
+        }
+
         val command = CreateOrderCommand(
             skuId = skuId,
             vendorId = vendorId,
             customerId = customerUUID,
             totalAmount = totalAmount,
             paymentIntentId = "shopify:order:${channelOrder.channelOrderId}",
-            idempotencyKey = "shopify:order:${channelOrder.channelOrderId}:item:$index"
+            idempotencyKey = "shopify:order:${channelOrder.channelOrderId}:item:$index",
+            shippingAddress = shippingAddr
         )
 
         val (order, isNew) = orderService.create(command)

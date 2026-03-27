@@ -15,6 +15,7 @@ import com.autoshipper.fulfillment.proxy.inventory.InventoryChecker
 import com.autoshipper.fulfillment.proxy.notification.NotificationSender
 import com.autoshipper.fulfillment.proxy.payment.RefundProvider
 import com.autoshipper.fulfillment.proxy.payment.RefundResult
+import com.autoshipper.shared.events.OrderConfirmed
 import com.autoshipper.shared.events.OrderFulfilled
 import com.autoshipper.shared.events.VendorSlaBreached
 import com.autoshipper.shared.identity.SkuId
@@ -139,8 +140,13 @@ class OrderLifecycleTest {
 
         // Verify delivered
         assert(store[order.id]!!.status == OrderStatus.DELIVERED)
-        verify(eventPublisher).publishEvent(argThat<OrderFulfilled> {
-            this.orderId.value == order.id
+
+        // routeToVendor publishes OrderConfirmed, then delivery publishes OrderFulfilled
+        verify(eventPublisher).publishEvent(argThat<Any> {
+            this is OrderConfirmed && this.orderId.value == order.id
+        })
+        verify(eventPublisher).publishEvent(argThat<Any> {
+            this is OrderFulfilled && this.orderId.value == order.id
         })
     }
 

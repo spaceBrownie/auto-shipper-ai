@@ -61,13 +61,30 @@ class ShopifyOrderAdapter(
             }
         }
 
+        // Extract shipping address using get() per CLAUDE.md #15
+        val shippingNode = root.get("shipping_address")
+        val shippingAddress = if (shippingNode != null && !shippingNode.isNull) {
+            ChannelShippingAddress(
+                customerName = shippingNode.get("name")?.asText(),
+                address1 = shippingNode.get("address1")?.asText(),
+                address2 = shippingNode.get("address2")?.asText(),
+                city = shippingNode.get("city")?.asText(),
+                province = shippingNode.get("province")?.asText(),
+                country = shippingNode.get("country")?.asText(),
+                countryCode = shippingNode.get("country_code")?.asText(),
+                zip = shippingNode.get("zip")?.asText(),
+                phone = shippingNode.get("phone")?.asText()
+            )
+        } else null
+
         return ChannelOrder(
             channelOrderId = orderId,
             channelOrderNumber = orderNumber,
             channelName = channelName(),
             customerEmail = customerEmail,
             currencyCode = currencyCode,
-            lineItems = lineItems
+            lineItems = lineItems,
+            shippingAddress = shippingAddress
         )
     }
 

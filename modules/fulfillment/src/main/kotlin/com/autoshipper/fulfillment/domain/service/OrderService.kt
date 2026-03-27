@@ -5,6 +5,7 @@ import com.autoshipper.fulfillment.domain.OrderStatus
 import com.autoshipper.fulfillment.domain.ShipmentDetails
 import com.autoshipper.fulfillment.persistence.OrderRepository
 import com.autoshipper.fulfillment.proxy.inventory.InventoryChecker
+import com.autoshipper.shared.events.OrderConfirmed
 import com.autoshipper.shared.events.OrderFulfilled
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
@@ -50,6 +51,7 @@ class OrderService(
             paymentIntentId = request.paymentIntentId,
             status = OrderStatus.PENDING
         )
+        request.shippingAddress?.let { order.shippingAddress = it }
 
         val saved = orderRepository.save(order)
         logger.info("Created order {} for SKU {} (idempotency key: {})", saved.id, saved.skuId, saved.idempotencyKey)
@@ -75,7 +77,13 @@ class OrderService(
 
         order.updateStatus(OrderStatus.CONFIRMED)
         val saved = orderRepository.save(order)
-        logger.info("Order {} routed to vendor {}, status -> CONFIRMED", orderId, order.vendorId)
+        eventPublisher.publishEvent(
+            OrderConfirmed(
+                orderId = order.orderId(),
+                skuId = order.skuId()
+            )
+        )
+        logger.info("Order {} routed to vendor {}, OrderConfirmed event published", orderId, order.vendorId)
         return saved
     }
 
