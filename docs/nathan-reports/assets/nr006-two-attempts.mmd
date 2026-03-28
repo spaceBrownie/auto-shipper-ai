@@ -1,0 +1,22 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#F59E0B', 'primaryTextColor': '#1C1917', 'primaryBorderColor': '#D97706', 'lineColor': '#78716C', 'fontFamily': 'Inter, Helvetica Neue, Arial, sans-serif'}}}%%
+timeline
+    title RAT-27: The Story of Two Attempts
+    section Attempt 1 — PR 37
+        Built with v2 skill : Green build, 38 files changed
+        : Hardcoded quantity=1
+        : Customer orders 3, ships 1
+        : Error retry never fires
+        : Abandoned
+    section Attempt 2 — PR 39 (this session)
+        Redo with v2 skill : Fixed quantity bug
+        : Fixed retry bug
+        : Generated 65 tests
+        : NEW bug — null string in addresses
+        : 65 tests caught 0 of 1 bugs
+        : Abandoned
+    section Next — After RAT-36
+        Redo with fixed skill : Human gates restored
+        : Real test spec, not theater
+        : E2E playbook verification
+        : State machine architecture
+        : TBD

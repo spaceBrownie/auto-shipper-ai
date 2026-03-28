@@ -1,0 +1,58 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#F59E0B', 'primaryTextColor': '#1C1917', 'primaryBorderColor': '#D97706', 'lineColor': '#78716C', 'secondaryColor': '#FFFBEB', 'tertiaryColor': '#F5F5F4', 'fontFamily': 'Inter, Helvetica Neue, Arial, sans-serif'}}}%%
+flowchart TD
+    subgraph AUTO["Auto-Advance Zone"]
+        direction TB
+        A["<b>Phase 1: Discovery</b><br/>Script loads instructions<br/>Explore + gap analysis"] -->|"Auto"| B["<b>Phase 2: Specification</b><br/>Script loads instructions<br/>Write spec.md"]
+        B -->|"Auto"| C["<b>Phase 3: Planning</b><br/>Script loads instructions<br/>Write implementation plan"]
+        C -->|"Auto"| D["<b>Phase 4: Test Spec</b><br/>Script loads instructions<br/>Write test-spec.md<br/><i>not 65 test files</i>"]
+    end
+
+    D --> GATE1
+
+    GATE1{{"HUMAN GATE<br/>Denny reviews spec,<br/>plan, and test spec"}}
+
+    GATE1 -->|"Approved"| MC["<b>Strategy Engine</b><br/>Recommends agents,<br/>chunking, mode"]
+    MC -->|"Binding"| E
+
+    subgraph IMPL["Autonomous Execution — Strategy Engine Drives"]
+        direction TB
+        E["<b>Phase 5: Implementation</b><br/>Parallel agents per recommendation<br/>TDD: write test, implement, repeat"] --> EE["<b>E2E Test Playbook</b><br/>Verify real behavior<br/>end-to-end"]
+    end
+
+    EE --> GATE2
+
+    GATE2{{"HUMAN GATE<br/>Denny reviews code,<br/>test results"}}
+
+    GATE2 -->|"Approved"| F["<b>Phase 6: PR + Review</b><br/>Commit, push, open PR"]
+    F --> UB["Unblocked Reviews"]
+    UB --> G{"Comments?"}
+    G -->|"Yes"| H["Fix & re-push"]
+    G -->|"No"| I(["Merge"])
+    H --> G
+
+    subgraph SM["validate-phase.py — State Machine Engine"]
+        direction LR
+        S1["--phase N<br/>--instructions"] --> S2["Loads from<br/>YAML config"]
+        S2 --> S3["Returns ~60 lines<br/>of phase instructions"]
+    end
+
+    style AUTO fill:#FFFBEB,stroke:#F59E0B,stroke-width:2px,stroke-dasharray: 5 5
+    style IMPL fill:#EFF6FF,stroke:#3B82F6,stroke-width:2px,stroke-dasharray: 5 5
+    style SM fill:#F5F5F4,stroke:#78716C,stroke-width:1px
+    style A fill:#FFFBEB,stroke:#F59E0B,stroke-width:2px
+    style B fill:#FFFBEB,stroke:#F59E0B,stroke-width:2px
+    style C fill:#FFFBEB,stroke:#F59E0B,stroke-width:2px
+    style D fill:#FFFBEB,stroke:#F59E0B,stroke-width:2px
+    style GATE1 fill:#FEF2F2,stroke:#EF4444,stroke-width:3px
+    style GATE2 fill:#FEF2F2,stroke:#EF4444,stroke-width:3px
+    style MC fill:#DBEAFE,stroke:#3B82F6,stroke-width:2px
+    style E fill:#EFF6FF,stroke:#3B82F6,stroke-width:2px
+    style EE fill:#ECFDF5,stroke:#10B981,stroke-width:2px
+    style F fill:#F5F5F4,stroke:#78716C,stroke-width:2px
+    style UB fill:#ECFDF5,stroke:#10B981,stroke-width:2px
+    style G fill:#FEF2F2,stroke:#EF4444,stroke-width:2px
+    style H fill:#FEF2F2,stroke:#EF4444,stroke-width:2px
+    style I fill:#ECFDF5,stroke:#10B981,stroke-width:3px
+    style S1 fill:#F5F5F4,stroke:#78716C
+    style S2 fill:#F5F5F4,stroke:#78716C
+    style S3 fill:#F5F5F4,stroke:#78716C

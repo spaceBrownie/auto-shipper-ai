@@ -160,6 +160,49 @@ This gives Nathan a feel for velocity and complexity without technical details.}
 
 **Metrics when available:** If the session produced quantifiable results (tests added, endpoints created, sources integrated), include them — Nathan likes numbers. Frame them as outcomes: "4 data sources now active (was 3)" not "22 new unit tests".
 
+## Storytelling & Voice
+
+Nathan reports work best as **narratives**, not bullet-point summaries. Nathan should want to read it, not skim past it.
+
+### Tell the story
+
+When a session involves multiple attempts, failures, pivots, or discoveries, structure the report as a story arc. Use a "The Story of X" section. Walk through what happened in sequence — the first attempt, what went wrong, the second attempt, what was learned. This is more engaging than a flat list and helps Nathan understand *why* decisions were made.
+
+Example: NR-006 told "The Story of Two Implementations" — Attempt 1 shipped a quantity bug, Attempt 2 fixed it but shipped a null-string bug, and the analysis revealed the workflow itself was the root cause. The narrative makes the conclusion ("we need to fix the workflow, not the feature") feel inevitable rather than arbitrary.
+
+### Hard-hitting facts, not hedging
+
+Don't soften uncomfortable truths. "65 tests, 0 real coverage" is more powerful than "some tests had quality issues." Let the data speak. If something failed ironically (a warning comment 5 lines above the bug, 65 tests missing the one thing that broke), lean into it. Nathan appreciates intellectual honesty about failures — it builds trust.
+
+Bad: "The test coverage had some gaps that we're addressing."
+Good: "65 automated quality checks. Zero caught the bug. The Unblocked reviewer caught it in 30 seconds."
+
+### Explain concepts with analogies first, then carry the shorthand
+
+When introducing a concept Nathan hasn't seen before (like "test theater" or "state machine architecture"), explain it with a concrete analogy from business, finance, or operations — his domain. Once the concept clicks, use the shorthand for the rest of the document.
+
+- "Think of it like a home inspection that writes PASS without looking at the house" → then use "test theater" freely
+- "Like a financial model that's accurate but optional to read" → then use "strategy engine" freely
+- "Like a vending machine that can't dispense without payment — the structure prevents the error, not willpower" → then use "state machine" freely
+
+### Philosophical depth when earned
+
+When there's a deeper lesson behind the technical findings, name it explicitly. "You can automate execution, but you can't automate taste" is the kind of insight that sticks. Frame failures as learning, not as setbacks: "This is a step backward that gives us total clarity on how to move forward." Nathan thinks strategically — give him the strategic takeaway, not just the status update.
+
+### Visuals tell the story faster
+
+Use Mermaid-generated PNG diagrams to make comparisons and metrics visceral. Good diagram types for Nathan reports:
+
+- **Flowcharts** comparing two approaches side by side (v1 workflow vs v2 workflow)
+- **Pie charts** breaking down composition (what "65 tests" actually contains)
+- **Timeline diagrams** showing the story arc (two attempts and a planned third)
+- **Bar charts** for stark metric contrasts (23 features / 0 bugs vs 1 feature / 1 bug)
+- **Architecture diagrams** for proposed solutions (state machine with human gates)
+
+Render with `mmdc -s 2 -b white` for retina quality. Store in `docs/nathan-reports/assets/`. Reference with relative paths in markdown: `![Description](assets/filename.png)`.
+
+For emails, host images on GitHub via raw URLs from the branch and wrap in `<img>` tags with `border`, `border-radius`, and `background-color` for dark mode resilience.
+
 ## Step 5: Phase 1 — Draft and Review
 
 After writing the file to `docs/nathan-reports/`:
