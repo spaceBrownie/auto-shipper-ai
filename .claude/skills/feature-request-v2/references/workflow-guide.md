@@ -1,6 +1,6 @@
 # 6-Phase Feature Request Workflow Guide
 
-A comprehensive guide for using the 6-phase feature request workflow in Spring Boot projects.
+A comprehensive guide for using the 6-phase feature request workflow (v3) in Spring Boot projects.
 
 ## Table of Contents
 
@@ -10,7 +10,7 @@ A comprehensive guide for using the 6-phase feature request workflow in Spring B
   - [Phase 1: Discovery](#phase-1-discovery-read-only)
   - [Phase 2: Specification](#phase-2-specification)
   - [Phase 3: Implementation Planning](#phase-3-implementation-planning)
-  - [Phase 4: Test-First Gate](#phase-4-test-first-gate)
+  - [Phase 4: Test Specification](#phase-4-test-specification)
   - [Phase 5: Implementation](#phase-5-implementation)
   - [Phase 6: Review-Fix Loop](#phase-6-review-fix-loop)
 - [Getting Started](#getting-started)
@@ -24,40 +24,50 @@ A comprehensive guide for using the 6-phase feature request workflow in Spring B
 
 ## Overview
 
-The feature request workflow is a structured, phase-gated approach to implementing new features in Spring Boot projects that follow DDD/hexagonal architecture. It separates discovery from implementation, enforces test-first discipline, and uses layer-specific sub-agents to maintain architectural boundaries.
+The feature request workflow is a structured, phase-gated approach to implementing new features in Spring Boot projects that follow DDD/hexagonal architecture. It separates discovery from implementation, enforces test specification before TDD implementation, and uses layer-specific sub-agents to maintain architectural boundaries. Per-phase instructions are served from isolated `.md` files via a state machine architecture. `/unblock` is available as a standing directive throughout all phases.
 
 ### Key Benefits
 
 - **Structured approach** - Clear phases with defined deliverables
 - **Separation of concerns** - Discovery (read-only) separate from implementation (write)
-- **Test-first discipline** - Tests written and proven red before any production code
-- **Reviewable progress** - Manual approval gates between phases
+- **Test specification discipline** - Acceptance criteria, boundary cases, and E2E playbook defined before implementation
+- **TDD implementation** - Tests written alongside production code guided by test-spec.md
+- **Strategic human gates** - Phases 1-3 auto-advance; mandatory human gates before implementation (Phase 5) and PR (Phase 6)
 - **Trackable features** - Each feature gets a numbered directory with full documentation
 - **Architectural compliance** - Layer-specific agents respect boundaries
+- **State machine architecture** - Per-phase instructions served from isolated `.md` files via `validate-phase.py --phase N --instructions`
+- **Meta-controller binding** - Recommendations followed autonomously within Phase 5; overrides require explicit justification
 - **Deterministic validation** - Python script enforces permissions at every step
 - **Review-fix loop** - Automated quality gate catches regressions before completion
+- **`/unblock` as standing directive** - Available throughout all phases, not at prescribed hydration points
 
 ### The Workflow in a Nutshell
 
 ```
 Phase 1: Discovery           -> Generate feature name
-         (Read-Only)            Manual approval #1
+         (Read-Only)            Auto-advance
                 |
                 v
 Phase 2: Specification       -> Write spec.md
-         (Write spec)           Manual approval #2
+         (Write spec)           Auto-advance
                 |
                 v
 Phase 3: Planning            -> Write implementation-plan.md
-         (Write plan)           Manual approval #3
+         (Write plan)           Auto-advance
                 |
                 v
-Phase 4: Test-First Gate     -> Write test-manifest.md + failing tests
-         (Write tests)          Manual approval #4 (test approval)
+Phase 4: Test Specification  -> Write test-spec.md (acceptance criteria,
+         (Write test spec)      boundary cases, E2E playbook, contracts)
+                |               Optional contract tests for pure domain types
+                v
+         *** MANDATORY HUMAN GATE ***
+         Meta-controller preflight presented
                 |
                 v
-Phase 5: Implementation      -> Execute plan, make tests pass, create summary.md
-         (Write code)           Automatic transition to Phase 6
+Phase 5: Implementation      -> TDD guided by test-spec.md, create summary.md
+         (Write code + tests)   Mandatory E2E test playbook (@docs/e2e-test-playbook.md)
+                |
+         *** MANDATORY HUMAN GATE ***
                 |
                 v
 Phase 6: Review-Fix Loop     -> Validate all tests green, fix issues
@@ -239,65 +249,79 @@ This creates poor UX for active users.
 
 ---
 
-### Phase 4: Test-First Gate
+### Phase 4: Test Specification
 
-**Purpose:** Write all tests before any production code. Every test must be proven to fail (red) before Phase 5 begins. This ensures tests are meaningful validators, not rubber stamps written after the fact.
+**Purpose:** Define what must be tested and how, without writing test code yet. Produces a `test-spec.md` that guides TDD during Phase 5. Optional contract tests may be written for pure domain types only.
 
 **What You Can Do:**
 - Read anything (including spec.md and implementation-plan.md)
-- Write test-manifest.md in the feature directory
-- Write test files (src/test/ only)
-- Run tests (to confirm they fail)
+- Write `test-spec.md` in the feature directory
+- Optionally write contract tests for pure domain types (src/test/ only)
+- Run contract tests if written
 
 **What You Can't Do:**
 - Write production code (src/main/)
+- Write full test suites (deferred to Phase 5 TDD)
 - Modify spec.md or implementation-plan.md
 - Create summary.md
-- Run builds that compile production code changes
 
 **Deliverables:**
-- `test-manifest.md` with all required sections
-- Test source files that compile but fail (red)
+- `test-spec.md` with all required sections
+- Optional contract test files for pure domain types
 
-**Required test-manifest.md Sections:**
-- **Test Inventory** - Table listing every test class, method, layer, and what it validates
-- **Coverage Rationale** - Explanation of how these tests cover the spec's success criteria
-- **Dependency Map** - Which tests must pass before others are meaningful
-- **Red Confirmation** - Evidence that every test fails before implementation (timestamps, error summaries)
+**Required test-spec.md Sections:**
+- **Acceptance Criteria** - Testable criteria derived from spec.md success criteria
+- **Fixture Data** - Concrete test data values, builder patterns, and shared fixtures
+- **Boundary Cases** - Edge cases, null handling, JSON null boundaries, error paths
+- **E2E Playbook Scenarios** - End-to-end test scenarios for `@docs/e2e-test-playbook.md`
+- **Contract Test Candidates** - Pure domain types suitable for contract tests (optional implementation)
 
-**Duration:** Typically 20-40 minutes
+**Test Quality Rules (enforced in Phase 5):**
+- Ban `assert(true)` and `assertTrue(true)` — tests must assert meaningful values
+- Ban fixture-only assertions (asserting test data matches itself without exercising production code)
+- Ban `// Phase 5: deferred` comments — all test logic must be implemented
+- JSON null boundary cases required for any API that accepts/returns JSON
+
+**Duration:** Typically 15-30 minutes
 
 **Example:**
 ```
-User approves implementation-plan.md -> Phase 4 begins
+Phase 3 auto-advances -> Phase 4 begins
 
 Assistant writes:
-- test-manifest.md with inventory of 12 tests across 3 layers
-- RefreshTokenControllerTest.kt (3 tests, all red)
-- RefreshTokenServiceTest.kt (5 tests, all red)
-- TokenRotationTest.kt (4 tests, all red)
+- test-spec.md with acceptance criteria for 12 scenarios across 3 layers
+- Fixture data for RefreshToken, User, and TokenPair
+- Boundary cases: expired tokens, null claims, malformed JWTs
+- E2E playbook: full refresh flow, expired refresh, concurrent refresh
+- Contract test candidates: RefreshToken value object
 
-Assistant confirms: "All 12 tests compile but fail. Red confirmation recorded."
-User reviews test coverage and approves -> Proceed to Phase 5
+Optionally writes:
+- RefreshTokenContractTest.kt (2 contract tests for pure domain type)
+
+Meta-controller preflight presented at Phase 4->5 gate.
+User reviews test-spec.md and approves -> Proceed to Phase 5
 ```
 
 ---
 
 ### Phase 5: Implementation
 
-**Purpose:** Execute the plan using layer-specific sub-agents. The primary goal is to make the failing tests from Phase 4 pass while implementing all planned tasks.
+**Purpose:** Execute the plan using layer-specific sub-agents with TDD guided by `test-spec.md`. Tests are written alongside production code, not inherited from Phase 4. Meta-controller recommendations are followed autonomously; overrides require `decision-support/override-justification.md`.
 
 **What You Can Do:**
 - Read anything
-- Write code in src/
+- Write code in src/ (production and test)
 - Update implementation-plan.md (check boxes)
 - Create summary.md at the end
 - Run builds, tests, git commits
+- Write E2E test playbook entries to `@docs/e2e-test-playbook.md`
 
 **What You Can't Do:**
 - Modify spec.md (immutable)
 - Force push or destructive git operations
 - Write outside allowed directories
+- Use `assert(true)`, fixture-only assertions, or `// Phase 5: deferred` comments in tests
+- Skip JSON null boundary cases for JSON-accepting APIs
 
 **Sub-Agents (dependency-ordered groups):**
 
@@ -315,20 +339,27 @@ Sub-agents execute in dependency-ordered groups. Earlier groups must complete be
 
 Within each group, agents may run in parallel. The orchestrator sequences groups and verifies inter-group contracts before advancing.
 
+**Meta-Controller Binding:**
+- Meta-controller recommendations from the Phase 4->5 preflight are followed autonomously within Phase 5
+- Sub-agents must not deviate from meta-controller recommendations without explicit justification
+- If an override is necessary, document it in `decision-support/override-justification.md` within the feature directory
+
 **Workflow:**
-1. Orchestrator reads implementation-plan.md and test-manifest.md
+1. Orchestrator reads implementation-plan.md and test-spec.md
 2. Spawns sub-agents for affected layers in dependency order
-3. Sub-agents implement their tasks, targeting the red tests from Phase 4
+3. Sub-agents implement using TDD: write test from test-spec.md criteria, then make it pass
 4. Orchestrator updates checkboxes as tasks complete
-5. All tests run and pass (red -> green)
-6. Orchestrator creates summary.md
-7. Automatic transition to Phase 6
+5. All tests run and pass
+6. Orchestrator writes E2E test playbook entries to `@docs/e2e-test-playbook.md` (mandatory)
+7. Orchestrator creates summary.md
+8. Human gate before Phase 6
 
 **Deliverables:**
 - Updated implementation-plan.md (all boxes checked)
 - summary.md with all required sections
-- Code changes in src/
-- Passing tests (all Phase 4 tests now green)
+- Code changes in src/ (production and test)
+- All tests passing (written via TDD guided by test-spec.md)
+- E2E test playbook entries in `@docs/e2e-test-playbook.md` (mandatory)
 
 **Duration:** Variable (30 minutes to several hours depending on complexity)
 
@@ -348,7 +379,7 @@ Within each group, agents may run in parallel. The orchestrator sequences groups
 **What You Can't Do:**
 - Add new features or tasks beyond what was planned
 - Modify spec.md or implementation-plan.md
-- Delete or skip tests from Phase 4
+- Delete or skip tests written during Phase 5
 - Create new test files (only fix existing ones)
 
 **Deliverables:**
@@ -365,11 +396,11 @@ Within each group, agents may run in parallel. The orchestrator sequences groups
 
 **Example:**
 ```
-Phase 5 completes -> Automatic transition to Phase 6
+Phase 5 completes -> Human gate approved -> Phase 6 begins
 
 Review scan finds:
 - 1 existing integration test regressed (NPE from new null handling)
-- 1 Phase 4 test has a flaky timing assertion
+- 1 TDD test has a flaky timing assertion
 
 Assistant fixes:
 - Adds null guard to preserve backward compatibility
@@ -395,57 +426,74 @@ Example:
 User: "I want to add a feature for JWT refresh tokens"
 ```
 
-### 2. Phase 1: Approve Feature Name
+### 2. Phases 1-3: Auto-Advance (Discovery, Specification, Planning)
 
-Assistant will explore codebase and propose a name:
+Phases 1 through 3 auto-advance without requiring manual approval:
 ```
-Assistant: "Based on exploration, I suggest: jwt-refresh-tokens"
-User: "Approved" or "Let's call it refresh-token-support instead"
-```
+Assistant explores codebase -> Proposes name: "jwt-refresh-tokens"
+         Auto-advances to Phase 2
 
-### 3. Phase 2: Review Specification
+Assistant creates feature-requests/FR-001-jwt-refresh-tokens/spec.md
+         Auto-advances to Phase 3
 
-Assistant will create spec.md:
-```
-Assistant: "Created feature-requests/FR-001-jwt-refresh-tokens/spec.md
-           Please review and approve."
-User: [Reviews file]
-      "Approved" or "Please add X to the requirements"
+Assistant creates implementation-plan.md with 9 tasks across 4 layers
+         Auto-advances to Phase 4
 ```
 
-### 4. Phase 3: Review Implementation Plan
+### 3. Phase 4: Test Specification (Auto-Advances to Human Gate)
 
-Assistant will create implementation-plan.md:
+Assistant writes test-spec.md with acceptance criteria and boundary cases:
 ```
-Assistant: "Created implementation plan with 9 tasks across 4 layers.
-           Please review and approve."
-User: [Reviews file]
-      "Approved" or "Let's use approach Y instead of X"
-```
-
-### 5. Phase 4: Review Test-First Gate
-
-Assistant will create test-manifest.md and write failing tests:
-```
-Assistant: "Created test-manifest.md with 12 tests across 3 layers.
-           All tests confirmed red. Please review test coverage."
-User: [Reviews test-manifest.md and test files]
-      "Approved" or "Add a test for edge case X"
+Assistant: "Created test-spec.md with acceptance criteria for 12 scenarios,
+           fixture data, boundary cases, E2E playbook scenarios,
+           and contract test candidates."
+         Auto-advances to Phase 4->5 human gate
 ```
 
-### 6. Phase 5-6: Monitor Implementation and Review
+### 4. Mandatory Human Gate (Phase 4 -> Phase 5)
 
-Assistant spawns sub-agents and begins work:
+Meta-controller preflight is presented for review before implementation begins:
 ```
-Assistant: "Starting implementation in dependency order...
+Assistant: "Phase 4 complete. Meta-controller preflight:
+           - 12 acceptance criteria covering 4 layers
+           - 5 boundary cases including JSON null handling
+           - 3 E2E playbook scenarios
+           - 2 contract test candidates (pure domain types)
+           Ready for implementation. Approve to proceed to Phase 5."
+User: [Reviews test-spec.md and preflight]
+      "Approved" or "Add boundary case for X"
+```
+
+### 5. Phase 5: TDD Implementation
+
+Assistant spawns sub-agents and implements with TDD guided by test-spec.md:
+```
+Assistant: "Starting TDD implementation in dependency order...
            [Group 1] common-agent + config-agent complete
            [Group 2] domain-agent + proxy-agent complete
            [Group 3] security-agent complete
            [Group 4] handler-agent complete
-           All tasks complete. 12/12 tests green. Created summary.md.
-           Entering review-fix loop...
-           Full suite green. No findings. Workflow complete."
+           All tasks complete. Tests written and passing via TDD.
+           E2E test playbook entries written. Created summary.md."
+```
+
+### 6. Mandatory Human Gate (Phase 5 -> Phase 6)
+
+Human approval required before entering the review-fix loop:
+```
+Assistant: "Phase 5 complete. All tests green. E2E playbook updated.
+           Ready for review-fix loop. Approve to proceed to Phase 6."
 User: [Reviews changes]
+      "Approved" or "Fix X before proceeding"
+```
+
+### 7. Phase 6: Review-Fix Loop
+
+Automated review cycle until clean:
+```
+Assistant: "Entering review-fix loop...
+           Full suite green. No findings. Workflow complete."
+User: [Reviews final changes]
 ```
 
 ---
@@ -456,11 +504,11 @@ User: [Reviews changes]
 
 **Feature:** Add health check endpoint
 
-**Phase 1:** Explore existing endpoints -> Name: "health-check-endpoint"
-**Phase 2:** Spec describes endpoint contract (GET /api/health, returns 200 OK)
-**Phase 3:** Plan: Handler layer only, 2 tasks (controller + DTO)
-**Phase 4:** Write 2 tests (endpoint returns 200, response body matches schema), confirm red
-**Phase 5:** handler-agent creates controller, tests go green
+**Phases 1-3:** Auto-advance: Explore endpoints -> Name: "health-check-endpoint" -> Spec -> Plan (handler layer, 2 tasks)
+**Phase 4:** Write test-spec.md with 2 acceptance criteria, fixture data, 1 E2E scenario
+**Human Gate:** Approve test-spec.md and meta-controller preflight
+**Phase 5:** handler-agent creates controller with TDD, writes E2E playbook entry
+**Human Gate:** Approve implementation
 **Phase 6:** Full suite green, no findings, auto-complete
 
 **Total Time:** ~40 minutes
@@ -471,11 +519,11 @@ User: [Reviews changes]
 
 **Feature:** JWT refresh token support
 
-**Phase 1:** Explore JWT implementation -> Name: "jwt-refresh-tokens"
-**Phase 2:** Spec describes refresh token requirements
-**Phase 3:** Plan: 4 layers affected (handler, domain, security, config), 9 tasks
-**Phase 4:** Write 12 tests across 3 layers, confirm all red
-**Phase 5:** Dependency-ordered groups execute, all tests go green
+**Phases 1-3:** Auto-advance: Explore JWT -> Name: "jwt-refresh-tokens" -> Spec -> Plan (4 layers, 9 tasks)
+**Phase 4:** Write test-spec.md with 12 acceptance criteria, fixture data, boundary cases, 3 E2E scenarios
+**Human Gate:** Approve test-spec.md and meta-controller preflight
+**Phase 5:** TDD implementation in dependency-ordered groups, E2E playbook written
+**Human Gate:** Approve implementation
 **Phase 6:** Review catches 1 regressed integration test, fix applied, complete
 
 **Total Time:** ~2.5 hours
@@ -486,11 +534,11 @@ User: [Reviews changes]
 
 **Feature:** Integrate with payment provider API
 
-**Phase 1:** Explore existing integrations -> Name: "payment-provider-integration"
-**Phase 2:** Spec describes payment flows, error handling, webhooks
-**Phase 3:** Plan: 5 layers affected (handler, domain, proxy, config, common), 15 tasks
-**Phase 4:** Write 18 tests (unit + WireMock integration), confirm all red
-**Phase 5:** Sub-agents implement clients, error handling, configuration
+**Phases 1-3:** Auto-advance: Explore integrations -> Name: "payment-provider-integration" -> Spec -> Plan (5 layers, 15 tasks)
+**Phase 4:** Write test-spec.md with 18 acceptance criteria, WireMock fixture data, JSON null boundary cases, 5 E2E scenarios
+**Human Gate:** Approve test-spec.md and meta-controller preflight
+**Phase 5:** TDD implementation with sub-agents, WireMock integration tests, E2E playbook written
+**Human Gate:** Approve implementation
 **Phase 6:** Review catches flaky WireMock timeout, fix applied, complete
 
 **Total Time:** ~4.5 hours
@@ -572,17 +620,18 @@ Tests must pass before workflow completion
 
 ---
 
-### Test-Manifest Missing Red Confirmation
+### Test-Spec Missing Required Section
 
 **Error:**
 ```
-test-manifest.md missing required section: Red Confirmation
+test-spec.md missing required section: Boundary Cases
 ```
 
 **Solution:**
-- Run all Phase 4 tests and record the failures
-- Add the Red Confirmation section with timestamps and error summaries
-- Every test listed in the Test Inventory must have a corresponding failure entry
+- Add the missing section to test-spec.md
+- Required sections: Acceptance Criteria, Fixture Data, Boundary Cases, E2E Playbook Scenarios, Contract Test Candidates
+- JSON null boundary cases are required for any API that accepts/returns JSON
+- Re-run validation
 
 ---
 
@@ -635,19 +684,20 @@ test-manifest.md missing required section: Red Confirmation
 
 ---
 
-### Test-First Gate
+### Test Specification
 
-**Good test-manifest.md:**
-- Every success criterion from spec.md has at least one test
-- Tests are specific (assert exact values, not just "no exception")
-- Dependency map shows which tests to run first
-- Red confirmation has real failure output, not placeholder text
+**Good test-spec.md:**
+- Every success criterion from spec.md has at least one acceptance criterion
+- Fixture data uses concrete values, not placeholders
+- Boundary cases include JSON null handling for all JSON APIs
+- E2E playbook scenarios cover the full happy path and key error paths
+- Contract test candidates are limited to pure domain types
 
-**Bad test-manifest.md:**
-- Tests that only check "not null" or "no exception"
-- Missing coverage for edge cases in the spec
-- No dependency map (tests run in arbitrary order)
-- Red confirmation says "all tests fail" without evidence
+**Bad test-spec.md:**
+- Acceptance criteria that just restate the spec without testable specifics
+- Missing JSON null boundary cases for JSON-accepting APIs
+- No E2E playbook scenarios
+- Contract test candidates for integration-heavy classes (not pure domain)
 
 ---
 
@@ -656,16 +706,22 @@ test-manifest.md missing required section: Red Confirmation
 **Good practices:**
 - Let sub-agents work within their layers in dependency order
 - Orchestrator coordinates, doesn't implement
+- Use TDD: write test from test-spec.md criteria, then make it pass
 - Update checkboxes as tasks complete
-- Run tests frequently - target the Phase 4 red tests
+- Follow meta-controller recommendations autonomously
+- Write E2E test playbook entries to `@docs/e2e-test-playbook.md`
 - Create summary.md last
 
 **Bad practices:**
 - One agent doing everything (defeats purpose of layers)
 - Checking all boxes before work is done
-- Skipping tests
+- Writing `assert(true)` or fixture-only assertions
+- Using `// Phase 5: deferred` comments in test code
+- Skipping JSON null boundary cases
+- Ignoring meta-controller recommendations without writing `decision-support/override-justification.md`
 - Creating summary.md before work complete
 - Ignoring dependency group ordering
+- Skipping the mandatory E2E test playbook
 
 ---
 
@@ -771,18 +827,22 @@ Example:
    - Consults layer-specific AGENTS.md to design correctly
    - Creates tasks that align with layer responsibilities
 
-2. **Phase 4 (Test-First Gate):**
-   - Test writer reads implementation-plan.md to understand what will be built
-   - Writes tests that validate each layer's responsibilities
-   - Confirms tests fail without production code
+2. **Phase 4 (Test Specification):**
+   - Test spec writer reads implementation-plan.md to understand what will be built
+   - Writes acceptance criteria, fixture data, and boundary cases
+   - Defines E2E playbook scenarios and contract test candidates
+   - Per-phase instructions served via `validate-phase.py --phase 4 --instructions`
 
 3. **Phase 5 (Implementation):**
    - Orchestrator spawns sub-agents for affected layers in dependency order
    - Each sub-agent reads:
      - `/AGENTS.md` (project-level)
      - Its layer's AGENTS.md (layer-specific)
+     - Per-phase instructions via `validate-phase.py --phase 5 --instructions`
    - Sub-agents follow both sets of constraints
-   - Tests from Phase 4 serve as acceptance criteria
+   - TDD guided by test-spec.md: write test, then make it pass
+   - Meta-controller recommendations followed autonomously
+   - E2E test playbook entries written to `@docs/e2e-test-playbook.md`
 
 4. **Phase 6 (Review-Fix Loop):**
    - Validates that layer boundaries were respected
@@ -792,7 +852,8 @@ Example:
    - Code changes respect architectural boundaries
    - No layer bleeding (e.g., business logic in controllers)
    - Consistent patterns across features
-   - Tests prove correctness before and after implementation
+   - TDD tests prove correctness alongside implementation
+   - E2E test playbook provides runnable validation scenarios
 
 ---
 
@@ -806,8 +867,8 @@ If you discover issues during Phase 5:
 2. **Major changes:** Consider:
    - Stop Phase 5
    - Return to Phase 3 to revise plan
-   - Get new approval
-   - Update tests in Phase 4 if needed
+   - Update test-spec.md in Phase 4 if needed
+   - Pass through the Phase 4->5 human gate again
    - Restart Phase 5
 
 ### Partial Implementation
@@ -842,16 +903,19 @@ If feature is too large:
 - Phase 2 needs the feature name from Phase 1
 - Phase 3 needs the requirements from Phase 2
 - Phase 4 needs the plan from Phase 3
-- Phase 5 needs the failing tests from Phase 4
+- Phase 5 needs the test specification from Phase 4
 - Phase 6 needs the implementation from Phase 5
+
+Note: Phases 1-3 auto-advance, so they feel seamless, but they still execute in order.
 
 ### Q: Can I go back to a previous phase?
 
 **A:** Yes, but with caveats:
 - Can return from Phase 3 to Phase 2 (revise spec)
 - Can return from Phase 4 to Phase 3 (revise plan)
-- Can return from Phase 5 to Phase 4 (revise tests)
-- Cannot modify spec.md after Phase 2 approval (create new FR instead)
+- Can return from Phase 5 to Phase 4 (revise test specification)
+- Cannot modify spec.md after Phase 2 (create new FR instead)
+- Since Phases 1-3 auto-advance, going back requires explicit user request
 
 ### Q: What if I disagree with the plan in Phase 3?
 
@@ -862,14 +926,14 @@ If feature is too large:
 
 Phase 3 is the checkpoint - get it right before Phase 4.
 
-### Q: What if the test coverage in Phase 4 seems insufficient?
+### Q: What if the test specification in Phase 4 seems insufficient?
 
-**A:** Don't approve the test-manifest. Request changes:
-- "Add edge case tests for null input"
-- "The spec requires X but no test covers it"
-- "Add an integration test for the full flow"
+**A:** Don't approve the test-spec at the Phase 4->5 human gate. Request changes:
+- "Add boundary case for null JSON input"
+- "The spec requires X but no acceptance criterion covers it"
+- "Add an E2E playbook scenario for the full flow"
 
-Phase 4 is the test approval gate - ensure coverage before Phase 5.
+The Phase 4->5 human gate is the test specification approval point -- ensure coverage before Phase 5.
 
 ### Q: Can I run the workflow manually without the skill?
 
@@ -885,7 +949,7 @@ Phase 4 is the test approval gate - ensure coverage before Phase 5.
 ls feature-requests/FR-001-jwt-refresh-tokens/
 cat feature-requests/FR-001-jwt-refresh-tokens/spec.md
 cat feature-requests/FR-001-jwt-refresh-tokens/implementation-plan.md
-cat feature-requests/FR-001-jwt-refresh-tokens/test-manifest.md
+cat feature-requests/FR-001-jwt-refresh-tokens/test-spec.md
 cat feature-requests/FR-001-jwt-refresh-tokens/summary.md
 ```
 
@@ -907,10 +971,13 @@ All context is in these 4 files.
 
 - **Workflow YAML:** `.claude/skills/feature-request-v2/references/feature-workflow.yaml`
 - **Validation Script:** `.claude/skills/feature-request-v2/scripts/validate-phase.py`
+- **Per-Phase Instructions:** `.claude/skills/feature-request-v2/references/instructions/` (served via `validate-phase.py --phase N --instructions`)
 - **Skill Definition:** `.claude/skills/feature-request-v2/SKILL.md`
 - **Project Architecture:** `/AGENTS.md`
+- **E2E Test Playbook:** `@docs/e2e-test-playbook.md`
+- **Override Justification:** `decision-support/override-justification.md` (per feature directory, when needed)
 
 ---
 
-*Last Updated: 2026-03-25*
-*Version: 2.0.0*
+*Last Updated: 2026-03-28*
+*Version: 3.0.0*

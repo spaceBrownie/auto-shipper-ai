@@ -38,13 +38,16 @@ class PhaseValidator:
         self.validation_rules = self.config.get('validation', {})
         self.error_messages = self.config.get('error_messages', {})
 
+    # Base directory of the skill (parent of 'scripts/')
+    SKILL_ROOT = Path(__file__).resolve().parent.parent
+
     def get_phase_key(self, phase_number: int) -> str:
         """Convert phase number to phase key"""
         phase_map = {
             1: 'phase_1_discovery',
             2: 'phase_2_specification',
             3: 'phase_3_planning',
-            4: 'phase_4_test_first_gate',
+            4: 'phase_4_test_specification',
             5: 'phase_5_implementation',
             6: 'phase_6_review_fix_loop'
         }
@@ -54,6 +57,28 @@ class PhaseValidator:
         """Get complete phase configuration"""
         phase_key = self.get_phase_key(phase_number)
         return self.phases.get(phase_key) if phase_key else None
+
+    def get_phase_instructions(self, phase_number: int) -> Optional[str]:
+        """Load phase execution instructions from the referenced .md file.
+
+        The YAML phase config has an `instructions_file` field pointing to a
+        markdown file relative to the skill root directory.  This method
+        resolves the path and returns the file contents, or None if the field
+        is missing or the file does not exist.
+        """
+        phase_info = self.get_phase_info(phase_number)
+        if not phase_info:
+            return None
+
+        instructions_file = phase_info.get('instructions_file')
+        if not instructions_file:
+            return None
+
+        instructions_path = self.SKILL_ROOT / instructions_file
+        if not instructions_path.exists():
+            return None
+
+        return instructions_path.read_text(encoding='utf-8')
 
     def validate_feature_name(self, name: str) -> Tuple[bool, str]:
         """Validate feature name against naming rules"""
@@ -267,11 +292,11 @@ class PhaseValidator:
                         errors.append(
                             f"implementation-plan.md has {len(unchecked)} unchecked tasks (all must be checked in phase 5)")
 
-        # Phase 4 specific: check test-manifest.md exists
+        # Phase 4 specific: check test-spec.md exists
         if phase_number == 4:
-            test_manifest_path = os.path.join(feature_dir, 'test-manifest.md')
-            if not os.path.exists(test_manifest_path):
-                errors.append("Missing required test-manifest.md")
+            test_spec_path = os.path.join(feature_dir, 'test-spec.md')
+            if not os.path.exists(test_spec_path):
+                errors.append("Missing required test-spec.md")
 
         # Phase 5 specific: check exactly 1 summary.md exists
         if phase_number == 5:
@@ -481,6 +506,9 @@ def main():
     parser.add_argument('--next-fr-number', action='store_true',
                         help='Get next available FR number')
 
+    parser.add_argument('--instructions', action='store_true',
+                        help='Output full execution instructions for the given phase (loaded from .md file)')
+
     parser.add_argument('--bulk-validate', type=str, nargs='+',
                         help='Bulk validate write permissions for multiple file paths at once')
 
@@ -520,6 +548,37 @@ def main():
             print(json.dumps({"next_fr_number": next_fr}))
         else:
             print(f"Next FR number: {next_fr}")
+        sys.exit(0)
+
+    elif args.instructions:
+        # Output full execution instructions for a phase
+        if not args.phase:
+            print("Error: --phase required for --instructions", file=sys.stderr)
+            sys.exit(1)
+
+        instructions = validator.get_phase_instructions(args.phase)
+        if instructions is None:
+            phase_info = validator.get_phase_info(args.phase)
+            if phase_info is None:
+                msg = f"Invalid phase: {args.phase}"
+            else:
+                msg = f"No instructions file configured for phase {args.phase}"
+            if args.json:
+                print(json.dumps({"error": msg}))
+            else:
+                print(f"FAIL {msg}", file=sys.stderr)
+            sys.exit(1)
+
+        if args.json:
+            phase_info = validator.get_phase_info(args.phase)
+            print(json.dumps({
+                "phase": args.phase,
+                "name": phase_info.get('name', 'Unknown') if phase_info else 'Unknown',
+                "instructions": instructions,
+                "requires_manual_approval": phase_info.get('requires_manual_approval', False) if phase_info else False,
+            }))
+        else:
+            print(instructions)
         sys.exit(0)
 
     elif args.bulk_validate:
