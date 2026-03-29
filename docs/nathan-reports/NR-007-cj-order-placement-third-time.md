@@ -102,15 +102,38 @@ We have the plumbing for it — the system already exposes a data feed that a da
 
 **What production visibility would actually look like:**
 
-- **Order pipeline dashboard** — how many orders flowing in, how many successfully placed with CJ, how many failing and *why* (out of stock vs. bad address vs. CJ API down)
-- **Address quality score** — are we sending partial or corrupted addresses? Even one "null" field in production should trigger an alert
-- **Supplier health** — CJ response times, error rates by category, success rate trends
-- **Financial health** — live per-SKU margins, reserve ratio, refund rate *by cause* (not just the rate)
-- **Automatic alerts** — CJ failure rate spikes above 5%, any corrupted address field detected, reserve drops below 10%, refund rate exceeds threshold per SKU
+Every time the system does something meaningful — receives a Shopify sale, places a CJ order, marks an order as failed, issues a refund — it records a metric. These metrics accumulate in real time and feed into dashboards and alert rules. Think of it as the system keeping a running tally of its own performance, organized into the business flows you'd actually want to watch:
 
-The critical insight you're driving at: **the stress test validates the financial model before launch, but it doesn't validate operational quality during production.** A SKU could pass the 30% net margin floor in stress testing while silently shipping to garbage addresses 3% of the time in production. You wouldn't know until refunds pile up — and by then the margin damage is done.
+**Order pipeline** — "Are orders flowing healthy?"
+- Orders received from Shopify: 47 today, 52 yesterday, 38 day before → trending up
+- Orders successfully placed with CJ: 45 of 47 (95.7% success rate)
+- Orders failed at CJ: 2 of 47 — one "out of stock", one "invalid address"
+- Average time from Shopify sale to CJ order placed: 1.2 seconds
 
-The feedback loop closes like this: production alert fires (e.g., "3 CJ orders failed with 'invalid address' in the last hour") → system creates a ticket → investigation reveals a new edge case → that edge case becomes a permanent test → the bug can never ship again. Right now that loop is open — failures would be silent until a customer complains.
+**Address quality** — "Are we sending clean data to CJ?"
+- Shipping addresses with missing fields: 3 of 47 had no phone number (expected — some customers skip it), 0 had missing city/zip/country (would be a bug)
+- If the system ever detects it's about to send the text "null" as someone's city, it fires an alert immediately — that's the exact Attempt 2 bug, and we want to know in seconds, not days
+
+**Supplier health** — "Is CJ performing?"
+- CJ API response time: p50 = 340ms, p95 = 890ms, p99 = 2.1s
+- CJ error rate by reason: out of stock (1.2%), invalid address (0.8%), API timeout (0.3%)
+- Trend: out-of-stock rate climbing week over week → signal to check if a product is being discontinued
+
+**Financial health** — "Is the money working?"
+- Per-SKU live margins vs. stress test projections — is Bamboo Mat actually hitting the 54% gross margin the stress test predicted, or is it drifting?
+- Reserve ratio: currently 12.4% ($12,450 / $100,400 trailing revenue) → healthy, above 10% floor
+- Refund rate *by cause*: product quality (1.1%), shipping damage (0.6%), wrong item (0.0%), customer changed mind (0.8%) → the "why" matters more than the total rate
+
+**Automatic alerts** — "Wake me up when something breaks"
+- CJ failure rate above 5% over any 15-minute window → something is wrong at CJ
+- Any corrupted address field detected → data integrity regression, needs immediate fix
+- Reserve health below 10% → approaching danger zone
+- Single SKU refund rate above 5% over 7 days → kill rule territory, investigate before the automated kill triggers
+- CONFIRMED→FAILED spike (more than 3 in one hour) → systematic supplier rejection, possibly an entire product pulled from CJ's inventory
+
+The critical insight you're driving at: **the stress test validates the financial model before launch, but it doesn't validate operational quality during production.** A SKU could pass the 30% net margin floor in stress testing while silently shipping to garbage addresses 3% of the time in production. The stress test says "the math works." The observability layer says "the math is *actually* working, right now, on real orders."
+
+The feedback loop closes like this: production alert fires (e.g., "3 CJ orders failed with 'invalid address' in the last hour") → system creates a ticket → investigation reveals a new edge case (say, a Canadian province code CJ doesn't recognize) → that edge case becomes a permanent quality check → the bug can never ship again. Right now that loop is open — failures would be silent until a customer complains or refund rates trigger a kill rule.
 
 This is filed as [RAT-37](https://linear.app/ratrace/issue/RAT-37/observability-layer-business-metrics-grafana-dashboards-alert-rules) — high priority, sequenced after RAT-28 (tracking). The build: add Grafana (dashboard tool) and an alert system to the existing setup, teach the order pipeline to report business-level numbers (not just "server is up"), and wire threshold-based alerts that fire when something goes wrong. Not a huge build, but the one that makes everything else trustworthy at scale.
 
