@@ -674,15 +674,15 @@ The following are already present and sufficient:
 
 Phase 5 must verify every test against these rules before considering it done:
 
-- [ ] Every test calls production code (service, adapter, or entity method)
-- [ ] Every assertion operates on the return value or side effect of production code
-- [ ] No `assert(true)` anywhere
-- [ ] No `assertThat(fixture).contains(...)` (fixture content checking)
-- [ ] No `// Phase 5:` deferred comments — either the test is written or it is explicitly omitted with rationale
-- [ ] Every CJ API response field parsed by the adapter has a corresponding JSON null boundary test
-- [ ] Every Shopify `shipping_address` field parsed by the adapter has a corresponding JSON null boundary test
-- [ ] NullNode assertions use `assertThat(field).isNull()`, never `assertThat(field).isNotEqualTo("null")`
-- [ ] WireMock fixtures match CJ API documentation structure (code, result, message, data, requestId)
-- [ ] All `Order(...)` constructions in updated existing tests include `quantity` parameter
-- [ ] `ChannelOrder(...)` constructions include `shippingAddress` parameter (nullable)
-- [ ] `SupplierOrderPlacementListener` annotated with `@TransactionalEventListener(AFTER_COMMIT)` + `@Transactional(REQUIRES_NEW)` — verified by ArchUnit Rule 1
+- [x] Every test calls production code (service, adapter, or entity method)
+- [x] Every assertion operates on the return value or side effect of production code
+- [x] No `assert(true)` anywhere
+- [x] No `assertThat(fixture).contains(...)` (fixture content checking) — `.contains()` calls assert on production code return values (e.g. `failure.reason.contains("product out of stock")`), not raw fixture strings
+- [x] No `// Phase 5:` deferred comments — either the test is written or it is explicitly omitted with rationale
+- [x] Every CJ API response field parsed by the adapter has a corresponding JSON null boundary test
+- [x] Every Shopify `shipping_address` field parsed by the adapter has a corresponding JSON null boundary test
+- [x] NullNode assertions use `assertThat(field).isNull()`, never `assertThat(field).isNotEqualTo("null")`
+- [x] WireMock fixtures match CJ API documentation structure (code, result, message, data, requestId)
+- [x] All `Order(...)` constructions in updated existing tests include `quantity` parameter
+- [x] `ChannelOrder(...)` constructions include `shippingAddress` parameter (nullable)
+- [x] `SupplierOrderPlacementListener` annotated with `@TransactionalEventListener(AFTER_COMMIT)` + `@Transactional(REQUIRES_NEW)` — verified by ArchUnit Rule 1
