@@ -13,6 +13,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.RegisterExtension
+import org.springframework.web.client.HttpServerErrorException
 import org.springframework.web.client.HttpClientErrorException
 
 class CjSupplierOrderAdapterWireMockTest {
@@ -26,6 +27,12 @@ class CjSupplierOrderAdapterWireMockTest {
 
         private const val ORDER_ENDPOINT = "/api2.0/v1/shopping/order/createOrderV2"
     }
+
+    private fun loadFixture(path: String): String =
+        this::class.java.classLoader
+            .getResource(path)
+            ?.readText()
+            ?: throw IllegalArgumentException("Fixture not found: $path")
 
     private fun adapter(
         baseUrl: String = wireMock.baseUrl(),
@@ -66,16 +73,7 @@ class CjSupplierOrderAdapterWireMockTest {
                     aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                            {
-                                "result": true,
-                                "code": 200,
-                                "message": "success",
-                                "data": {
-                                    "orderId": "cj-order-123"
-                                }
-                            }
-                        """.trimIndent())
+                        .withBody(loadFixture("wiremock/cj/create-order-success.json"))
                 )
         )
 
@@ -83,7 +81,7 @@ class CjSupplierOrderAdapterWireMockTest {
 
         assertThat(result).isInstanceOf(SupplierOrderResult.Success::class.java)
         val success = result as SupplierOrderResult.Success
-        assertThat(success.supplierOrderId).isEqualTo("cj-order-123")
+        assertThat(success.supplierOrderId).isEqualTo("2011152148163605")
     }
 
     @Test
@@ -94,13 +92,7 @@ class CjSupplierOrderAdapterWireMockTest {
                     aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                            {
-                                "result": false,
-                                "code": 1600501,
-                                "message": "product out of stock"
-                            }
-                        """.trimIndent())
+                        .withBody(loadFixture("wiremock/cj/create-order-out-of-stock.json"))
                 )
         )
 
@@ -119,13 +111,7 @@ class CjSupplierOrderAdapterWireMockTest {
                     aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                            {
-                                "result": false,
-                                "code": 1600502,
-                                "message": "invalid shipping address"
-                            }
-                        """.trimIndent())
+                        .withBody(loadFixture("wiremock/cj/create-order-invalid-address.json"))
                 )
         )
 
@@ -224,16 +210,7 @@ class CjSupplierOrderAdapterWireMockTest {
                     aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody("""
-                            {
-                                "result": true,
-                                "code": 200,
-                                "message": "success",
-                                "data": {
-                                    "orderId": null
-                                }
-                            }
-                        """.trimIndent())
+                        .withBody(loadFixture("wiremock/cj/create-order-null-fields.json"))
                 )
         )
 
@@ -268,5 +245,112 @@ class CjSupplierOrderAdapterWireMockTest {
         assertThat(result).isInstanceOf(SupplierOrderResult.Failure::class.java)
         val failure = result as SupplierOrderResult.Failure
         assertThat(failure.reason).contains("Missing orderId")
+    }
+
+    @Test
+    fun `HTTP 500 propagates as exception`() {
+        wireMock.stubFor(
+            post(urlEqualTo(ORDER_ENDPOINT))
+                .willReturn(
+                    aResponse()
+                        .withStatus(500)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""{"message": "Internal Server Error"}""")
+                )
+        )
+
+        assertThrows<HttpServerErrorException.InternalServerError> {
+            adapter().placeOrder(validRequest())
+        }
+    }
+
+    @Test
+    fun `maps address line2 into shippingAddress field`() {
+        wireMock.stubFor(
+            post(urlEqualTo(ORDER_ENDPOINT))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""
+                            {
+                                "result": true,
+                                "code": 200,
+                                "message": "success",
+                                "data": { "orderId": "cj-addr-test" }
+                            }
+                        """.trimIndent())
+                )
+        )
+
+        val request = SupplierOrderRequest(
+            orderNumber = "addr-test-001",
+            shippingAddress = ShippingAddress(
+                customerName = "Jane Doe",
+                addressLine1 = "123 Main St",
+                addressLine2 = "Apt 4B",
+                city = "Portland",
+                province = "Oregon",
+                country = "United States",
+                countryCode = "US",
+                zip = "97201",
+                phone = "+1-503-555-0199"
+            ),
+            supplierProductId = "pid-001",
+            supplierVariantId = "vid-001",
+            quantity = 1
+        )
+
+        adapter().placeOrder(request)
+
+        wireMock.verify(
+            postRequestedFor(urlEqualTo(ORDER_ENDPOINT))
+                .withRequestBody(containing("\"shippingAddress\":\"123 Main St Apt 4B\""))
+        )
+    }
+
+    @Test
+    fun `handles null address line2 in shippingAddress`() {
+        wireMock.stubFor(
+            post(urlEqualTo(ORDER_ENDPOINT))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""
+                            {
+                                "result": true,
+                                "code": 200,
+                                "message": "success",
+                                "data": { "orderId": "cj-nulladdr-test" }
+                            }
+                        """.trimIndent())
+                )
+        )
+
+        val request = SupplierOrderRequest(
+            orderNumber = "addr-test-002",
+            shippingAddress = ShippingAddress(
+                customerName = "Jane Doe",
+                addressLine1 = "123 Main St",
+                addressLine2 = null,
+                city = "Portland",
+                province = "Oregon",
+                country = "United States",
+                countryCode = "US",
+                zip = "97201",
+                phone = "+1-503-555-0199"
+            ),
+            supplierProductId = "pid-001",
+            supplierVariantId = "vid-001",
+            quantity = 1
+        )
+
+        adapter().placeOrder(request)
+
+        wireMock.verify(
+            postRequestedFor(urlEqualTo(ORDER_ENDPOINT))
+                .withRequestBody(containing("\"shippingAddress\":\"123 Main St\""))
+        )
     }
 }

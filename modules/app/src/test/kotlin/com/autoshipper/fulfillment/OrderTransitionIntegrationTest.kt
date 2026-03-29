@@ -3,6 +3,7 @@ package com.autoshipper.fulfillment
 import com.autoshipper.catalog.domain.Sku
 import com.autoshipper.catalog.domain.SkuState
 import com.autoshipper.catalog.persistence.SkuRepository
+import com.autoshipper.fulfillment.domain.service.SupplierOrderPlacementService
 import com.autoshipper.fulfillment.proxy.inventory.InventoryChecker
 import com.autoshipper.vendor.domain.Vendor
 import com.autoshipper.vendor.domain.VendorActivationChecklist
@@ -50,6 +51,9 @@ class OrderTransitionIntegrationTest {
 
     @MockBean
     lateinit var inventoryChecker: InventoryChecker
+
+    @MockBean
+    lateinit var supplierOrderPlacementService: SupplierOrderPlacementService
 
     @BeforeEach
     fun setup() {

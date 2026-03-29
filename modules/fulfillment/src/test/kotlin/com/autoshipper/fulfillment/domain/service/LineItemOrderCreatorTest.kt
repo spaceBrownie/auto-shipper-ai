@@ -237,6 +237,78 @@ class LineItemOrderCreatorTest {
     }
 
     @Test
+    fun `processLineItem handles null lastName in customerName`() {
+        val channelAddr = ChannelShippingAddress(
+            firstName = "John",
+            lastName = null,
+            address1 = "123 Main St",
+            address2 = null,
+            city = "Portland",
+            province = "Oregon",
+            provinceCode = "OR",
+            country = "United States",
+            countryCode = "US",
+            zip = "97201",
+            phone = null
+        )
+        whenever(platformListingResolver.resolveSkuId("7513594", "34505432", "SHOPIFY")).thenReturn(skuId)
+        whenever(vendorSkuResolver.resolveVendorId(skuId)).thenReturn(vendorId)
+
+        val order = Order(
+            idempotencyKey = "shopify:order:12345:item:0",
+            skuId = skuId, vendorId = vendorId, customerId = customerId,
+            totalAmount = BigDecimal("59.9800"), totalCurrency = Currency.USD,
+            paymentIntentId = "shopify:order:12345", status = OrderStatus.PENDING
+        )
+        whenever(orderService.create(any<CreateOrderCommand>())).thenReturn(Pair(order, true))
+        whenever(orderService.setChannelMetadata(any(), any(), any(), any())).thenReturn(order)
+
+        creator.processLineItem(0, lineItem, channelOrder, customerId, Currency.USD, channelAddr)
+
+        val captor = argumentCaptor<CreateOrderCommand>()
+        verify(orderService).create(captor.capture())
+        val addr = captor.firstValue.shippingAddress
+        assertNotNull(addr, "Expected ShippingAddress to be non-null")
+        assertEquals("John", addr!!.customerName, "customerName should be 'John' with no trailing space")
+    }
+
+    @Test
+    fun `processLineItem handles null firstName in customerName`() {
+        val channelAddr = ChannelShippingAddress(
+            firstName = null,
+            lastName = "Doe",
+            address1 = "123 Main St",
+            address2 = null,
+            city = "Portland",
+            province = "Oregon",
+            provinceCode = "OR",
+            country = "United States",
+            countryCode = "US",
+            zip = "97201",
+            phone = null
+        )
+        whenever(platformListingResolver.resolveSkuId("7513594", "34505432", "SHOPIFY")).thenReturn(skuId)
+        whenever(vendorSkuResolver.resolveVendorId(skuId)).thenReturn(vendorId)
+
+        val order = Order(
+            idempotencyKey = "shopify:order:12345:item:0",
+            skuId = skuId, vendorId = vendorId, customerId = customerId,
+            totalAmount = BigDecimal("59.9800"), totalCurrency = Currency.USD,
+            paymentIntentId = "shopify:order:12345", status = OrderStatus.PENDING
+        )
+        whenever(orderService.create(any<CreateOrderCommand>())).thenReturn(Pair(order, true))
+        whenever(orderService.setChannelMetadata(any(), any(), any(), any())).thenReturn(order)
+
+        creator.processLineItem(0, lineItem, channelOrder, customerId, Currency.USD, channelAddr)
+
+        val captor = argumentCaptor<CreateOrderCommand>()
+        verify(orderService).create(captor.capture())
+        val addr = captor.firstValue.shippingAddress
+        assertNotNull(addr, "Expected ShippingAddress to be non-null")
+        assertEquals("Doe", addr!!.customerName, "customerName should be 'Doe' with no leading space")
+    }
+
+    @Test
     fun `null shippingAddress passes through as null in CreateOrderCommand`() {
         whenever(platformListingResolver.resolveSkuId("7513594", "34505432", "SHOPIFY")).thenReturn(skuId)
         whenever(vendorSkuResolver.resolveVendorId(skuId)).thenReturn(vendorId)

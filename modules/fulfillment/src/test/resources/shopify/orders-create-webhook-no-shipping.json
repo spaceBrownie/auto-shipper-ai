@@ -1,0 +1,22 @@
+{
+  "id": 820982911946154502,
+  "name": "#1003",
+  "email": "digital@example.com",
+  "currency": "USD",
+  "financial_status": "paid",
+  "customer": {
+    "id": 115310627314723952,
+    "email": "digital@example.com"
+  },
+  "line_items": [
+    {
+      "id": 866550311766439002,
+      "product_id": 7513594,
+      "variant_id": 34505432,
+      "title": "Digital Product",
+      "quantity": 1,
+      "price": "9.99",
+      "sku": "DIGITAL-001"
+    }
+  ]
+}
