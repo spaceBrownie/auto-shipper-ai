@@ -1,7 +1,7 @@
 # E2E Test Playbook
 
 End-to-end manual test script for the full SKU lifecycle through capital protection, compliance guards, and portfolio orchestration.
-Covers: SKU creation, compliance checks, state machine, cost gate, stress test, pricing, platform listing (FR-020), Shopify webhook order creation (FR-023), orders, reserve management, margin monitoring, automated shutdown rules, portfolio experiments, kill window monitoring, priority ranking, demand scan job, and demand signal smoke test (FR-017).
+Covers: SKU creation, compliance checks, state machine, cost gate, stress test, pricing, platform listing (FR-020), Shopify webhook order creation (FR-023), CJ supplier order placement (FR-025), orders, reserve management, margin monitoring, automated shutdown rules, portfolio experiments, kill window monitoring, priority ranking, demand scan job, and demand signal smoke test (FR-017).
 
 **Last validated:** 2026-03-21 on branch `feat/RAT-24-shopify-admin-api-contract-tests`
 
@@ -464,6 +464,118 @@ PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
 |---|---|
 
 **Checkpoint:** If the invalid HMAC returns 200 instead of 401, the `ShopifyHmacVerificationFilter` is not intercepting requests to `/webhooks/shopify/*`.
+
+---
+
+## Phase 1c: CJ Supplier Order Placement (FR-025)
+
+This phase tests the CJ supplier order placement chain: when an order is confirmed, the system automatically places a supplier order with CJ Dropshipping. Tests cover the happy path, CJ rejection, missing variant mapping, idempotent retry, and NullNode guard on Shopify shipping address fields.
+
+**Automated test coverage:** All scenarios below are covered by the fulfillment module test suite (`./gradlew :fulfillment:test`). No manual E2E steps are required — the scenarios are validated by unit and integration tests.
+
+### 1c.1 Happy Path: Order Created -> Confirmed -> CJ Order Placed -> Supplier Order ID Stored
+
+**Test:** `SupplierOrderPlacementIntegrationTest.full chain - order created, routed, supplier order placed successfully stores supplierOrderId`
+
+| Step | Action | Assertion |
+|---|---|---|
+| 1 | Create order with shipping address and quantity=2 | Order in PENDING |
+| 2 | Route to vendor | Order in CONFIRMED, `OrderConfirmed` event published |
+| 3 | Call `placeSupplierOrder()` (simulates event listener) | Adapter called with correct request |
+| 4 | Verify final state | `supplierOrderId = "cj-supplier-order-99"`, status = CONFIRMED |
+
+### 1c.2 CJ Rejection: Order Confirmed -> CJ Rejects -> Order FAILED with Reason
+
+**Test:** `SupplierOrderPlacementIntegrationTest.full chain - CJ rejects order, order marked FAILED with failureReason`
+
+| Step | Action | Assertion |
+|---|---|---|
+| 1 | Create order and route to vendor | Order in CONFIRMED |
+| 2 | Adapter returns `Failure("product out of stock")` | Order status = FAILED |
+| 3 | Verify failure details | `failureReason = "product out of stock"`, `supplierOrderId` is null |
+
+### 1c.3 Missing Variant Mapping: Order Confirmed -> No Mapping -> Order FAILED
+
+**Test:** `SupplierOrderPlacementServiceTest.missing mapping - resolver returns null sets order to FAILED`
+
+| Step | Action | Assertion |
+|---|---|---|
+| 1 | Confirmed order, resolver returns null | Order status = FAILED |
+| 2 | Verify failure reason | `failureReason` contains "No supplier product mapping" |
+| 3 | Verify adapter not called | `verify(adapter, never()).placeOrder(any())` |
+
+### 1c.4 Idempotent Retry: Order Already Has Supplier Order ID -> Skip Placement
+
+**Test:** `SupplierOrderPlacementServiceTest.idempotency - order already has supplierOrderId skips adapter call`
+
+| Step | Action | Assertion |
+|---|---|---|
+| 1 | Order with `supplierOrderId = "existing-123"` | Adapter never called |
+| 2 | Verify order unchanged | `supplierOrderId` still "existing-123", no save call |
+
+### 1c.5 NullNode Guard: Shopify Webhook with JSON Null Shipping Fields -> Kotlin Null
+
+**Test:** `ShopifyOrderAdapterTest.JSON null shipping address fields return Kotlin null NOT string null -- PR 39 bug regression`
+
+| Step | Action | Assertion |
+|---|---|---|
+| 1 | Parse webhook with `"last_name": null, "address2": null, "province": null, "phone": null` | All four fields are Kotlin `null` (not the string `"null"`) |
+| 2 | Assert with `isNull()` not `isNotEqualTo("null")` | Catches the `NullNode.asText()` trap per CLAUDE.md constraint 17 |
+
+**Additional shipping address tests:**
+
+| Test | Scenario | Assertion |
+|---|---|---|
+| `full shipping address extracted correctly with all 11 fields` | Complete shipping address | All 11 fields match expected values |
+| `missing shipping_address node returns null shippingAddress` | No `shipping_address` key | `shippingAddress` is null |
+| `shipping_address is JSON null returns null shippingAddress` | `"shipping_address": null` | `shippingAddress` is null |
+| `mixed null and present shipping fields correctly mapped` | Some null, some present | Non-null fields correct, null fields are Kotlin null |
+
+### 1c.6 CJ API Contract Tests (WireMock)
+
+**Test class:** `CjSupplierOrderAdapterWireMockTest` (8 tests)
+
+| Test | Scenario | Assertion |
+|---|---|---|
+| `successful order placement returns Success with supplierOrderId` | CJ returns code=200 with orderId | `Success("2011152148163605")` |
+| `out of stock error returns Failure with reason` | CJ returns code=1600501 | `Failure` with "product out of stock" |
+| `invalid address error returns Failure with reason` | CJ returns code=1600502 | `Failure` with "invalid shipping address" |
+| `auth failure 401 propagates as HttpClientErrorException` | CJ returns HTTP 401 | Exception propagates (Resilience4j handles) |
+| `null orderId in success response returns Failure via NullNode guard` | code=200 but `data.orderId` is null | `Failure` with "no orderId" |
+| `null data node in response returns Failure` | code=200 but `data` is null | `Failure` |
+| `credential guard - blank credentials return Failure with no HTTP call` | Empty baseUrl or accessToken | `Failure` with "credentials", no HTTP call |
+| `request body verification - correct headers and body structure` | Valid request | CJ-Access-Token header, correct JSON body shape |
+
+### 1c.7 Order FAILED State Machine Tests
+
+**Test class:** `OrderFailedTransitionTest` (8 tests)
+
+| Test | Assertion |
+|---|---|
+| `confirmed order can transition to FAILED` | Valid |
+| `pending order can transition to FAILED` | Valid |
+| `FAILED is terminal -- cannot transition to CONFIRMED` | `IllegalArgumentException` |
+| `FAILED is terminal -- cannot transition to PENDING` | `IllegalArgumentException` |
+| `FAILED is terminal -- cannot transition to SHIPPED` | `IllegalArgumentException` |
+| `SHIPPED order cannot transition to FAILED` | `IllegalArgumentException` |
+| `DELIVERED order cannot transition to FAILED` | `IllegalArgumentException` |
+| `REFUNDED order cannot transition to FAILED` | `IllegalArgumentException` |
+
+### 1c.8 Quantity and Shipping Address Flow
+
+**Test class:** `LineItemOrderCreatorTest`
+
+| Test | Assertion |
+|---|---|
+| `quantity flows from lineItem to CreateOrderCommand` | `command.quantity == lineItem.quantity` |
+| `shippingAddress maps from ChannelShippingAddress to ShippingAddress` | All fields correctly mapped |
+| `null shippingAddress passes through as null in CreateOrderCommand` | `command.shippingAddress` is null |
+
+**Test class:** `OrderServiceTest`
+
+| Test | Assertion |
+|---|---|
+| `routeToVendor publishes OrderConfirmed event` | Event contains correct orderId and skuId |
 
 ---
 
@@ -1174,5 +1286,6 @@ These are the cross-module event listener patterns that must hold for the system
 | `ComplianceOrchestrator` | `SkuReadyForComplianceCheck` | `AFTER_COMMIT` + `REQUIRES_NEW` | Compliance check never triggered on SKU creation (FR-011) |
 | `PlatformListingListener` | `SkuStateChanged` | `AFTER_COMMIT` + `REQUIRES_NEW` | Platform listing never created/paused/archived on SKU transition (FR-020) |
 | `ShopifyOrderProcessingService` | `ShopifyOrderReceivedEvent` | `AFTER_COMMIT` + `REQUIRES_NEW` | Shopify webhook accepted but orders never created (FR-023) |
+| `SupplierOrderPlacementListener` | `OrderConfirmed` | `AFTER_COMMIT` + `REQUIRES_NEW` | Confirmed orders never forwarded to CJ for supplier placement (FR-025) |
 
 **Rule:** Any `@TransactionalEventListener(AFTER_COMMIT)` handler that writes to the database **must** use `@Transactional(propagation = Propagation.REQUIRES_NEW)`. Without it, JPA operations silently succeed but are never flushed.
