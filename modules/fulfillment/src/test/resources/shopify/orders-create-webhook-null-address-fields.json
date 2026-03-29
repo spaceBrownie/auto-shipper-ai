@@ -1,0 +1,35 @@
+{
+  "id": 820982911946154501,
+  "name": "#1002",
+  "email": "customer2@example.com",
+  "currency": "USD",
+  "financial_status": "paid",
+  "customer": {
+    "id": 115310627314723951,
+    "email": "customer2@example.com"
+  },
+  "line_items": [
+    {
+      "id": 866550311766439001,
+      "product_id": 7513594,
+      "variant_id": 34505432,
+      "title": "Premium Widget",
+      "quantity": 1,
+      "price": "29.99",
+      "sku": "WIDGET-001"
+    }
+  ],
+  "shipping_address": {
+    "first_name": "Jane",
+    "last_name": null,
+    "address1": "456 Oak Ave",
+    "address2": null,
+    "city": "Portland",
+    "province": null,
+    "province_code": "OR",
+    "country": "United States",
+    "country_code": "US",
+    "zip": "97201",
+    "phone": null
+  }
+}

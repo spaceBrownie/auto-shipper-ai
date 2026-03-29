@@ -4,12 +4,12 @@ import com.autoshipper.fulfillment.domain.Order
 import com.autoshipper.fulfillment.domain.OrderStatus
 import com.autoshipper.fulfillment.domain.channel.ChannelLineItem
 import com.autoshipper.fulfillment.domain.channel.ChannelOrder
+import com.autoshipper.fulfillment.domain.channel.ChannelShippingAddress
 import com.autoshipper.fulfillment.proxy.platform.PlatformListingResolver
 import com.autoshipper.fulfillment.proxy.platform.VendorSkuResolver
 import com.autoshipper.shared.money.Currency
 import com.autoshipper.shared.money.Money
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
@@ -121,5 +121,211 @@ class LineItemOrderCreatorTest {
 
         assertFalse(result)
         verify(orderService, never()).setChannelMetadata(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `quantity flows from lineItem to CreateOrderCommand`() {
+        val lineItemQty3 = ChannelLineItem(
+            externalProductId = "7513594",
+            externalVariantId = "34505432",
+            quantity = 3,
+            unitPrice = BigDecimal("10.00"),
+            title = "Widget"
+        )
+        whenever(platformListingResolver.resolveSkuId("7513594", "34505432", "SHOPIFY")).thenReturn(skuId)
+        whenever(vendorSkuResolver.resolveVendorId(skuId)).thenReturn(vendorId)
+
+        val order = Order(
+            idempotencyKey = "shopify:order:12345:item:0",
+            skuId = skuId, vendorId = vendorId, customerId = customerId,
+            totalAmount = BigDecimal("30.0000"), totalCurrency = Currency.USD,
+            paymentIntentId = "shopify:order:12345", status = OrderStatus.PENDING
+        )
+        whenever(orderService.create(any<CreateOrderCommand>())).thenReturn(Pair(order, true))
+        whenever(orderService.setChannelMetadata(any(), any(), any(), any())).thenReturn(order)
+
+        creator.processLineItem(0, lineItemQty3, channelOrder, customerId, Currency.USD)
+
+        val captor = argumentCaptor<CreateOrderCommand>()
+        verify(orderService).create(captor.capture())
+        val captured = captor.firstValue
+        assertEquals(3, captured.quantity, "Expected quantity=3 in CreateOrderCommand")
+    }
+
+    @Test
+    fun `shippingAddress maps from ChannelShippingAddress to ShippingAddress`() {
+        val channelAddr = ChannelShippingAddress(
+            firstName = "John",
+            lastName = "Doe",
+            address1 = "456 Oak Ave",
+            address2 = "Apt 2B",
+            city = "Portland",
+            province = "Oregon",
+            provinceCode = "OR",
+            country = "United States",
+            countryCode = "US",
+            zip = "97201",
+            phone = "555-1234"
+        )
+        whenever(platformListingResolver.resolveSkuId("7513594", "34505432", "SHOPIFY")).thenReturn(skuId)
+        whenever(vendorSkuResolver.resolveVendorId(skuId)).thenReturn(vendorId)
+
+        val order = Order(
+            idempotencyKey = "shopify:order:12345:item:0",
+            skuId = skuId, vendorId = vendorId, customerId = customerId,
+            totalAmount = BigDecimal("59.9800"), totalCurrency = Currency.USD,
+            paymentIntentId = "shopify:order:12345", status = OrderStatus.PENDING
+        )
+        whenever(orderService.create(any<CreateOrderCommand>())).thenReturn(Pair(order, true))
+        whenever(orderService.setChannelMetadata(any(), any(), any(), any())).thenReturn(order)
+
+        creator.processLineItem(0, lineItem, channelOrder, customerId, Currency.USD, channelAddr)
+
+        val captor = argumentCaptor<CreateOrderCommand>()
+        verify(orderService).create(captor.capture())
+        val addr = captor.firstValue.shippingAddress
+        assertNotNull(addr, "Expected ShippingAddress to be non-null")
+        assertEquals("John Doe", addr!!.customerName)
+        assertEquals("456 Oak Ave", addr.addressLine1)
+        assertEquals("Apt 2B", addr.addressLine2)
+        assertEquals("Portland", addr.city)
+        assertEquals("OR", addr.province, "province should use provinceCode when available")
+        assertEquals("OR", addr.provinceCode)
+        assertEquals("United States", addr.country)
+        assertEquals("US", addr.countryCode)
+        assertEquals("97201", addr.zip)
+        assertEquals("555-1234", addr.phone)
+    }
+
+    @Test
+    fun `routeToVendor called after order creation when order is new`() {
+        whenever(platformListingResolver.resolveSkuId("7513594", "34505432", "SHOPIFY")).thenReturn(skuId)
+        whenever(vendorSkuResolver.resolveVendorId(skuId)).thenReturn(vendorId)
+
+        val order = Order(
+            idempotencyKey = "shopify:order:12345:item:0",
+            skuId = skuId, vendorId = vendorId, customerId = customerId,
+            totalAmount = BigDecimal("59.9800"), totalCurrency = Currency.USD,
+            paymentIntentId = "shopify:order:12345", status = OrderStatus.PENDING
+        )
+        whenever(orderService.create(any<CreateOrderCommand>())).thenReturn(Pair(order, true))
+        whenever(orderService.setChannelMetadata(any(), any(), any(), any())).thenReturn(order)
+
+        val result = creator.processLineItem(0, lineItem, channelOrder, customerId, Currency.USD)
+
+        assertTrue(result)
+        verify(orderService).routeToVendor(order.id)
+    }
+
+    @Test
+    fun `routeToVendor NOT called when order already existed`() {
+        whenever(platformListingResolver.resolveSkuId("7513594", "34505432", "SHOPIFY")).thenReturn(skuId)
+        whenever(vendorSkuResolver.resolveVendorId(skuId)).thenReturn(vendorId)
+
+        val existingOrder = Order(
+            idempotencyKey = "shopify:order:12345:item:0",
+            skuId = skuId, vendorId = vendorId, customerId = customerId,
+            totalAmount = BigDecimal("59.9800"), totalCurrency = Currency.USD,
+            paymentIntentId = "shopify:order:12345", status = OrderStatus.PENDING
+        )
+        whenever(orderService.create(any<CreateOrderCommand>())).thenReturn(Pair(existingOrder, false))
+
+        val result = creator.processLineItem(0, lineItem, channelOrder, customerId, Currency.USD)
+
+        assertFalse(result)
+        verify(orderService, never()).routeToVendor(any())
+    }
+
+    @Test
+    fun `processLineItem handles null lastName in customerName`() {
+        val channelAddr = ChannelShippingAddress(
+            firstName = "John",
+            lastName = null,
+            address1 = "123 Main St",
+            address2 = null,
+            city = "Portland",
+            province = "Oregon",
+            provinceCode = "OR",
+            country = "United States",
+            countryCode = "US",
+            zip = "97201",
+            phone = null
+        )
+        whenever(platformListingResolver.resolveSkuId("7513594", "34505432", "SHOPIFY")).thenReturn(skuId)
+        whenever(vendorSkuResolver.resolveVendorId(skuId)).thenReturn(vendorId)
+
+        val order = Order(
+            idempotencyKey = "shopify:order:12345:item:0",
+            skuId = skuId, vendorId = vendorId, customerId = customerId,
+            totalAmount = BigDecimal("59.9800"), totalCurrency = Currency.USD,
+            paymentIntentId = "shopify:order:12345", status = OrderStatus.PENDING
+        )
+        whenever(orderService.create(any<CreateOrderCommand>())).thenReturn(Pair(order, true))
+        whenever(orderService.setChannelMetadata(any(), any(), any(), any())).thenReturn(order)
+
+        creator.processLineItem(0, lineItem, channelOrder, customerId, Currency.USD, channelAddr)
+
+        val captor = argumentCaptor<CreateOrderCommand>()
+        verify(orderService).create(captor.capture())
+        val addr = captor.firstValue.shippingAddress
+        assertNotNull(addr, "Expected ShippingAddress to be non-null")
+        assertEquals("John", addr!!.customerName, "customerName should be 'John' with no trailing space")
+    }
+
+    @Test
+    fun `processLineItem handles null firstName in customerName`() {
+        val channelAddr = ChannelShippingAddress(
+            firstName = null,
+            lastName = "Doe",
+            address1 = "123 Main St",
+            address2 = null,
+            city = "Portland",
+            province = "Oregon",
+            provinceCode = "OR",
+            country = "United States",
+            countryCode = "US",
+            zip = "97201",
+            phone = null
+        )
+        whenever(platformListingResolver.resolveSkuId("7513594", "34505432", "SHOPIFY")).thenReturn(skuId)
+        whenever(vendorSkuResolver.resolveVendorId(skuId)).thenReturn(vendorId)
+
+        val order = Order(
+            idempotencyKey = "shopify:order:12345:item:0",
+            skuId = skuId, vendorId = vendorId, customerId = customerId,
+            totalAmount = BigDecimal("59.9800"), totalCurrency = Currency.USD,
+            paymentIntentId = "shopify:order:12345", status = OrderStatus.PENDING
+        )
+        whenever(orderService.create(any<CreateOrderCommand>())).thenReturn(Pair(order, true))
+        whenever(orderService.setChannelMetadata(any(), any(), any(), any())).thenReturn(order)
+
+        creator.processLineItem(0, lineItem, channelOrder, customerId, Currency.USD, channelAddr)
+
+        val captor = argumentCaptor<CreateOrderCommand>()
+        verify(orderService).create(captor.capture())
+        val addr = captor.firstValue.shippingAddress
+        assertNotNull(addr, "Expected ShippingAddress to be non-null")
+        assertEquals("Doe", addr!!.customerName, "customerName should be 'Doe' with no leading space")
+    }
+
+    @Test
+    fun `null shippingAddress passes through as null in CreateOrderCommand`() {
+        whenever(platformListingResolver.resolveSkuId("7513594", "34505432", "SHOPIFY")).thenReturn(skuId)
+        whenever(vendorSkuResolver.resolveVendorId(skuId)).thenReturn(vendorId)
+
+        val order = Order(
+            idempotencyKey = "shopify:order:12345:item:0",
+            skuId = skuId, vendorId = vendorId, customerId = customerId,
+            totalAmount = BigDecimal("59.9800"), totalCurrency = Currency.USD,
+            paymentIntentId = "shopify:order:12345", status = OrderStatus.PENDING
+        )
+        whenever(orderService.create(any<CreateOrderCommand>())).thenReturn(Pair(order, true))
+        whenever(orderService.setChannelMetadata(any(), any(), any(), any())).thenReturn(order)
+
+        creator.processLineItem(0, lineItem, channelOrder, customerId, Currency.USD, null)
+
+        val captor = argumentCaptor<CreateOrderCommand>()
+        verify(orderService).create(captor.capture())
+        assertNull(captor.firstValue.shippingAddress, "Expected shippingAddress to be null")
     }
 }

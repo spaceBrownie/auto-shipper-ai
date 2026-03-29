@@ -1,0 +1,10 @@
+{
+  "code": 200,
+  "result": true,
+  "message": "success",
+  "data": {
+    "orderId": "2011152148163605",
+    "orderNum": "CJ2011152148163605"
+  },
+  "requestId": "a12bc34d-5678-90ef-ghij-klmnopqrstuv"
+}

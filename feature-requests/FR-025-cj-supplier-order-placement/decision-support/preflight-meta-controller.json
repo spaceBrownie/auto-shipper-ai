@@ -1,0 +1,288 @@
+{
+  "state": {
+    "phase": 5,
+    "task_count": 28,
+    "base_duration": 1.0,
+    "parallelizable_fraction": 0.95,
+    "coupling": 0.344,
+    "novelty": 0.4,
+    "confidence": 0.52,
+    "blast_radius": 0.4,
+    "failure_impact": 0.5,
+    "deadline_pressure": 0.46,
+    "compute_budget": 0.7
+  },
+  "weights": {
+    "lambda_time": 0.2088,
+    "lambda_compute": 0.11,
+    "lambda_risk": 0.358,
+    "lambda_merge": 0.1319
+  },
+  "execution": {
+    "parallel_allowed": true,
+    "candidate_count": 6,
+    "candidates": [
+      {
+        "agents": 1,
+        "mode": "single_orchestrator",
+        "metrics": {
+          "quality": 0.6428,
+          "time_norm": 1.1907,
+          "compute_norm": 0.1205,
+          "risk_norm": 0.2236,
+          "merge_norm": 0.0,
+          "rework_risk": 0.3412,
+          "workload_pressure": 0.625
+        },
+        "base_reward": 0.3009,
+        "parallel_throughput_bonus": 0.0,
+        "score": 0.3009
+      },
+      {
+        "agents": 2,
+        "mode": "orchestrator_plus_parallel_agents",
+        "metrics": {
+          "quality": 0.6999,
+          "time_norm": 0.8565,
+          "compute_norm": 0.241,
+          "risk_norm": 0.2415,
+          "merge_norm": 0.0584,
+          "rework_risk": 0.3543,
+          "workload_pressure": 0.625
+        },
+        "base_reward": 0.4081,
+        "parallel_throughput_bonus": 0.0327,
+        "score": 0.433
+      },
+      {
+        "agents": 3,
+        "mode": "orchestrator_plus_parallel_agents",
+        "metrics": {
+          "quality": 0.7284,
+          "time_norm": 0.8066,
+          "compute_norm": 0.3616,
+          "risk_norm": 0.2594,
+          "merge_norm": 0.1168,
+          "rework_risk": 0.3674,
+          "workload_pressure": 0.625
+        },
+        "base_reward": 0.4274,
+        "parallel_throughput_bonus": 0.0518,
+        "score": 0.4637
+      },
+      {
+        "agents": 4,
+        "mode": "orchestrator_plus_parallel_agents",
+        "metrics": {
+          "quality": 0.7453,
+          "time_norm": 0.818,
+          "compute_norm": 0.4821,
+          "risk_norm": 0.2773,
+          "merge_norm": 0.1752,
+          "rework_risk": 0.3806,
+          "workload_pressure": 0.625
+        },
+        "base_reward": 0.4221,
+        "parallel_throughput_bonus": 0.0653,
+        "score": 0.4643
+      },
+      {
+        "agents": 5,
+        "mode": "orchestrator_plus_parallel_agents",
+        "metrics": {
+          "quality": 0.7557,
+          "time_norm": 0.8499,
+          "compute_norm": 0.6026,
+          "risk_norm": 0.2952,
+          "merge_norm": 0.2336,
+          "rework_risk": 0.3937,
+          "workload_pressure": 0.625
+        },
+        "base_reward": 0.4063,
+        "parallel_throughput_bonus": 0.0758,
+        "score": 0.4513
+      },
+      {
+        "agents": 6,
+        "mode": "orchestrator_plus_parallel_agents",
+        "metrics": {
+          "quality": 0.7621,
+          "time_norm": 0.8899,
+          "compute_norm": 0.7231,
+          "risk_norm": 0.3131,
+          "merge_norm": 0.292,
+          "rework_risk": 0.4068,
+          "workload_pressure": 0.625
+        },
+        "base_reward": 0.3847,
+        "parallel_throughput_bonus": 0.0844,
+        "score": 0.4306
+      }
+    ],
+    "recommended_mode": "orchestrator_plus_parallel_agents",
+    "recommended_agents": 4,
+    "score_margin_vs_single": 0.1634
+  },
+  "planning": {
+    "recommended_mode": "decompose_then_execute",
+    "recommended_depth": 3,
+    "value_success": 1.89,
+    "utility_curve": [
+      {
+        "depth": 0.0,
+        "success_prob": 0.4585,
+        "planning_overhead": 0.0,
+        "utility": 0.8665,
+        "voc": 0.0
+      },
+      {
+        "depth": 1.0,
+        "success_prob": 0.6016,
+        "planning_overhead": 0.1152,
+        "utility": 1.113,
+        "voc": 0.2465
+      },
+      {
+        "depth": 2.0,
+        "success_prob": 0.6628,
+        "planning_overhead": 0.2304,
+        "utility": 1.2046,
+        "voc": 0.0916
+      },
+      {
+        "depth": 3.0,
+        "success_prob": 0.689,
+        "planning_overhead": 0.3456,
+        "utility": 1.23,
+        "voc": 0.0254
+      },
+      {
+        "depth": 4.0,
+        "success_prob": 0.7001,
+        "planning_overhead": 0.4608,
+        "utility": 1.227,
+        "voc": -0.0029
+      },
+      {
+        "depth": 5.0,
+        "success_prob": 0.6749,
+        "planning_overhead": 0.576,
+        "utility": 1.1553,
+        "voc": -0.0717
+      },
+      {
+        "depth": 6.0,
+        "success_prob": 0.647,
+        "planning_overhead": 0.6912,
+        "utility": 1.0784,
+        "voc": -0.0769
+      }
+    ]
+  },
+  "cognition": {
+    "recommended_mode": "deliberative",
+    "instinct_score": -0.397,
+    "threshold_pass": false,
+    "thresholds": {
+      "confidence_min": 0.78,
+      "novelty_max": 0.32,
+      "blast_radius_max": 0.25
+    }
+  },
+  "chunking": {
+    "recommended_chunk_size": 7,
+    "recommended_chunk_count": 4,
+    "objective_curve": [
+      {
+        "chunk_size": 1.0,
+        "chunk_count": 28.0,
+        "objective": 35.6319
+      },
+      {
+        "chunk_size": 2.0,
+        "chunk_count": 14.0,
+        "objective": 17.8962
+      },
+      {
+        "chunk_size": 3.0,
+        "chunk_count": 10.0,
+        "objective": 12.0575
+      },
+      {
+        "chunk_size": 4.0,
+        "chunk_count": 7.0,
+        "objective": 9.1954
+      },
+      {
+        "chunk_size": 5.0,
+        "chunk_count": 6.0,
+        "objective": 7.5263
+      },
+      {
+        "chunk_size": 6.0,
+        "chunk_count": 5.0,
+        "objective": 6.4556
+      },
+      {
+        "chunk_size": 7.0,
+        "chunk_count": 4.0,
+        "objective": 5.7282
+      },
+      {
+        "chunk_size": 8.0,
+        "chunk_count": 4.0,
+        "objective": 5.2165
+      },
+      {
+        "chunk_size": 9.0,
+        "chunk_count": 4.0,
+        "objective": 4.8493
+      },
+      {
+        "chunk_size": 10.0,
+        "chunk_count": 3.0,
+        "objective": 4.584
+      },
+      {
+        "chunk_size": 11.0,
+        "chunk_count": 3.0,
+        "objective": 4.3933
+      },
+      {
+        "chunk_size": 12.0,
+        "chunk_count": 3.0,
+        "objective": 4.2591
+      }
+    ]
+  },
+  "reward_shaping": {
+    "parallel_reward_beta": 0.06,
+    "quality_floor": 0.68,
+    "rework_ceiling": 0.45,
+    "parallel_bonus_applied": true,
+    "base_reward_selected": 0.4221,
+    "shaped_reward_selected": 0.4821,
+    "base_reward_single": 0.3009,
+    "shaped_reward_single": 0.3009,
+    "parallel_preference_enabled": true,
+    "best_parallel_agents": 3,
+    "best_parallel_shaped_reward": 0.4874
+  },
+  "recommendations": [
+    "Use orchestrator + 3 parallel agents for execution.",
+    "Decompose first (depth=3) before execution.",
+    "Use deliberative mode: uncertainty or blast radius is high.",
+    "Batch into chunks of 7 task(s) across 4 chunk(s).",
+    "Parallel reward bonus can be applied without violating quality/rework guardrails."
+  ],
+  "state_inference": {
+    "source": "feature-requests/FR-025-cj-supplier-order-placement/implementation-plan.md",
+    "inferred_fields": {
+      "task_count": 28,
+      "parallelizable_fraction": 0.95,
+      "confidence": 0.52,
+      "coupling": 0.344,
+      "deadline_pressure": 0.46
+    }
+  }
+}

@@ -46,13 +46,13 @@ class ShopifyOrderProcessingServiceTest {
         stubAdapterParse()
 
         whenever(lineItemOrderCreator.processLineItem(
-            any(), any(), any(), any(), any()
+            any(), any(), any(), any(), any(), anyOrNull()
         )).thenReturn(true)
 
         processingService.onOrderReceived(createEvent())
 
         verify(lineItemOrderCreator, times(2)).processLineItem(
-            any(), any(), any(), any(), eq(Currency.USD)
+            any(), any(), any(), any(), eq(Currency.USD), anyOrNull()
         )
     }
 
@@ -60,15 +60,15 @@ class ShopifyOrderProcessingServiceTest {
     fun `partial resolution - one line item returns false`() {
         stubAdapterParse()
 
-        whenever(lineItemOrderCreator.processLineItem(eq(0), any(), any(), any(), any()))
+        whenever(lineItemOrderCreator.processLineItem(eq(0), any(), any(), any(), any(), anyOrNull()))
             .thenReturn(true)
-        whenever(lineItemOrderCreator.processLineItem(eq(1), any(), any(), any(), any()))
+        whenever(lineItemOrderCreator.processLineItem(eq(1), any(), any(), any(), any(), anyOrNull()))
             .thenReturn(false)
 
         processingService.onOrderReceived(createEvent())
 
         verify(lineItemOrderCreator, times(2)).processLineItem(
-            any(), any(), any(), any(), any()
+            any(), any(), any(), any(), any(), anyOrNull()
         )
     }
 
@@ -76,16 +76,16 @@ class ShopifyOrderProcessingServiceTest {
     fun `line item failure does not prevent processing of remaining items`() {
         stubAdapterParse()
 
-        whenever(lineItemOrderCreator.processLineItem(eq(0), any(), any(), any(), any()))
+        whenever(lineItemOrderCreator.processLineItem(eq(0), any(), any(), any(), any(), anyOrNull()))
             .thenThrow(RuntimeException("Inventory unavailable"))
-        whenever(lineItemOrderCreator.processLineItem(eq(1), any(), any(), any(), any()))
+        whenever(lineItemOrderCreator.processLineItem(eq(1), any(), any(), any(), any(), anyOrNull()))
             .thenReturn(true)
 
         processingService.onOrderReceived(createEvent())
 
         // Both line items attempted despite first one failing
         verify(lineItemOrderCreator, times(2)).processLineItem(
-            any(), any(), any(), any(), any()
+            any(), any(), any(), any(), any(), anyOrNull()
         )
     }
 
@@ -100,7 +100,7 @@ class ShopifyOrderProcessingServiceTest {
         processingService.onOrderReceived(createEvent())
 
         verify(lineItemOrderCreator, never()).processLineItem(
-            any(), any(), any(), any(), any()
+            any(), any(), any(), any(), any(), anyOrNull()
         )
     }
 }

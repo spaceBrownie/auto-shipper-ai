@@ -55,7 +55,8 @@ class ShopifyOrderProcessingService(
         channelOrder.lineItems.forEachIndexed { index, lineItem ->
             try {
                 val wasCreated = lineItemOrderCreator.processLineItem(
-                    index, lineItem, channelOrder, customerUUID, currency
+                    index, lineItem, channelOrder, customerUUID, currency,
+                    shippingAddress = channelOrder.shippingAddress
                 )
                 if (wasCreated) created++
                 resolved++

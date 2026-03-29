@@ -1,6 +1,10 @@
 package com.autoshipper.fulfillment.domain.channel
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.math.BigDecimal
@@ -187,5 +191,195 @@ class ShopifyOrderAdapterTest {
         assert(adapter.channelName() == "shopify") {
             "Expected 'shopify' but got '${adapter.channelName()}'"
         }
+    }
+
+    // --- Task 6.3: Shipping Address Tests ---
+
+    @Test
+    fun `full shipping address extracted correctly with all 11 fields`() {
+        val payload = """
+        {
+            "id": 99001,
+            "name": "#2001",
+            "email": "shipping@example.com",
+            "currency": "USD",
+            "customer": { "id": 1, "email": "shipping@example.com" },
+            "line_items": [],
+            "shipping_address": {
+                "first_name": "Jane",
+                "last_name": "Smith",
+                "address1": "456 Oak Ave",
+                "address2": "Suite 200",
+                "city": "Portland",
+                "province": "Oregon",
+                "province_code": "OR",
+                "country": "United States",
+                "country_code": "US",
+                "zip": "97201",
+                "phone": "+1-503-555-0199"
+            }
+        }
+        """.trimIndent()
+
+        val order = adapter.parse(payload)
+        val addr = order.shippingAddress
+
+        assertNotNull(addr, "shippingAddress should not be null")
+        assertEquals("Jane", addr!!.firstName)
+        assertEquals("Smith", addr.lastName)
+        assertEquals("456 Oak Ave", addr.address1)
+        assertEquals("Suite 200", addr.address2)
+        assertEquals("Portland", addr.city)
+        assertEquals("Oregon", addr.province)
+        assertEquals("OR", addr.provinceCode)
+        assertEquals("United States", addr.country)
+        assertEquals("US", addr.countryCode)
+        assertEquals("97201", addr.zip)
+        assertEquals("+1-503-555-0199", addr.phone)
+    }
+
+    @Test
+    fun `JSON null shipping address fields return Kotlin null NOT string null -- PR 39 bug regression`() {
+        val payload = """
+        {
+            "id": 99002,
+            "name": "#2002",
+            "email": "nulltest@example.com",
+            "currency": "USD",
+            "customer": { "id": 2, "email": "nulltest@example.com" },
+            "line_items": [],
+            "shipping_address": {
+                "first_name": "Bob",
+                "last_name": null,
+                "address1": "789 Pine Rd",
+                "address2": null,
+                "city": "Seattle",
+                "province": null,
+                "province_code": "WA",
+                "country": "United States",
+                "country_code": "US",
+                "zip": "98101",
+                "phone": null
+            }
+        }
+        """.trimIndent()
+
+        val order = adapter.parse(payload)
+        val addr = order.shippingAddress
+
+        assertNotNull(addr, "shippingAddress should not be null")
+
+        // CRITICAL: These must be Kotlin null, NOT the string "null"
+        assertNull(addr!!.lastName, "lastName should be Kotlin null for JSON null")
+        assertNotEquals("null", addr.lastName, "lastName must NOT be the string 'null'")
+
+        assertNull(addr.address2, "address2 should be Kotlin null for JSON null")
+        assertNotEquals("null", addr.address2, "address2 must NOT be the string 'null'")
+
+        assertNull(addr.province, "province should be Kotlin null for JSON null")
+        assertNotEquals("null", addr.province, "province must NOT be the string 'null'")
+
+        assertNull(addr.phone, "phone should be Kotlin null for JSON null")
+        assertNotEquals("null", addr.phone, "phone must NOT be the string 'null'")
+
+        // Present fields still have correct values
+        assertEquals("Bob", addr.firstName)
+        assertEquals("789 Pine Rd", addr.address1)
+        assertEquals("Seattle", addr.city)
+        assertEquals("WA", addr.provinceCode)
+        assertEquals("United States", addr.country)
+        assertEquals("US", addr.countryCode)
+        assertEquals("98101", addr.zip)
+    }
+
+    @Test
+    fun `missing shipping_address node returns null shippingAddress`() {
+        val payload = """
+        {
+            "id": 99003,
+            "name": "#2003",
+            "email": "noaddr@example.com",
+            "currency": "USD",
+            "customer": { "id": 3, "email": "noaddr@example.com" },
+            "line_items": []
+        }
+        """.trimIndent()
+
+        val order = adapter.parse(payload)
+
+        assertNull(order.shippingAddress, "shippingAddress should be null when shipping_address key is missing")
+    }
+
+    @Test
+    fun `shipping_address is JSON null returns null shippingAddress`() {
+        val payload = """
+        {
+            "id": 99004,
+            "name": "#2004",
+            "email": "jsonnull@example.com",
+            "currency": "USD",
+            "customer": { "id": 4, "email": "jsonnull@example.com" },
+            "line_items": [],
+            "shipping_address": null
+        }
+        """.trimIndent()
+
+        val order = adapter.parse(payload)
+
+        assertNull(order.shippingAddress, "shippingAddress should be null when shipping_address is JSON null")
+    }
+
+    @Test
+    fun `mixed null and present shipping fields correctly mapped`() {
+        val payload = """
+        {
+            "id": 99005,
+            "name": "#2005",
+            "email": "mixed@example.com",
+            "currency": "USD",
+            "customer": { "id": 5, "email": "mixed@example.com" },
+            "line_items": [],
+            "shipping_address": {
+                "first_name": "Alice",
+                "last_name": null,
+                "address1": "100 Broadway",
+                "address2": null,
+                "city": "New York",
+                "province": null,
+                "province_code": null,
+                "country": "United States",
+                "country_code": "US",
+                "zip": "10001",
+                "phone": "+1-212-555-0100"
+            }
+        }
+        """.trimIndent()
+
+        val order = adapter.parse(payload)
+        val addr = order.shippingAddress
+
+        assertNotNull(addr, "shippingAddress should not be null")
+
+        // Present fields
+        assertEquals("Alice", addr!!.firstName)
+        assertEquals("100 Broadway", addr.address1)
+        assertEquals("New York", addr.city)
+        assertEquals("United States", addr.country)
+        assertEquals("US", addr.countryCode)
+        assertEquals("10001", addr.zip)
+        assertEquals("+1-212-555-0100", addr.phone)
+
+        // Null fields — must be Kotlin null, NOT string "null"
+        assertNull(addr.lastName, "lastName should be Kotlin null")
+        assertNotEquals("null", addr.lastName)
+
+        assertNull(addr.address2, "address2 should be Kotlin null")
+        assertNotEquals("null", addr.address2)
+
+        assertNull(addr.province, "province should be Kotlin null")
+        assertNotEquals("null", addr.province)
+
+        assertNull(addr.provinceCode, "provinceCode should be Kotlin null")
+        assertNotEquals("null", addr.provinceCode)
     }
 }
