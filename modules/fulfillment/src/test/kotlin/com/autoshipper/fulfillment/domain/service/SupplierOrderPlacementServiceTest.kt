@@ -150,6 +150,45 @@ class SupplierOrderPlacementServiceTest {
     }
 
     @Test
+    fun `skips placement when order is FAILED from previous attempt`() {
+        val order = confirmedOrder()
+        // Simulate a prior failed attempt: transition to FAILED
+        order.updateStatus(OrderStatus.FAILED)
+        order.failureReason = "previous failure"
+
+        whenever(orderRepository.findById(order.id)).thenReturn(Optional.of(order))
+
+        service.placeSupplierOrder(order.id)
+
+        verify(supplierOrderAdapter, never()).placeOrder(any())
+        verify(orderRepository, never()).save(any<Order>())
+        assert(order.status == OrderStatus.FAILED) { "Status should remain FAILED" }
+        assert(order.failureReason == "previous failure") { "Failure reason should be unchanged" }
+    }
+
+    @Test
+    fun `skips placement when order is PENDING not yet CONFIRMED`() {
+        val order = Order(
+            idempotencyKey = "idem-${UUID.randomUUID()}",
+            skuId = skuId,
+            vendorId = vendorId,
+            customerId = customerId,
+            totalAmount = BigDecimal("49.9900"),
+            totalCurrency = Currency.USD,
+            paymentIntentId = "pi_test_123",
+            quantity = 1,
+            status = OrderStatus.PENDING
+        )
+
+        whenever(orderRepository.findById(order.id)).thenReturn(Optional.of(order))
+
+        service.placeSupplierOrder(order.id)
+
+        verify(supplierOrderAdapter, never()).placeOrder(any())
+        verify(orderRepository, never()).save(any<Order>())
+    }
+
+    @Test
     fun `order not found throws IllegalArgumentException`() {
         val unknownId = UUID.randomUUID()
         whenever(orderRepository.findById(unknownId)).thenReturn(Optional.empty())

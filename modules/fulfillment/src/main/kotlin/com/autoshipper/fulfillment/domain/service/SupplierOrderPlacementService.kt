@@ -28,6 +28,12 @@ class SupplierOrderPlacementService(
             return
         }
 
+        // Guard: only place supplier orders for CONFIRMED orders
+        if (order.status != OrderStatus.CONFIRMED) {
+            logger.info("Order {} is in status {}, not CONFIRMED — skipping supplier placement", orderId, order.status)
+            return
+        }
+
         // Resolve supplier variant mapping
         val mapping = supplierProductMappingResolver.resolve(order.skuId)
         if (mapping == null) {
