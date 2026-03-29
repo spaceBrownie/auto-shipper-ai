@@ -147,6 +147,38 @@ The feedback loop closes like this: production alert fires (e.g., "3 CJ orders f
 
 This is filed as [RAT-37](https://linear.app/ratrace/issue/RAT-37/observability-layer-business-metrics-grafana-dashboards-alert-rules) — high priority, sequenced after RAT-28 (tracking). The build: add Grafana (dashboard tool) and an alert system to the existing setup, teach the order pipeline to report business-level numbers (not just "server is up"), and wire threshold-based alerts that fire when something goes wrong. Not a huge build, but the one that makes everything else trustworthy at scale.
 
+### Follow-up: "Why are we even offering products we can't fulfill?"
+
+After reading this report, you asked a question that cuts right to the heart of the on-demand experience: why does the system spend effort on graceful failure when a product is out of stock at CJ? Shouldn't we just never show it to the customer in the first place?
+
+You're right. A customer getting told "sorry, we can't fulfill this" after they've already decided to buy is a negative experience — it doesn't fit the on-demand model. The correct answer is: they should never see the product if we can't deliver it.
+
+Here's the honest current state: the system has an inventory check, but it's checking the wrong thing. When a customer places an order, the system asks Shopify "is this product available?" But since we don't hold inventory, Shopify's number is whatever *we* set it to — and right now, nobody is updating it based on what CJ actually has in their warehouse. CJ could be completely out of stock on a product, and our Shopify storefront would still show it as available and let customers buy it. The graceful failure we built in FR-025 would catch it at the CJ order placement step and mark the order as failed — but by then the customer already thinks they bought something.
+
+This is a problem unique to the zero-capital, zero-inventory model. In traditional retail, you own the stock — you know what you have. In dropshipping, inventory is someone else's truth, and it changes without telling you. A product can be in stock when we list it and gone an hour later because another seller bought the last 50 units.
+
+**What should actually happen — two layers working together:**
+
+**Layer 1: Keep Shopify in sync with CJ's real stock** (proactive, prevents the problem)
+
+CJ has an inventory endpoint we already know about but never call — it reports real-time stock levels per product variant per warehouse. A scheduled job should poll this for every listed product (say, every 30 minutes) and push the numbers directly into Shopify's inventory count. Then Shopify itself handles the customer experience: when stock hits zero, the product either shows "Out of Stock" or disappears from the storefront entirely. No customer disappointment because they never see a product we can't ship.
+
+Think of it like fleet dispatch: you don't assign a truck to a route if the truck is in the shop. The dispatcher checks availability *before* making the assignment, not after the driver shows up and finds a flat tire.
+
+**Layer 2: Graceful failure at order time** (defensive, handles the race condition)
+
+Even with a 30-minute stock poll, there's a window where CJ sells out between our last check and the customer's purchase. This is where the FR-025 failure handling earns its keep — the order is marked failed with a specific reason, and the system should immediately auto-delist the product so no more customers hit the same wall. This is the safety net, not the primary experience.
+
+| Layer | What it does | Customer experience | Status |
+|---|---|---|---|
+| **CJ stock sync → Shopify inventory** | Periodically poll CJ stock, update Shopify counts | Customer never sees unavailable products | Not built yet |
+| **Graceful failure at order time** | CJ rejects → order marked FAILED with reason | Customer told quickly, gets refund | Built (FR-025) |
+| **Auto-delist on failure** | CJ out-of-stock failure → Shopify listing set to draft | Stops the bleeding after first failure | Not built yet |
+
+Layer 1 is the one that delivers the experience you're describing — the on-demand storefront where everything shown is fulfillable. We've added CJ inventory sync to the [RAT-37](https://linear.app/ratrace/issue/RAT-37/observability-layer-business-metrics-grafana-dashboards-alert-rules) scope since it's fundamentally about supplier data flowing back into the system — the same observability principle, applied to stock levels instead of just error rates.
+
+Your instinct about scaling to more vendors makes this even more critical. Each supplier has different inventory APIs, different refresh rates, different reliability. The `SupplierOrderAdapter` abstraction we built in FR-025 works for order placement — we'll need the same pattern for stock queries. One interface, multiple supplier implementations, all feeding into one Shopify inventory sync.
+
 ## Session Notes: The Parallel Agent Strategy
 
 The strategy engine recommended chunking 28 tasks into groups of 7. Instead, we partitioned by *file ownership* — a different approach that turned out to prevent conflicts entirely:
