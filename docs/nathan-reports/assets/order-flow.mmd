@@ -1,0 +1,31 @@
+graph LR
+    subgraph CUSTOMER["👤 CUSTOMER"]
+        BUY["Buys on<br/>Shopify"]
+    end
+
+    subgraph SYSTEM["⚡ COMMERCE ENGINE"]
+        WH["Webhook<br/>received"]
+        ORD["Order<br/>created"]
+        CONF["Order<br/>confirmed"]
+        CJ["CJ order<br/>placed"]
+    end
+
+    subgraph SUPPLIER["📦 CJ DROPSHIPPING"]
+        SHIP["Ships to<br/>customer"]
+    end
+
+    BUY -->|"payment<br/>captured"| WH
+    WH -->|"auto"| ORD
+    ORD -->|"auto"| CONF
+    CONF -->|"auto"| CJ
+    CJ -->|"API call"| SHIP
+
+    style CUSTOMER fill:#24242a,stroke:#60a5fa,stroke-width:2px,color:#ececf0
+    style SYSTEM fill:#141416,stroke:#e5a00d,stroke-width:2px,color:#ececf0
+    style SUPPLIER fill:#24242a,stroke:#34d399,stroke-width:2px,color:#ececf0
+    style BUY fill:#1c1c20,stroke:#60a5fa,stroke-width:1px,color:#ececf0
+    style WH fill:#1c1c20,stroke:#e5a00d,stroke-width:1px,color:#ececf0
+    style ORD fill:#1c1c20,stroke:#e5a00d,stroke-width:1px,color:#ececf0
+    style CONF fill:#1c1c20,stroke:#e5a00d,stroke-width:1px,color:#ececf0
+    style CJ fill:#1c1c20,stroke:#34d399,stroke-width:1px,color:#ececf0
+    style SHIP fill:#1c1c20,stroke:#34d399,stroke-width:1px,color:#ececf0
