@@ -83,9 +83,13 @@ Present the recommendation to the user at the Phase 4→5 gate. Within Phase 5, 
 
 Use `/unblock` as needed at every phase — this is a standing directive, not prescribed hydration points. Query `unblocked_context_engine` for organizational context: PRs, Slack, docs, code history, prior attempts, rejected approaches.
 
-### E2E Test Playbook
+### Phase 5 Execution Order
 
-After Phase 5 implementation, execute `@docs/e2e-test-playbook.md` as a mandatory step. Add new scenarios from test-spec.md's "E2E Playbook Scenarios" section.
+Phase 5 has three distinct steps:
+
+1. **Preflight** — run meta-controller, present recommendation at gate
+2. **Implementation** — follow recommendation, spawn sub-agents, TDD
+3. **E2E test playbook** — **must run in a new subagent session** (fresh context, no implementation artifacts polluting the window). Update `@docs/e2e-test-playbook.md` with new scenarios from test-spec.md, then execute the full playbook. This is mandatory, not optional.
 
 ## Test Quality Rules
 

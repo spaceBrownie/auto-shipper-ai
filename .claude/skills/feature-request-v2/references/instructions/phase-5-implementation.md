@@ -46,10 +46,15 @@ implementation in TDD style, guided by test-spec.md.
    python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 5 --action write --path "feature-requests/FR-{NNN}-{name}/implementation-plan.md"
    ```
 
-6. **Run E2E test playbook (mandatory):**
-   After all tasks complete, execute the E2E test playbook:
-   `@docs/e2e-test-playbook.md`
-   Add new scenarios defined in test-spec.md's "E2E Playbook Scenarios" section.
+6. **Run E2E test playbook in a NEW subagent (mandatory):**
+   After all implementation tasks complete, spawn a **fresh subagent** for the E2E playbook.
+   This MUST be a new subagent session — the implementation context must not pollute the
+   playbook execution. The subagent should:
+   - First, update `@docs/e2e-test-playbook.md` with new scenarios from test-spec.md's
+     "E2E Playbook Scenarios" section (if any)
+   - Then execute the full playbook: `@docs/e2e-test-playbook.md`
+   - Report results back to the orchestrator
+   This step is mandatory regardless of whether new scenarios were added.
 
 7. **Run full test suite:**
    ```bash
