@@ -15,7 +15,7 @@
 | 1 | Discovery | Explore codebase | All files | Nothing | Feature name |
 | 2 | Specification | Document requirements | All files | spec.md only | spec.md |
 | 3 | Planning | Design solution | All files | implementation-plan.md only | implementation-plan.md |
-| 4 | Test-First Gate | Generate tests before code | All files | test-manifest.md + test files only | test-manifest.md + test files |
+| 4 | Test Specification | Define test strategy before code | All files | test-spec.md only | test-spec.md |
 | 5 | Implementation | Write code, make tests pass | All files | Code + plan + summary | Code + summary.md |
 | 6 | Review-Fix Loop | Validate and fix issues | All files | Code + test fixes only | All tests green + final sign-off |
 
@@ -32,6 +32,9 @@ python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --feature-na
 # Get phase info
 python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 1 --action info
 
+# Get full execution instructions for a phase
+python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --phase N --instructions
+
 # Check read permission
 python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 1 --action read --path "src/Foo.java"
 
@@ -41,9 +44,8 @@ python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 2 --
 # Check bash command
 python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 1 --action bash --command "ls"
 
-# Check test-first gate permissions (Phase 4)
-python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 4 --action write --path "feature-requests/FR-001-name/test-manifest.md"
-python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 4 --action write --path "modules/catalog/src/test/kotlin/SomeTest.kt"
+# Check test specification permissions (Phase 4)
+python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 4 --action write --path "feature-requests/FR-001-name/test-spec.md"
 ```
 
 ### Deliverables
@@ -51,7 +53,7 @@ python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 4 --
 # Check deliverables complete
 python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 2 --check-deliverables --feature-dir "feature-requests/FR-001-name"
 
-# Check test-manifest deliverable
+# Check test-spec deliverable
 python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 4 --check-deliverables --feature-dir "feature-requests/FR-001-name"
 
 # Get next FR number
@@ -95,7 +97,7 @@ Invalid: `JWTTokens` (uppercase), `jwt_tokens` (underscores), `jwt tokens` (spac
 feature-requests/FR-{NNN}-{feature-name}/
 ├── spec.md                    # Phase 2 - Requirements
 ├── implementation-plan.md     # Phase 3 - Technical design + tasks
-├── test-manifest.md           # Phase 4 - Test-first gate: test inventory + rationale
+├── test-spec.md               # Phase 4 - Test specification: acceptance criteria + boundary cases
 └── summary.md                 # Phase 5 - Implementation summary
 ```
 
@@ -116,11 +118,12 @@ feature-requests/FR-{NNN}-{feature-name}/
 - Testing Strategy
 - Rollout Plan
 
-### test-manifest.md (Phase 4)
-- Test Inventory (table: test class, test method, layer, what it validates)
-- Coverage Rationale (why these tests cover the spec's success criteria)
-- Dependency Map (which tests must pass before others are meaningful)
-- Red Confirmation (evidence that every test fails before implementation)
+### test-spec.md (Phase 4)
+- Acceptance Criteria
+- Fixture Data
+- Boundary Cases
+- E2E Playbook Scenarios
+- Contract Test Candidates
 
 ### summary.md (Phase 5)
 - Feature Summary
@@ -147,11 +150,11 @@ Within each group, agents may run in parallel. The orchestrator sequences groups
 
 ## Manual Approval Points
 
-1. **Phase 1 -> 2:** User approves feature name
-2. **Phase 2 -> 3:** User approves spec.md
-3. **Phase 3 -> 4:** User approves implementation-plan.md
-4. **Phase 4 -> 5:** User approves test-manifest.md (test approval gate)
-5. **Phase 5 -> 6:** Automatic transition when all plan tasks are checked and summary.md is created
+1. **Phase 1 -> 2:** Auto-advance
+2. **Phase 2 -> 3:** Auto-advance
+3. **Phase 3 -> 4:** Auto-advance
+4. **Phase 4 -> 5:** Human gate — user approves test-spec.md before implementation begins
+5. **Phase 5 -> 6:** Human gate — user approves implementation before review-fix loop
 6. **Phase 6 complete:** Automated — all tests green, no unresolved review findings
 
 ## Common Errors
@@ -162,7 +165,7 @@ Within each group, agents may run in parallel. The orchestrator sequences groups
 | `Missing required section: X` | Incomplete deliverable | Add missing section |
 | `Invalid feature name` | Name not kebab-case | Use lowercase + hyphens only |
 | `Unchecked tasks` | Tasks not complete | Finish tasks or update plan |
-| `Test-manifest missing red confirmation` | Tests not proven to fail first | Run tests before implementation, record failures |
+| `Test-spec missing required section` | Incomplete test specification | Add missing section to test-spec.md |
 
 ## Exit Codes
 
@@ -188,4 +191,4 @@ python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 1 --
 
 ---
 
-**Version:** 2.0.0 | **Updated:** 2026-03-25
+**Version:** 3.0.0 | **Updated:** 2026-03-28

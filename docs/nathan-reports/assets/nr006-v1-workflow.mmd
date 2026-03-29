@@ -1,0 +1,21 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#F59E0B', 'primaryTextColor': '#1C1917', 'primaryBorderColor': '#D97706', 'lineColor': '#78716C', 'secondaryColor': '#FFFBEB', 'tertiaryColor': '#F5F5F4', 'fontFamily': 'Inter, Helvetica Neue, Arial, sans-serif'}}}%%
+flowchart TD
+    A["<b>1. Discovery</b><br/>Explore codebase"] -->|"Denny reviews"| B["<b>2. Specification</b><br/>Write requirements"]
+    B -->|"Denny reviews"| C["<b>3. Planning</b><br/>Design solution"]
+    C -->|"Denny reviews"| D["<b>4. Implementation</b><br/>Build the feature"]
+    D -->|"Denny reviews"| E["<b>5. E2E Test Playbook</b><br/>Verify real behavior"]
+    E -->|"Denny reviews"| F["<b>6. Open PR</b><br/>Commit & push"]
+    F -->|"Unblocked reviews"| G{"Comments?"}
+    G -->|Yes| H["Fix & re-push"]
+    G -->|No| I(["Merge"])
+    H --> G
+
+    style A fill:#FFFBEB,stroke:#F59E0B,stroke-width:2px
+    style B fill:#FFFBEB,stroke:#F59E0B,stroke-width:2px
+    style C fill:#FFFBEB,stroke:#F59E0B,stroke-width:2px
+    style D fill:#FFFBEB,stroke:#F59E0B,stroke-width:2px
+    style E fill:#ECFDF5,stroke:#10B981,stroke-width:2px
+    style F fill:#F5F5F4,stroke:#78716C,stroke-width:2px
+    style G fill:#FEF2F2,stroke:#EF4444,stroke-width:2px
+    style H fill:#FEF2F2,stroke:#EF4444,stroke-width:2px
+    style I fill:#ECFDF5,stroke:#10B981,stroke-width:3px

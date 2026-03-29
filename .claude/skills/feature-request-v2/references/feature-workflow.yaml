@@ -22,6 +22,7 @@ phases:
   phase_1_discovery:
     name: "Discovery"
     description: "Read-only exploration of codebase to understand requirements and constraints"
+    instructions_file: "references/instructions/phase-1-discovery.md"
 
     permissions:
       # Read permissions - what files can be read
@@ -87,6 +88,7 @@ phases:
   phase_2_specification:
     name: "Specification"
     description: "Document feature requirements in spec.md"
+    instructions_file: "references/instructions/phase-2-specification.md"
 
     permissions:
       # Read permissions - can read anything
@@ -142,6 +144,7 @@ phases:
   phase_3_planning:
     name: "Implementation Planning"
     description: "Design technical solution and create task breakdown"
+    instructions_file: "references/instructions/phase-3-planning.md"
 
     permissions:
       # Read permissions - can read anything including spec.md
@@ -190,20 +193,21 @@ phases:
           - "GitHub-style checkboxes (- [ ] Task)"
           - "Layer groupings (handler, domain, proxy, security, config, common)"
 
-    next_phase: "phase_4_test_first_gate"
+    next_phase: "phase_4_test_specification"
     requires_manual_approval: false
 
-  # Phase 4: Test-First Gate (Write test files only — NEW in v2)
-  phase_4_test_first_gate:
-    name: "Test-First Gate"
-    description: "Generate runnable tests from spec + implementation plan before implementation"
+  # Phase 4: Test Specification (redesigned per PM-017 — was Test-First Gate)
+  phase_4_test_specification:
+    name: "Test Specification"
+    description: "Define acceptance criteria, fixture data, boundary cases, and E2E playbook scenarios before implementation"
+    instructions_file: "references/instructions/phase-4-test-specification.md"
 
     permissions:
       # Read permissions - can read anything
       read:
         - "**/*"
 
-      # Write permissions - test files and test-manifest only
+      # Write permissions - test-spec.md and optional contract test files
       write:
         - "src/test/**/*.kt"
         - "src/test/**/*.java"
@@ -221,7 +225,7 @@ phases:
         - "modules/**/src/test/**/*.properties"
         - "modules/**/src/test/**/*.json"
         - "modules/**/src/test/**/*.sql"
-        - "feature-requests/FR-*/test-manifest.md"
+        - "feature-requests/FR-*/test-spec.md"
 
       # Bash commands - compile allowed, test execution forbidden
       bash:
@@ -252,30 +256,34 @@ phases:
           - "mvn test"
 
     deliverables:
-      - name: "test-manifest.md"
+      - name: "test-spec.md"
         type: "file"
-        description: "Manifest listing generated tests and their rationale"
-        path_pattern: "feature-requests/FR-\\d{3}-[a-z0-9-]+/test-manifest.md"
+        description: "Test specification defining acceptance criteria, fixture data, boundary cases, and E2E scenarios"
+        path_pattern: "feature-requests/FR-\\d{3}-[a-z0-9-]+/test-spec.md"
         required: true
         required_sections:
-          - "End-to-End Flow Tests"
-          - "Boundary Condition Tests"
-          - "Dependency Contract Tests"
+          - "Acceptance Criteria"
+          - "Fixture Data"
+          - "Boundary Cases"
+          - "E2E Playbook Scenarios"
+          - "Contract Test Candidates"
 
-      - name: "test-files"
+      - name: "contract-tests"
         type: "validation"
-        description: "Test files that compile but are expected to fail"
+        description: "Optional contract tests for pure domain types only (state machines, events, interfaces)"
+        required: false
         validation:
-          - "At least one test file created in src/test/ or modules/**/src/test/"
-          - "Tests compile (gradlew compileTestKotlin passes)"
+          - "If present, tests compile (gradlew compileTestKotlin passes)"
+          - "No assert(true) or fixture-only assertions"
 
     next_phase: "phase_5_implementation"
-    requires_manual_approval: false
+    requires_manual_approval: true
 
   # Phase 5: Implementation (Write code and update plan — was Phase 4 in v1)
   phase_5_implementation:
     name: "Implementation"
-    description: "Execute implementation plan using layer-specific sub-agents to make Phase 4 tests pass"
+    description: "Execute implementation plan using layer-specific sub-agents with TDD alongside implementation"
+    instructions_file: "references/instructions/phase-5-implementation.md"
     decision_support:
       required_preflight:
         - "python3 .claude/skills/feature-request-v2/scripts/meta_controller.py --phase 5 --json --out {feature_dir}/decision-support/preflight-meta-controller.json"
@@ -448,12 +456,13 @@ phases:
           description: "Shared DTOs, exceptions, utilities"
 
     next_phase: "phase_6_review_fix_loop"
-    requires_manual_approval: false  # Auto-proceed to review loop
+    requires_manual_approval: true  # Human gate — PR is visible to others
 
   # Phase 6: Review-Fix Loop (PR review cycle — NEW in v2)
   phase_6_review_fix_loop:
     name: "Review-Fix Loop"
     description: "PR review cycle until clean: create PR, assess/fix review comments, re-run tests"
+    instructions_file: "references/instructions/phase-6-review-fix-loop.md"
 
     permissions:
       # Read permissions - can read anything
@@ -575,9 +584,9 @@ validation:
         reason: "Plan can be updated with checkbox status during implementation"
 
     phase_4:
-      - file: "test-manifest.md"
+      - file: "test-spec.md"
         immutable_after_phase: 4
-        reason: "Test manifest should not change after approval"
+        reason: "Test specification should not change after approval"
 
 # Transition Rules
 transitions:
@@ -607,21 +616,22 @@ transitions:
 
   phase_4_to_phase_5:
     requires:
-      - "test-manifest.md exists and validated"
-      - "Test files compile"
-      - "User has not interrupted to request changes"
+      - "test-spec.md exists and validated"
+      - "User has approved test specification (mandatory human gate)"
     validation:
-      - "test-manifest.md has required sections"
-      - "At least one test file in src/test/ or modules/**/src/test/"
+      - "test-spec.md has required sections (Acceptance Criteria, Fixture Data, Boundary Cases, E2E Playbook Scenarios, Contract Test Candidates)"
+      - "If contract tests present, they compile (gradlew compileTestKotlin)"
 
   phase_5_to_phase_6:
     requires:
       - "All checkboxes in implementation-plan.md are checked"
       - "summary.md created"
       - "Tests pass"
+      - "E2E test playbook executed (docs/e2e-test-playbook.md)"
+      - "User has approved implementation (mandatory human gate)"
     validation:
       - "Exactly 1 summary.md exists"
-      - "At least one code file modified in src/"
+      - "At least one code file modified in src/ or modules/"
 
   phase_6_complete:
     requires:
