@@ -81,7 +81,38 @@ The takeaway: automated checks cover the scenarios you think of. External review
 
 - **RAT-28: Tracking number ingestion** — CJ sends tracking info via webhook or polling. The system needs to capture it and push it to Shopify so customers see shipping updates. This completes the end-to-end autonomous loop.
 - **Supplier product mapping population** — The system knows *how* to link our products to CJ's catalog, but the links need to be set up per product. This happens when the first real product is selected for launch.
+- **RAT-37: Observability layer** — Business-level dashboards, supplier health metrics, address quality scores, and automatic alerts. This is the "third perspective" — production visibility that closes the loop between "tests pass" and "customers receive correct orders."
 - **Workflow v3 improvements** — Four concrete items from PM-018: enforce the test specification as a binding contract, add automated review comment detection, verify database state before tests, document strategy engine overrides.
+
+## Nathan's Questions: The Missing Third Layer
+
+In NR-006, you asked what failure scenario the system would handle poorly, and we walked through a multi-supplier cascade — a "null" phone number flowing from CJ to Shopify to Stripe, corrupting each step. Your follow-up cuts deeper: **does the system consider what actually happens to the customer and the business in production, and does that feedback loop back in?**
+
+Short answer: not yet. And you're right that this is a different layer entirely.
+
+Think of it like running a fleet. You've got three layers of confidence:
+
+1. **Vehicle inspection** (before it leaves the lot) — does the truck start, do the brakes work, are the tires inflated? *This is our test suite. We're strong here now — 42 real checks, state machine rules, data integrity guards.*
+
+2. **Route contracts** (between dispatch and carriers) — does the GPS system talk to the dispatch system, does the fuel card work at the right stations, does the weigh station paperwork match the load? *This is our service contract testing. WireMock verifies CJ's API format, the NullNode guards ensure clean data handoffs. Also strong after this session.*
+
+3. **Road performance** (once the truck is actually driving) — is the driver hitting delivery windows? Are customers receiving the right freight? When a delivery fails, do you know *why* — driver error, bad address, traffic, mechanical? And does that data feed back into route planning and vehicle maintenance? *This is what's missing.*
+
+We have the plumbing for it — the system already exposes a data feed that a dashboard tool (like Grafana) can read in real time. But right now it's only reporting generic system health — memory usage, response times, "is the server up?" Nothing business-level. It's like having a GPS tracker on every truck but only showing you whether the engine is on — not where the truck is, whether it's on schedule, or whether the load matches the manifest.
+
+**What production visibility would actually look like:**
+
+- **Order pipeline dashboard** — how many orders flowing in, how many successfully placed with CJ, how many failing and *why* (out of stock vs. bad address vs. CJ API down)
+- **Address quality score** — are we sending partial or corrupted addresses? Even one "null" field in production should trigger an alert
+- **Supplier health** — CJ response times, error rates by category, success rate trends
+- **Financial health** — live per-SKU margins, reserve ratio, refund rate *by cause* (not just the rate)
+- **Automatic alerts** — CJ failure rate spikes above 5%, any corrupted address field detected, reserve drops below 10%, refund rate exceeds threshold per SKU
+
+The critical insight you're driving at: **the stress test validates the financial model before launch, but it doesn't validate operational quality during production.** A SKU could pass the 30% net margin floor in stress testing while silently shipping to garbage addresses 3% of the time in production. You wouldn't know until refunds pile up — and by then the margin damage is done.
+
+The feedback loop closes like this: production alert fires (e.g., "3 CJ orders failed with 'invalid address' in the last hour") → system creates a ticket → investigation reveals a new edge case → that edge case becomes a permanent test → the bug can never ship again. Right now that loop is open — failures would be silent until a customer complains.
+
+This is filed as [RAT-37](https://linear.app/ratrace/issue/RAT-37/observability-layer-business-metrics-grafana-dashboards-alert-rules) — high priority, sequenced after RAT-28 (tracking). The build: add Grafana (dashboard tool) and an alert system to the existing setup, teach the order pipeline to report business-level numbers (not just "server is up"), and wire threshold-based alerts that fire when something goes wrong. Not a huge build, but the one that makes everything else trustworthy at scale.
 
 ## Session Notes: The Parallel Agent Strategy
 
