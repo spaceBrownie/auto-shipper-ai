@@ -1,23 +1,17 @@
-graph LR
+graph TB
     subgraph R1["ROUND 1 · New Components"]
-        direction TB
-        A1["Agent A\nDatabase schema\n+ event triggers"]
-        A2["Agent B\nCJ connection\n+ supplier lookup"]
-        A3["Agent C\nAddress handling\n+ placement logic"]
+        direction LR
+        A1["Agent A\nDatabase schema\n+ event triggers"] ~~~ A2["Agent B\nCJ connection\n+ supplier lookup"] ~~~ A3["Agent C\nAddress handling\n+ placement logic"]
     end
 
     subgraph R2["ROUND 2 · Update Existing"]
-        direction TB
-        B1["Agent A\nOrder data model\n+ status rules"]
-        B2["Agent B\nShopify address\nextraction"]
-        B3["Agent C\nOrder pipeline\n+ API responses"]
+        direction LR
+        B1["Agent A\nOrder data model\n+ status rules"] ~~~ B2["Agent B\nShopify address\nextraction"] ~~~ B3["Agent C\nOrder pipeline\n+ API responses"]
     end
 
     subgraph R3["ROUND 3 · Write Tests"]
-        direction TB
-        C1["Agent A\nStatus + service\ntests"]
-        C2["Agent B\nPlacement + order\ntests"]
-        C3["Agent C\nAPI contracts +\nintegration tests"]
+        direction LR
+        C1["Agent A\nStatus + service\ntests"] ~~~ C2["Agent B\nPlacement + order\ntests"] ~~~ C3["Agent C\nAPI contracts +\nintegration tests"]
     end
 
     R1 --> R2 --> R3
