@@ -531,65 +531,65 @@ Follows `StubRefundConfiguration` pattern.
 
 ### Shared Module
 
-- [ ] **Task 1.1:** Create `OrderConfirmed` domain event in `modules/shared/src/main/kotlin/com/autoshipper/shared/events/OrderConfirmed.kt` — follows `OrderFulfilled` pattern (orderId, skuId, occurredAt)
+- [x] **Task 1.1:** Create `OrderConfirmed` domain event in `modules/shared/src/main/kotlin/com/autoshipper/shared/events/OrderConfirmed.kt` — follows `OrderFulfilled` pattern (orderId, skuId, occurredAt)
 
 ### Persistence Layer
 
-- [ ] **Task 2.1:** Write `V21__supplier_order_placement.sql` migration — `quantity` column, `supplier_order_id`, `failure_reason`, 10 shipping address columns on `orders`, `supplier_product_mappings` table with unique index on `(sku_id, supplier_type)`
+- [x] **Task 2.1:** Write `V21__supplier_order_placement.sql` migration — `quantity` column, `supplier_order_id`, `failure_reason`, 10 shipping address columns on `orders`, `supplier_product_mappings` table with unique index on `(sku_id, supplier_type)`
 
 ### Domain Layer
 
-- [ ] **Task 3.1:** Add `FAILED` to `OrderStatus` enum
-- [ ] **Task 3.2:** Add `CONFIRMED -> FAILED` and `PENDING -> FAILED` transitions to `Order.VALID_TRANSITIONS`, add `FAILED -> emptySet()` terminal state
-- [ ] **Task 3.3:** Create `ShippingAddress` `@Embeddable` class with 10 nullable fields (customerName, addressLine1, addressLine2, city, province, provinceCode, country, countryCode, zip, phone)
-- [ ] **Task 3.4:** Add `quantity: Int`, `supplierOrderId: String?`, `failureReason: String?`, `shippingAddress: ShippingAddress` fields to `Order` entity
-- [ ] **Task 3.5:** Add `quantity: Int`, `shippingAddress: ShippingAddress?` to `CreateOrderCommand`
-- [ ] **Task 3.6:** Add `ChannelShippingAddress` data class to `ChannelOrder.kt`, add `shippingAddress: ChannelShippingAddress?` field to `ChannelOrder`
-- [ ] **Task 3.7:** Create `SupplierOrderPlacementService` — loads order, idempotency check on `supplierOrderId`, resolves mapping, calls adapter, stores result or transitions to FAILED
+- [x] **Task 3.1:** Add `FAILED` to `OrderStatus` enum
+- [x] **Task 3.2:** Add `CONFIRMED -> FAILED` and `PENDING -> FAILED` transitions to `Order.VALID_TRANSITIONS`, add `FAILED -> emptySet()` terminal state
+- [x] **Task 3.3:** Create `ShippingAddress` `@Embeddable` class with 10 nullable fields (customerName, addressLine1, addressLine2, city, province, provinceCode, country, countryCode, zip, phone)
+- [x] **Task 3.4:** Add `quantity: Int`, `supplierOrderId: String?`, `failureReason: String?`, `shippingAddress: ShippingAddress` fields to `Order` entity
+- [x] **Task 3.5:** Add `quantity: Int`, `shippingAddress: ShippingAddress?` to `CreateOrderCommand`
+- [x] **Task 3.6:** Add `ChannelShippingAddress` data class to `ChannelOrder.kt`, add `shippingAddress: ChannelShippingAddress?` field to `ChannelOrder`
+- [x] **Task 3.7:** Create `SupplierOrderPlacementService` — loads order, idempotency check on `supplierOrderId`, resolves mapping, calls adapter, stores result or transitions to FAILED
 
 ### Proxy Layer
 
-- [ ] **Task 4.1:** Create `SupplierOrderAdapter` interface, `SupplierOrderRequest` data class, `SupplierOrderResult` sealed class in `modules/fulfillment/.../proxy/supplier/`
-- [ ] **Task 4.2:** Create `CjSupplierOrderAdapter` — `@Component @Profile("!local")`, `@Value` with empty defaults, credential guard, `@CircuitBreaker`, `@Retry`, JSON request body, NullNode guard on all response fields
-- [ ] **Task 4.3:** Create `StubSupplierOrderConfiguration` — `@Configuration @Profile("local")`, stub adapter returning success
-- [ ] **Task 4.4:** Create `SupplierProductMappingResolver` — `EntityManager` native query against `supplier_product_mappings`, follows `PlatformListingResolver` pattern
-- [ ] **Task 4.5:** Update `ShopifyOrderAdapter.parse()` — extract `shipping_address` from webhook payload with NullNode guard on ALL 11 fields, return `ChannelShippingAddress` on `ChannelOrder`
+- [x] **Task 4.1:** Create `SupplierOrderAdapter` interface, `SupplierOrderRequest` data class, `SupplierOrderResult` sealed class in `modules/fulfillment/.../proxy/supplier/`
+- [x] **Task 4.2:** Create `CjSupplierOrderAdapter` — `@Component @Profile("!local")`, `@Value` with empty defaults, credential guard, `@CircuitBreaker`, `@Retry`, JSON request body, NullNode guard on all response fields
+- [x] **Task 4.3:** Create `StubSupplierOrderConfiguration` — `@Configuration @Profile("local")`, stub adapter returning success
+- [x] **Task 4.4:** Create `SupplierProductMappingResolver` — `EntityManager` native query against `supplier_product_mappings`, follows `PlatformListingResolver` pattern
+- [x] **Task 4.5:** Update `ShopifyOrderAdapter.parse()` — extract `shipping_address` from webhook payload with NullNode guard on ALL 11 fields, return `ChannelShippingAddress` on `ChannelOrder`
 
 ### Handler/Service Layer
 
-- [ ] **Task 5.1:** Update `OrderService.routeToVendor()` — publish `OrderConfirmed` event after saving CONFIRMED status (follows `markDelivered()` pattern)
-- [ ] **Task 5.2:** Create `SupplierOrderPlacementListener` — `@TransactionalEventListener(AFTER_COMMIT)` + `@Transactional(REQUIRES_NEW)`, delegates to `SupplierOrderPlacementService`
-- [ ] **Task 5.3:** Update `LineItemOrderCreator.processLineItem()` — accept `ChannelShippingAddress?`, map to `ShippingAddress`, pass `quantity` and `shippingAddress` to `CreateOrderCommand`, call `routeToVendor()` after order creation
-- [ ] **Task 5.4:** Update `ShopifyOrderProcessingService.onOrderReceived()` — pass `channelOrder.shippingAddress` to `LineItemOrderCreator.processLineItem()`
-- [ ] **Task 5.5:** Update `OrderService.create()` — persist `quantity` and `shippingAddress` from `CreateOrderCommand` onto `Order`
-- [ ] **Task 5.6:** Update `OrderResponse` DTO and `OrderController.toResponse()` — include `quantity`, `supplierOrderId`, `failureReason`, shipping address fields
+- [x] **Task 5.1:** Update `OrderService.routeToVendor()` — publish `OrderConfirmed` event after saving CONFIRMED status (follows `markDelivered()` pattern)
+- [x] **Task 5.2:** Create `SupplierOrderPlacementListener` — `@TransactionalEventListener(AFTER_COMMIT)` + `@Transactional(REQUIRES_NEW)`, delegates to `SupplierOrderPlacementService`
+- [x] **Task 5.3:** Update `LineItemOrderCreator.processLineItem()` — accept `ChannelShippingAddress?`, map to `ShippingAddress`, pass `quantity` and `shippingAddress` to `CreateOrderCommand`, call `routeToVendor()` after order creation
+- [x] **Task 5.4:** Update `ShopifyOrderProcessingService.onOrderReceived()` — pass `channelOrder.shippingAddress` to `LineItemOrderCreator.processLineItem()`
+- [x] **Task 5.5:** Update `OrderService.create()` — persist `quantity` and `shippingAddress` from `CreateOrderCommand` onto `Order`
+- [x] **Task 5.6:** Update `OrderResponse` DTO and `OrderController.toResponse()` — include `quantity`, `supplierOrderId`, `failureReason`, shipping address fields
 
 ### Test Layer
 
-- [ ] **Task 6.1:** Unit test `Order.updateStatus()` — verify `CONFIRMED -> FAILED` transition works, `FAILED -> CONFIRMED` throws, `PENDING -> FAILED` works
-- [ ] **Task 6.2:** Unit test `SupplierOrderPlacementService` — mock `SupplierOrderAdapter` and `SupplierProductMappingResolver`:
+- [x] **Task 6.1:** Unit test `Order.updateStatus()` — verify `CONFIRMED -> FAILED` transition works, `FAILED -> CONFIRMED` throws, `PENDING -> FAILED` works
+- [x] **Task 6.2:** Unit test `SupplierOrderPlacementService` — mock `SupplierOrderAdapter` and `SupplierProductMappingResolver`:
   - Happy path: adapter returns Success -> `supplierOrderId` stored on order
   - Failure path: adapter returns Failure -> order transitions to FAILED with reason
   - Idempotency: order already has `supplierOrderId` -> adapter never called
   - Missing mapping: resolver returns null -> order transitions to FAILED
-- [ ] **Task 6.3:** Unit test `ShopifyOrderAdapter` shipping address extraction:
+- [x] **Task 6.3:** Unit test `ShopifyOrderAdapter` shipping address extraction:
   - Full address: all fields present -> all extracted correctly
   - Null fields: JSON `null` values in address fields -> Kotlin `null` (not string "null")
   - Missing shipping_address node: -> `shippingAddress` is null on ChannelOrder
   - Mixed null/present: some fields null, some present -> correct mapping
-- [ ] **Task 6.4:** WireMock contract test `CjSupplierOrderAdapter`:
+- [x] **Task 6.4:** WireMock contract test `CjSupplierOrderAdapter`:
   - Successful order placement: CJ returns `code=200` with `data.orderId` -> `SupplierOrderResult.Success`
   - Out of stock error: CJ returns error code -> `SupplierOrderResult.Failure` with reason
   - Invalid address error: CJ returns validation error -> `SupplierOrderResult.Failure`
   - Auth failure: 401 response -> exception propagates to Resilience4j (NOT caught by adapter)
   - Credential guard: blank credentials -> `Failure` returned without HTTP call
   - Request body verification: assert correct JSON structure sent to CJ (orderNumber, shipping fields, products array with vid and quantity)
-- [ ] **Task 6.5:** Unit test `LineItemOrderCreator` — verify quantity from lineItem flows to CreateOrderCommand, verify shippingAddress mapping from ChannelShippingAddress to ShippingAddress, verify routeToVendor called after creation
-- [ ] **Task 6.6:** Integration test — full chain:
+- [x] **Task 6.5:** Unit test `LineItemOrderCreator` — verify quantity from lineItem flows to CreateOrderCommand, verify shippingAddress mapping from ChannelShippingAddress to ShippingAddress, verify routeToVendor called after creation
+- [x] **Task 6.6:** Integration test — full chain:
   - Order created with shipping address and quantity -> routeToVendor -> OrderConfirmed published -> listener fires -> CJ adapter called (WireMock) -> supplierOrderId stored
   - Same flow but CJ returns error -> order marked FAILED with failureReason
-- [ ] **Task 6.7:** Unit test `OrderService.routeToVendor()` — verify `OrderConfirmed` event published after CONFIRMED transition
-- [ ] **Task 6.8:** Existing test fixes — update `OrderLifecycleTest`, `OrderServiceTest`, `OrderControllerTest` to include `quantity` field on Order/CreateOrderCommand (compilation fixes from new required field)
+- [x] **Task 6.7:** Unit test `OrderService.routeToVendor()` — verify `OrderConfirmed` event published after CONFIRMED transition
+- [x] **Task 6.8:** Existing test fixes — update `OrderLifecycleTest`, `OrderServiceTest`, `ShopifyOrderProcessingServiceTest` to handle new `quantity` field and `OrderConfirmed` event
 
 ## Testing Strategy
 

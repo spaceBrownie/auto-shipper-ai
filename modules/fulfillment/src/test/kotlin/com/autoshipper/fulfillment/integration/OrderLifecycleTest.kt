@@ -15,6 +15,7 @@ import com.autoshipper.fulfillment.proxy.inventory.InventoryChecker
 import com.autoshipper.fulfillment.proxy.notification.NotificationSender
 import com.autoshipper.fulfillment.proxy.payment.RefundProvider
 import com.autoshipper.fulfillment.proxy.payment.RefundResult
+import com.autoshipper.shared.events.OrderConfirmed
 import com.autoshipper.shared.events.OrderFulfilled
 import com.autoshipper.shared.events.VendorSlaBreached
 import com.autoshipper.shared.identity.SkuId
@@ -102,7 +103,8 @@ class OrderLifecycleTest {
             customerId = customerId,
             totalAmount = Money.of(BigDecimal("59.99"), Currency.USD),
             paymentIntentId = "pi_lifecycle_1",
-            idempotencyKey = "lifecycle-test-1"
+            idempotencyKey = "lifecycle-test-1",
+            quantity = 1
         )
         val (order, created) = orderService.create(command)
         assert(created)
@@ -139,9 +141,18 @@ class OrderLifecycleTest {
 
         // Verify delivered
         assert(store[order.id]!!.status == OrderStatus.DELIVERED)
-        verify(eventPublisher).publishEvent(argThat<OrderFulfilled> {
-            this.orderId.value == order.id
-        })
+
+        // routeToVendor publishes OrderConfirmed, pollAllShipments publishes OrderFulfilled
+        val captor = argumentCaptor<Any>()
+        verify(eventPublisher, atLeast(2)).publishEvent(captor.capture())
+        val confirmedEvents = captor.allValues.filterIsInstance<OrderConfirmed>()
+        assert(confirmedEvents.size == 1 && confirmedEvents[0].orderId.value == order.id) {
+            "Expected exactly one OrderConfirmed event for order ${order.id}"
+        }
+        val fulfilledEvents = captor.allValues.filterIsInstance<OrderFulfilled>()
+        assert(fulfilledEvents.size == 1 && fulfilledEvents[0].orderId.value == order.id) {
+            "Expected exactly one OrderFulfilled event for order ${order.id}"
+        }
     }
 
     @Test
@@ -155,11 +166,11 @@ class OrderLifecycleTest {
 
         // Create and confirm two orders
         val amount = Money.of(BigDecimal("39.99"), Currency.USD)
-        val cmd1 = CreateOrderCommand(skuId, vendorUUID, customerId, amount, "pi_breach_1", "breach-test-1")
+        val cmd1 = CreateOrderCommand(skuId, vendorUUID, customerId, amount, "pi_breach_1", "breach-test-1", quantity = 1)
         val (order1, _) = orderService.create(cmd1)
         orderService.routeToVendor(order1.id)
 
-        val cmd2 = CreateOrderCommand(skuId, vendorUUID, customerId, amount, "pi_breach_2", "breach-test-2")
+        val cmd2 = CreateOrderCommand(skuId, vendorUUID, customerId, amount, "pi_breach_2", "breach-test-2", quantity = 1)
         val (order2, _) = orderService.create(cmd2)
         orderService.routeToVendor(order2.id)
 
@@ -200,7 +211,8 @@ class OrderLifecycleTest {
             customerId = customerId,
             totalAmount = Money.of(BigDecimal("19.99"), Currency.USD),
             paymentIntentId = "pi_no_inv",
-            idempotencyKey = "no-inventory-test"
+            idempotencyKey = "no-inventory-test",
+            quantity = 1
         )
 
         assertThrows<IllegalArgumentException> {
@@ -220,7 +232,7 @@ class OrderLifecycleTest {
         val orderService = OrderService(orderRepository, inventoryChecker, eventPublisher)
 
         // Create, route, and ship
-        val cmd = CreateOrderCommand(skuId, vendorUUID, customerId, Money.of(BigDecimal("29.99"), Currency.USD), "pi_delay_1", "delay-test-1")
+        val cmd = CreateOrderCommand(skuId, vendorUUID, customerId, Money.of(BigDecimal("29.99"), Currency.USD), "pi_delay_1", "delay-test-1", quantity = 1)
         val (order, _) = orderService.create(cmd)
         orderService.routeToVendor(order.id)
         orderService.markShipped(order.id, "DELAY-TRACK", "UPS")

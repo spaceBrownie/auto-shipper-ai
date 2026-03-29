@@ -5,6 +5,7 @@ import com.autoshipper.fulfillment.domain.OrderStatus
 import com.autoshipper.fulfillment.domain.ShipmentDetails
 import com.autoshipper.fulfillment.persistence.OrderRepository
 import com.autoshipper.fulfillment.proxy.inventory.InventoryChecker
+import com.autoshipper.shared.events.OrderConfirmed
 import com.autoshipper.shared.events.OrderFulfilled
 import com.autoshipper.shared.money.Currency
 import com.autoshipper.shared.money.Money
@@ -46,7 +47,8 @@ class OrderServiceTest {
             customerId = customerId,
             totalAmount = Money.of(BigDecimal("49.99"), Currency.USD),
             paymentIntentId = "pi_test_123",
-            idempotencyKey = idempotencyKey
+            idempotencyKey = idempotencyKey,
+            quantity = 1
         )
 
     private fun pendingOrder(idempotencyKey: String = "idem-key"): Order = Order(
@@ -116,6 +118,19 @@ class OrderServiceTest {
 
         assert(result.status == OrderStatus.CONFIRMED) { "Expected CONFIRMED status" }
         verify(orderRepository).save(argThat<Order> { this.status == OrderStatus.CONFIRMED })
+    }
+
+    @Test
+    fun `routeToVendor publishes OrderConfirmed event`() {
+        val order = pendingOrder()
+        whenever(orderRepository.findById(order.id)).thenReturn(Optional.of(order))
+        whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+
+        orderService.routeToVendor(order.id)
+
+        verify(eventPublisher).publishEvent(argThat<OrderConfirmed> {
+            this.orderId.value == order.id && this.skuId.value == order.skuId
+        })
     }
 
     @Test

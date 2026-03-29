@@ -19,9 +19,10 @@ class ShopifyOrderAdapter(
     override fun parse(rawPayload: String): ChannelOrder {
         val root = objectMapper.readTree(rawPayload)
 
-        val orderId = root.get("id")?.asText() ?: error("Shopify order missing 'id' field")
-        val orderNumber = root.get("name")?.asText() ?: ""
-        val currencyCode = root.get("currency")?.asText() ?: "USD"
+        val orderId = root.get("id")?.let { if (!it.isNull) it.asText() else null }
+            ?: error("Shopify order missing 'id' field")
+        val orderNumber = root.get("name")?.let { if (!it.isNull) it.asText() else null } ?: ""
+        val currencyCode = root.get("currency")?.let { if (!it.isNull) it.asText() else null } ?: "USD"
 
         // Customer email: prefer top-level email, fall back to customer.email,
         // then generate a deterministic fallback from customer ID.
@@ -32,7 +33,7 @@ class ShopifyOrderAdapter(
         val customerEmail = topLevelEmail
             ?: customerNodeEmail
             ?: run {
-                val customerId = customerNode?.get("id")?.asText() ?: "unknown"
+                val customerId = customerNode?.get("id")?.let { if (!it.isNull) it.asText() else null } ?: "unknown"
                 "unknown-$customerId@noemail.shopify"
             }
 
@@ -46,8 +47,8 @@ class ShopifyOrderAdapter(
                 val variantNode = itemNode.get("variant_id")
                 val variantId = if (variantNode != null && !variantNode.isNull) variantNode.asText() else null
                 val quantity = itemNode.get("quantity")?.asInt() ?: 1
-                val price = itemNode.get("price")?.asText()?.let { BigDecimal(it) } ?: BigDecimal.ZERO
-                val title = itemNode.get("title")?.asText() ?: ""
+                val price = itemNode.get("price")?.let { if (!it.isNull) it.asText() else null }?.let { BigDecimal(it) } ?: BigDecimal.ZERO
+                val title = itemNode.get("title")?.let { if (!it.isNull) it.asText() else null } ?: ""
 
                 lineItems.add(
                     ChannelLineItem(
@@ -61,13 +62,31 @@ class ShopifyOrderAdapter(
             }
         }
 
+        val addrNode = root.get("shipping_address")
+        val shippingAddress = if (addrNode != null && !addrNode.isNull) {
+            ChannelShippingAddress(
+                firstName = addrNode.get("first_name")?.let { if (!it.isNull) it.asText() else null },
+                lastName = addrNode.get("last_name")?.let { if (!it.isNull) it.asText() else null },
+                address1 = addrNode.get("address1")?.let { if (!it.isNull) it.asText() else null },
+                address2 = addrNode.get("address2")?.let { if (!it.isNull) it.asText() else null },
+                city = addrNode.get("city")?.let { if (!it.isNull) it.asText() else null },
+                province = addrNode.get("province")?.let { if (!it.isNull) it.asText() else null },
+                provinceCode = addrNode.get("province_code")?.let { if (!it.isNull) it.asText() else null },
+                country = addrNode.get("country")?.let { if (!it.isNull) it.asText() else null },
+                countryCode = addrNode.get("country_code")?.let { if (!it.isNull) it.asText() else null },
+                zip = addrNode.get("zip")?.let { if (!it.isNull) it.asText() else null },
+                phone = addrNode.get("phone")?.let { if (!it.isNull) it.asText() else null }
+            )
+        } else null
+
         return ChannelOrder(
             channelOrderId = orderId,
             channelOrderNumber = orderNumber,
             channelName = channelName(),
             customerEmail = customerEmail,
             currencyCode = currencyCode,
-            lineItems = lineItems
+            lineItems = lineItems,
+            shippingAddress = shippingAddress
         )
     }
 

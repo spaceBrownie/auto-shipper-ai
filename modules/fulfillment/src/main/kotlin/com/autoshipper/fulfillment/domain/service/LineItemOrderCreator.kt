@@ -1,6 +1,8 @@
 package com.autoshipper.fulfillment.domain.service
 
+import com.autoshipper.fulfillment.domain.ShippingAddress
 import com.autoshipper.fulfillment.domain.channel.ChannelOrder
+import com.autoshipper.fulfillment.domain.channel.ChannelShippingAddress
 import com.autoshipper.fulfillment.proxy.platform.PlatformListingResolver
 import com.autoshipper.fulfillment.proxy.platform.VendorSkuResolver
 import com.autoshipper.shared.money.Currency
@@ -36,7 +38,8 @@ class LineItemOrderCreator(
         lineItem: com.autoshipper.fulfillment.domain.channel.ChannelLineItem,
         channelOrder: ChannelOrder,
         customerUUID: UUID,
-        currency: Currency
+        currency: Currency,
+        shippingAddress: ChannelShippingAddress? = null
     ): Boolean {
         val skuId = platformListingResolver.resolveSkuId(
             lineItem.externalProductId,
@@ -62,13 +65,30 @@ class LineItemOrderCreator(
             currency
         )
 
+        val domainShippingAddress = shippingAddress?.let {
+            ShippingAddress(
+                customerName = listOfNotNull(it.firstName, it.lastName).joinToString(" ").takeIf { name -> name.isNotBlank() },
+                addressLine1 = it.address1,
+                addressLine2 = it.address2,
+                city = it.city,
+                province = it.provinceCode ?: it.province,
+                provinceCode = it.provinceCode,
+                country = it.country,
+                countryCode = it.countryCode,
+                zip = it.zip,
+                phone = it.phone
+            )
+        }
+
         val command = CreateOrderCommand(
             skuId = skuId,
             vendorId = vendorId,
             customerId = customerUUID,
             totalAmount = totalAmount,
             paymentIntentId = "shopify:order:${channelOrder.channelOrderId}",
-            idempotencyKey = "shopify:order:${channelOrder.channelOrderId}:item:$index"
+            idempotencyKey = "shopify:order:${channelOrder.channelOrderId}:item:$index",
+            quantity = lineItem.quantity,
+            shippingAddress = domainShippingAddress
         )
 
         val (order, isNew) = orderService.create(command)
@@ -80,8 +100,9 @@ class LineItemOrderCreator(
                 channelOrderId = channelOrder.channelOrderId,
                 channelOrderNumber = channelOrder.channelOrderNumber
             )
+            orderService.routeToVendor(order.id)
             logger.info(
-                "Created order {} for SKU {} from Shopify order {}",
+                "Created and confirmed order {} for SKU {} from Shopify order {}",
                 order.id, skuId, channelOrder.channelOrderId
             )
             return true

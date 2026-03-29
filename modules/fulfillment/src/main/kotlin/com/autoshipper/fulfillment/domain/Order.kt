@@ -41,6 +41,18 @@ class Order(
     @Column(name = "payment_intent_id", nullable = false)
     val paymentIntentId: String,
 
+    @Column(name = "quantity", nullable = false)
+    var quantity: Int = 1,
+
+    @Column(name = "supplier_order_id")
+    var supplierOrderId: String? = null,
+
+    @Column(name = "failure_reason", columnDefinition = "TEXT")
+    var failureReason: String? = null,
+
+    @Embedded
+    var shippingAddress: ShippingAddress? = null,
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     var status: OrderStatus = OrderStatus.PENDING,
@@ -97,12 +109,13 @@ class Order(
 
     companion object {
         private val VALID_TRANSITIONS: Map<OrderStatus, Set<OrderStatus>> = mapOf(
-            OrderStatus.PENDING to setOf(OrderStatus.CONFIRMED, OrderStatus.REFUNDED),
-            OrderStatus.CONFIRMED to setOf(OrderStatus.SHIPPED, OrderStatus.REFUNDED),
+            OrderStatus.PENDING to setOf(OrderStatus.CONFIRMED, OrderStatus.REFUNDED, OrderStatus.FAILED),
+            OrderStatus.CONFIRMED to setOf(OrderStatus.SHIPPED, OrderStatus.REFUNDED, OrderStatus.FAILED),
             OrderStatus.SHIPPED to setOf(OrderStatus.DELIVERED, OrderStatus.REFUNDED),
             OrderStatus.DELIVERED to setOf(OrderStatus.RETURNED, OrderStatus.REFUNDED),
             OrderStatus.REFUNDED to emptySet(),
-            OrderStatus.RETURNED to emptySet()
+            OrderStatus.RETURNED to emptySet(),
+            OrderStatus.FAILED to emptySet()
         )
     }
 }

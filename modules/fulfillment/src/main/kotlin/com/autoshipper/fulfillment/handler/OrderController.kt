@@ -27,7 +27,8 @@ class OrderController(private val orderService: OrderService) {
             customerId = UUID.fromString(request.customerId),
             totalAmount = Money.of(BigDecimal(request.totalAmount), Currency.valueOf(request.totalCurrency)),
             paymentIntentId = request.paymentIntentId,
-            idempotencyKey = request.idempotencyKey
+            idempotencyKey = request.idempotencyKey,
+            quantity = request.quantity
         )
         val (order, created) = orderService.create(command)
         val status = if (created) HttpStatus.CREATED else HttpStatus.OK
@@ -105,12 +106,26 @@ class OrderController(private val orderService: OrderService) {
         totalAmount = totalAmount.toPlainString(),
         totalCurrency = totalCurrency.name,
         status = status.name,
+        quantity = quantity,
+        supplierOrderId = supplierOrderId,
+        failureReason = failureReason,
         trackingNumber = shipmentDetails.trackingNumber,
         carrier = shipmentDetails.carrier,
         estimatedDelivery = shipmentDetails.estimatedDelivery?.toString(),
         channel = channel,
         channelOrderId = channelOrderId,
         channelOrderNumber = channelOrderNumber,
+        shippingCustomerName = shippingAddress?.customerName,
+        shippingAddress = listOfNotNull(
+            shippingAddress?.addressLine1,
+            shippingAddress?.addressLine2
+        ).joinToString(", ").takeIf { it.isNotBlank() },
+        shippingCity = shippingAddress?.city,
+        shippingProvince = shippingAddress?.province,
+        shippingCountry = shippingAddress?.country,
+        shippingCountryCode = shippingAddress?.countryCode,
+        shippingZip = shippingAddress?.zip,
+        shippingPhone = shippingAddress?.phone,
         createdAt = createdAt.toString(),
         updatedAt = updatedAt.toString()
     )
