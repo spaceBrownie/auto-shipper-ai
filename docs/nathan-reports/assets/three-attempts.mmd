@@ -1,35 +1,27 @@
-graph TB
-    subgraph A1["❌ ATTEMPT 1 — PR #37"]
-        A1D["v1 workflow<br/>1 agent, pass-through"]
-        A1R["Hardcoded quantity = 1<br/>Retry logic broken<br/>━━━━━━━━━━━━━━━━━━<br/>Discarded"]
+graph LR
+    subgraph A1["❌ Attempt 1"]
+        A1R["Always shipped 1 item\nFailed silently on errors"]
     end
 
-    subgraph A2["❌ ATTEMPT 2 — PR #39"]
-        A2D["v2 workflow draft<br/>1 agent, ignored strategy"]
-        A2R["9/10 shipping fields corrupted<br/>65 tests, 50 were fakes<br/>━━━━━━━━━━━━━━━━━━<br/>Discarded"]
+    subgraph A2["❌ Attempt 2"]
+        A2R["Corrupted 9/10 address fields\n65 quality checks — 50 were fake"]
     end
 
-    subgraph PM["🔍 PM-017 ROOT CAUSE"]
-        PMD["Workflow itself was broken<br/>No test spec gate<br/>No strategy engine binding<br/>No external review"]
+    subgraph PM["🔍 Root Cause"]
+        PMR["The workflow was broken\nnot the feature"]
     end
 
-    subgraph A3["✅ ATTEMPT 3 — PR #41"]
-        A3D["v3 workflow<br/>3 parallel agents × 3 rounds<br/>deliberative mode"]
-        A3R["46 files, 42 real tests<br/>All passing incl. database<br/>Bug caught by reviewer<br/>━━━━━━━━━━━━━━━━━━<br/>Merged clean"]
+    subgraph A3["✅ Attempt 3"]
+        A3R["42 real tests, all passing\nBug caught by reviewer\nMerged clean"]
     end
 
-    A1 --> A2
-    A2 --> PM
-    PM --> A3
+    A1 --> A2 --> PM --> A3
 
-    style A1 fill:#141416,stroke:#f87171,stroke-width:2px,color:#ececf0
-    style A2 fill:#141416,stroke:#f87171,stroke-width:2px,color:#ececf0
-    style PM fill:#141416,stroke:#fbbf24,stroke-width:2px,color:#ececf0
-    style A3 fill:#141416,stroke:#34d399,stroke-width:2px,color:#ececf0
-    style A1D fill:#1c1c20,stroke:#f87171,stroke-width:1px,color:#ececf0
-    style A1R fill:#1c1c20,stroke:#f87171,stroke-width:1px,color:#f87171
-    style A2D fill:#1c1c20,stroke:#f87171,stroke-width:1px,color:#ececf0
-    style A2R fill:#1c1c20,stroke:#f87171,stroke-width:1px,color:#f87171
-    style PMD fill:#1c1c20,stroke:#fbbf24,stroke-width:1px,color:#fbbf24
-    style A3D fill:#1c1c20,stroke:#34d399,stroke-width:1px,color:#ececf0
-    style A3R fill:#1c1c20,stroke:#34d399,stroke-width:1px,color:#34d399
+    style A1 fill:#141416,stroke:#f87171,stroke-width:2px,color:#f87171
+    style A2 fill:#141416,stroke:#f87171,stroke-width:2px,color:#f87171
+    style PM fill:#141416,stroke:#fbbf24,stroke-width:2px,color:#fbbf24
+    style A3 fill:#141416,stroke:#34d399,stroke-width:2px,color:#34d399
+    style A1R fill:#1c1c20,stroke:#f87171,stroke-width:1px,color:#ececf0
+    style A2R fill:#1c1c20,stroke:#f87171,stroke-width:1px,color:#ececf0
+    style PMR fill:#1c1c20,stroke:#fbbf24,stroke-width:1px,color:#ececf0
+    style A3R fill:#1c1c20,stroke:#34d399,stroke-width:1px,color:#ececf0

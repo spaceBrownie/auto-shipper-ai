@@ -1,109 +1,36 @@
-block-beta
-    columns 3
-
-    space:3
-    block:HEADER:3
-        columns 1
-        H["🎯 ORCHESTRATOR — Strategy Engine recommends 3 agents, deliberative mode"]
-    end
-    space:3
-
-    block:R1H:3
-        columns 1
-        R1L["ROUND 1 — CREATE NEW FILES  ●●● 3 agents in parallel, zero conflict risk"]
+graph LR
+    subgraph R1["ROUND 1 · New Components"]
+        direction TB
+        A1["Agent A\nDatabase schema\n+ event triggers"]
+        A2["Agent B\nCJ connection\n+ supplier lookup"]
+        A3["Agent C\nAddress handling\n+ placement logic"]
     end
 
-    block:A1:1
-        columns 1
-        A1T["Agent 1A"]
-        A1D["OrderConfirmed event\nV21 migration"]
-    end
-    block:A2:1
-        columns 1
-        A2T["Agent 1B"]
-        A2D["Supplier interfaces\nCJ adapter + stub\nMapping resolver"]
-    end
-    block:A3:1
-        columns 1
-        A3T["Agent 1C"]
-        A3D["ShippingAddress\nPlacement service\nEvent listener"]
+    subgraph R2["ROUND 2 · Update Existing"]
+        direction TB
+        B1["Agent A\nOrder data model\n+ status rules"]
+        B2["Agent B\nShopify address\nextraction"]
+        B3["Agent C\nOrder pipeline\n+ API responses"]
     end
 
-    space:3
-
-    block:R2H:3
-        columns 1
-        R2L["ROUND 2 — MODIFY EXISTING FILES  ●●● 3 agents, each owns different files"]
+    subgraph R3["ROUND 3 · Write Tests"]
+        direction TB
+        C1["Agent A\nStatus + service\ntests"]
+        C2["Agent B\nPlacement + order\ntests"]
+        C3["Agent C\nAPI contracts +\nintegration tests"]
     end
 
-    block:B1:1
-        columns 1
-        B1T["Agent 2A"]
-        B1D["Order entity\nOrderStatus\nCreateOrderCommand\nChannelOrder"]
-    end
-    block:B2:1
-        columns 1
-        B2T["Agent 2B"]
-        B2D["ShopifyOrderAdapter\nshipping extraction\n+ 5 NullNode fixes"]
-    end
-    block:B3:1
-        columns 1
-        B3T["Agent 2C"]
-        B3D["OrderService\nLineItemOrderCreator\nProcessing service\nDTO + Controller"]
-    end
+    R1 --> R2 --> R3
 
-    space:3
-
-    block:R3H:3
-        columns 1
-        R3L["ROUND 3 — WRITE TESTS  ●●● 3 agents, each owns different test files"]
-    end
-
-    block:C1:1
-        columns 1
-        C1T["Agent 3A"]
-        C1D["State machine tests\nOrderService tests\nExisting test fixes"]
-    end
-    block:C2:1
-        columns 1
-        C2T["Agent 3B"]
-        C2D["Placement service tests\nLineItemCreator tests"]
-    end
-    block:C3:1
-        columns 1
-        C3T["Agent 3C"]
-        C3D["ShopifyAdapter tests\nWireMock contracts\nIntegration test"]
-    end
-
-    space:3
-    block:VER:3
-        columns 1
-        VL["✅ VERIFICATION — Compile check → Full test suite → E2E playbook → 142 tests PASSED"]
-    end
-
-    style H fill:#24242a,stroke:#e5a00d,color:#e5a00d
-    style R1L fill:#0c0c0e,stroke:#34d399,color:#34d399
-    style R2L fill:#0c0c0e,stroke:#fbbf24,color:#fbbf24
-    style R3L fill:#0c0c0e,stroke:#60a5fa,color:#60a5fa
-    style VL fill:#24242a,stroke:#34d399,color:#34d399
-
-    style A1T fill:#1c1c20,stroke:#34d399,color:#34d399
-    style A2T fill:#1c1c20,stroke:#34d399,color:#34d399
-    style A3T fill:#1c1c20,stroke:#34d399,color:#34d399
-    style A1D fill:#1c1c20,stroke:#3a3a44,color:#ececf0
-    style A2D fill:#1c1c20,stroke:#3a3a44,color:#ececf0
-    style A3D fill:#1c1c20,stroke:#3a3a44,color:#ececf0
-
-    style B1T fill:#1c1c20,stroke:#fbbf24,color:#fbbf24
-    style B2T fill:#1c1c20,stroke:#fbbf24,color:#fbbf24
-    style B3T fill:#1c1c20,stroke:#fbbf24,color:#fbbf24
-    style B1D fill:#1c1c20,stroke:#3a3a44,color:#ececf0
-    style B2D fill:#1c1c20,stroke:#3a3a44,color:#ececf0
-    style B3D fill:#1c1c20,stroke:#3a3a44,color:#ececf0
-
-    style C1T fill:#1c1c20,stroke:#60a5fa,color:#60a5fa
-    style C2T fill:#1c1c20,stroke:#60a5fa,color:#60a5fa
-    style C3T fill:#1c1c20,stroke:#60a5fa,color:#60a5fa
-    style C1D fill:#1c1c20,stroke:#3a3a44,color:#ececf0
-    style C2D fill:#1c1c20,stroke:#3a3a44,color:#ececf0
-    style C3D fill:#1c1c20,stroke:#3a3a44,color:#ececf0
+    style R1 fill:#141416,stroke:#34d399,stroke-width:2px,color:#34d399
+    style R2 fill:#141416,stroke:#fbbf24,stroke-width:2px,color:#fbbf24
+    style R3 fill:#141416,stroke:#60a5fa,stroke-width:2px,color:#60a5fa
+    style A1 fill:#1c1c20,stroke:#34d399,stroke-width:1px,color:#ececf0
+    style A2 fill:#1c1c20,stroke:#34d399,stroke-width:1px,color:#ececf0
+    style A3 fill:#1c1c20,stroke:#34d399,stroke-width:1px,color:#ececf0
+    style B1 fill:#1c1c20,stroke:#fbbf24,stroke-width:1px,color:#ececf0
+    style B2 fill:#1c1c20,stroke:#fbbf24,stroke-width:1px,color:#ececf0
+    style B3 fill:#1c1c20,stroke:#fbbf24,stroke-width:1px,color:#ececf0
+    style C1 fill:#1c1c20,stroke:#60a5fa,stroke-width:1px,color:#ececf0
+    style C2 fill:#1c1c20,stroke:#60a5fa,stroke-width:1px,color:#ececf0
+    style C3 fill:#1c1c20,stroke:#60a5fa,stroke-width:1px,color:#ececf0
