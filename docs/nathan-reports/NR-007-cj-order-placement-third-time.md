@@ -90,6 +90,16 @@ In NR-006, you asked what failure scenario the system would handle poorly, and w
 
 Short answer: not yet. And you're right that this is a different layer entirely.
 
+In software engineering, this layer has a name: **observability**. It's the practice of instrumenting a system so that the people running it — engineering, product, management — can see exactly how it's behaving in production, not just whether it passed its tests. Good observability answers the same questions you'd ask walking a warehouse floor: "How many orders shipped today? How many came back? Why? Is that better or worse than last week?" Except the answers update in real time on a dashboard, and alerts fire automatically when something goes wrong.
+
+Observability is what ties engineering work to business outcomes. Without it, engineering ships code and hopes it works. With it, you can see *in real time* whether the system is actually solving the business cases it was built for — and catch it immediately when it isn't.
+
+Here's where we stand across all three layers:
+
+![Three Layers of Confidence](assets/three-layers.png)
+
+Layers 1 and 2 are green — solid after this session. Layer 3 (observability) is the amber gap, and it's what unlocks the bottom row: real-time visibility into whether the business outcomes are actually materializing the way the stress test predicted.
+
 Think of it like running a fleet. You've got three layers of confidence:
 
 1. **Vehicle inspection** (before it leaves the lot) — does the truck start, do the brakes work, are the tires inflated? *This is our test suite. We're strong here now — 42 real checks, state machine rules, data integrity guards.*

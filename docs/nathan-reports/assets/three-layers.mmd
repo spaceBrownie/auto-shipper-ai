@@ -1,0 +1,40 @@
+graph TB
+    subgraph L1["✅ LAYER 1 · Code Correctness"]
+        direction LR
+        L1A["42 quality checks\nall passing"] ~~~ L1B["State machine\nrules enforced"] ~~~ L1C["Data integrity\nguards active"]
+    end
+
+    subgraph L2["✅ LAYER 2 · Service Contracts"]
+        direction LR
+        L2A["CJ API format\nverified"] ~~~ L2B["Shopify data\nhandoff clean"] ~~~ L2C["External review\ncatches edge cases"]
+    end
+
+    subgraph L3["🔲 LAYER 3 · Observability"]
+        direction LR
+        L3A["Order pipeline\ndashboard"] ~~~ L3B["Supplier health\n+ address quality"] ~~~ L3C["Automatic alerts\n+ feedback loop"]
+    end
+
+    subgraph BIZ["📊 BUSINESS OUTCOMES"]
+        direction LR
+        BIZ1["Live per-SKU\nmargins"] ~~~ BIZ2["Refund causes\nattributed"] ~~~ BIZ3["Operational quality\nscored"]
+    end
+
+    L1 --> L2 --> L3 --> BIZ
+
+    style L1 fill:#141416,stroke:#34d399,stroke-width:2px,color:#34d399
+    style L2 fill:#141416,stroke:#34d399,stroke-width:2px,color:#34d399
+    style L3 fill:#141416,stroke:#e5a00d,stroke-width:2px,color:#e5a00d
+    style BIZ fill:#141416,stroke:#8888a0,stroke-width:2px,color:#8888a0
+
+    style L1A fill:#1c1c20,stroke:#34d399,stroke-width:1px,color:#ececf0
+    style L1B fill:#1c1c20,stroke:#34d399,stroke-width:1px,color:#ececf0
+    style L1C fill:#1c1c20,stroke:#34d399,stroke-width:1px,color:#ececf0
+    style L2A fill:#1c1c20,stroke:#34d399,stroke-width:1px,color:#ececf0
+    style L2B fill:#1c1c20,stroke:#34d399,stroke-width:1px,color:#ececf0
+    style L2C fill:#1c1c20,stroke:#34d399,stroke-width:1px,color:#ececf0
+    style L3A fill:#1c1c20,stroke:#e5a00d,stroke-width:1px,color:#8888a0
+    style L3B fill:#1c1c20,stroke:#e5a00d,stroke-width:1px,color:#8888a0
+    style L3C fill:#1c1c20,stroke:#e5a00d,stroke-width:1px,color:#8888a0
+    style BIZ1 fill:#1c1c20,stroke:#8888a0,stroke-width:1px,color:#555566
+    style BIZ2 fill:#1c1c20,stroke:#8888a0,stroke-width:1px,color:#555566
+    style BIZ3 fill:#1c1c20,stroke:#8888a0,stroke-width:1px,color:#555566
