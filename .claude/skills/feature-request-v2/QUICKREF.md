@@ -1,4 +1,4 @@
-# Feature Request Workflow v3 - Quick Reference
+# Feature Request Workflow v2 - Quick Reference
 
 ## Trigger Phrases
 

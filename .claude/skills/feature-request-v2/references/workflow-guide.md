@@ -1,6 +1,6 @@
 # 6-Phase Feature Request Workflow Guide
 
-A comprehensive guide for using the 6-phase feature request workflow (v3) in Spring Boot projects.
+A comprehensive guide for using the 6-phase feature request workflow (v2) in Spring Boot projects.
 
 ## Table of Contents
 
