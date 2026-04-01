@@ -1,4 +1,4 @@
-# How One Developer Shipped 25 Features in 36 Days With Zero Production Bugs
+# How a Two-Person Team Shipped 25 Features in 36 Days With Zero Production Bugs
 
 **A case study on Unblocked as the memory layer between AI-assisted development and production-grade code.**
 
@@ -8,7 +8,7 @@
 
 AI coding assistants are fast. Genuinely, startlingly fast. They generate code, write tests, and produce green builds at a pace that makes you feel productive. And feeling productive is dangerous when you're building something that touches real money.
 
-I'm a solo developer building a commerce platform that autonomously launches physical products. Pricing engines, reserve calculations, supplier orders, payment processing. When a bug silently corrupts a financial record, nobody pages you at 3am. You just discover, weeks later, that your margin dashboards have been lying to you. That's a worse outcome.
+We're a two-person team building a commerce platform. I'm the technical lead; my partner Nathan handles business alignment, market validation, and operational strategy. Every feature I ship touches financial data. When a bug silently corrupts a transaction record, nobody pages you at 3am. You just discover, weeks later, that your dashboards have been lying to you. That's a worse outcome.
 
 I use Claude Code as my AI pair programmer. It writes excellent code. What it cannot do, what no AI coding tool can do alone, is remember that three weeks ago someone discussed in Slack why a particular approach was rejected. Or that a prior PR established a transaction pattern that every new module needs to follow. Or that the last time someone touched this file, they introduced a bug on line 69 that looks exactly like what's about to be committed on line 72.
 
@@ -36,23 +36,23 @@ The two roles compound. Context hydration prevents known mistakes. PR review cat
 
 ## The Vibe Coding Incident
 
-On March 14, I skipped the workflow. I had a compliance module to build (IP checks, regulatory guards, processor rule validation) and it felt straightforward enough. I let Claude Code handle it in a single unstructured session. No context hydration. No structured phases. Just "build this."
+On March 14, I skipped the workflow. I had a validation module to build and it felt straightforward enough. I let Claude Code handle it in a single unstructured session. No context hydration. No structured phases. Just "build this."
 
 30 minutes later: 22 files, 931 lines of code, 25 passing tests. Green build.
 
 The feature was entirely non-functional.
 
-The system was supposed to automatically check new products against compliance rules when they reached a certain lifecycle stage. The event that triggers that check was never published. No code anywhere emitted it. The 25 tests verified internal logic of handlers that would never be called. I had a green build and a feature that could not possibly work. The tests were testing themselves.
+The module was supposed to automatically validate new records when they reached a certain lifecycle stage. The event that triggers that validation was never published. No code anywhere emitted it. The 25 tests verified internal logic of handlers that would never be called. I had a green build and a feature that could not possibly work. The tests were testing themselves.
 
 Post-mortem analysis identified **3 critical issues, 4 high-severity gaps, and 7 medium issues**, all invisible to the test suite.
 
-What would context hydration have caught? The existing `OrderEventListenerTest` in an adjacent module demonstrated exactly how to test cross-module event listeners. A prior PR established the transaction pattern the compliance module needed. Both were sitting in the codebase and in organizational history. Neither was consulted because I didn't ask.
+What would context hydration have caught? An existing test in an adjacent module demonstrated exactly how to wire up cross-module event listeners. A prior PR established the transaction pattern this module needed. Both were sitting in the codebase and in organizational history. Neither was consulted because I didn't ask.
 
 The entire implementation had to be thrown away and redone. I deserved that.
 
 ### The Redo
 
-The structured redo, with context hydration and the full workflow, took 10 minutes of implementation time plus 20 minutes fixing bugs caught by its own review gates. It shipped with zero critical issues. The compliance auto-check flow worked on the first E2E test.
+The structured redo, with context hydration and the full workflow, took 10 minutes of implementation time plus 20 minutes fixing bugs caught by its own review gates. It shipped with zero critical issues. The validation flow worked on the first E2E test.
 
 | | Vibe Coding | With Unblocked |
 |---|---|---|
@@ -73,7 +73,7 @@ Same time. Same developer. Same AI assistant. The only variable was whether orga
 
 After that incident, I embedded Unblocked into my development workflow as a structural requirement. Not as a checklist item that gets skipped under pressure, but as a standing directive available at every phase.
 
-My workflow has 6 phases: Discovery, Specification, Planning, Test Specification, Implementation, and Review. At each phase, the AI agent can query Unblocked's context engine for relevant organizational knowledge. The instruction is deliberately simple:
+My workflow has multiple structured phases, from discovery through implementation and review. At each phase, the AI agent can query Unblocked's context engine for relevant organizational knowledge. The instruction is deliberately simple:
 
 > *"Use /unblock as needed. Query for related PRs, prior attempts, Slack discussions, rejected approaches, and existing conventions relevant to this work."*
 
@@ -100,13 +100,13 @@ This matters because every AI session starts with amnesia. Without context hydra
 
 ## The 65-Test Illusion
 
-On March 27, my automated workflow generated 65 tests for a supplier order placement feature. All 65 passed. The PR looked clean. I felt good about it. That feeling was wrong.
+On March 27, my automated workflow generated 65 tests for a feature integrating with an external API. All 65 passed. The PR looked clean. I felt good about it. That feeling was wrong.
 
-Unblocked's automated review found one bug: when a customer has no phone number, the system would send the literal string `"null"` to the supplier API instead of omitting the field. Shipping addresses would be saved as `"null, null, null null"`. A real customer's package, shipped to a real address, with the word "null" printed on the label.
+Unblocked's automated review found one bug: when an optional field was absent in the source data, the system would send the literal string `"null"` to the external API instead of omitting the field. Downstream records would be saved with the word "null" as actual data. In a financial system, that kind of silent corruption compounds.
 
 Post-mortem analysis revealed that ~50 of the 65 tests were theater: `assert(true)`, constructor round-trips, fixture existence checks. They verified that code compiles, not that it works. Only ~23% of the tests exercised real system behavior. I had mistaken test count for test coverage, which is a humbling thing to write down.
 
-Unblocked caught the bug by comparing lines 69-81 of the adapter against the pattern established on lines 30-31 of the same file. It recognized that one block used a null-safe guard and the other didn't. No number of tests would catch an inconsistency like that, because tests verify behavior you specify. Unblocked verifies consistency you didn't think to specify. That's a fundamentally different kind of coverage.
+Unblocked caught the bug by comparing one section of the adapter against a pattern established earlier in the same file. It recognized that one block used a null-safe guard and the other didn't. No number of tests would catch an inconsistency like that, because tests verify behavior you specify. Unblocked verifies consistency you didn't think to specify. That's a fundamentally different kind of coverage.
 
 > *"Automated checks cover the scenarios you think of. External review covers the ones you don't. Both are essential."* -- NR-007
 
@@ -118,14 +118,14 @@ Over 36 days and 25 shipped features, Unblocked's automated PR reviewer caught *
 
 **By category:**
 
-| Bug Class | Count | What Tests Miss |
+| Bug Class | Count | Why Tests Miss Them |
 |---|---|---|
-| Transaction boundary violations | 11 | Unit tests mock the repository; integration tests wrap in @Transactional. Both mask the real behavior. |
-| Silent data corruption | 4 | Tests construct objects directly; JSON deserialization edge cases never exercised |
+| Transaction boundary violations | 11 | Unit tests mock persistence; integration tests mask the real transaction lifecycle |
+| Silent data corruption | 4 | Tests construct objects directly; serialization edge cases never exercised |
 | Security vulnerabilities | 3 | Functional tests don't model adversarial inputs |
 | State machine violations | 3 | Scenario tests verify specified paths; Unblocked reasons about all possible paths |
 | Logic errors | 5 | Double-counting, circular dependencies, stale references. Correct in isolation, wrong in context. |
-| Infrastructure | 2 | Stale table names, filter mismatches between related queries |
+| Infrastructure | 2 | Stale references, filter mismatches between related queries |
 
 Zero post-merge bugs on features that went through Unblocked review. The only post-merge bug in the project's history came from the vibe coding session that skipped Unblocked entirely. I've stopped treating that as coincidence.
 
@@ -135,19 +135,14 @@ Zero post-merge bugs on features that went through Unblocked review. The only po
 
 This was the outcome I didn't plan for and the one that matters most in retrospect.
 
-Each bug caught in PR review led to a post-mortem. Each post-mortem established an engineering constraint, a rule encoded in the project's AI instruction file so the same class of bug could never recur. Of 18 engineering constraints governing this codebase, **9 originated from bugs first caught by Unblocked:**
+Each bug caught in PR review led to a post-mortem. Each post-mortem established an engineering constraint, a rule encoded in the project's AI instruction file so the same class of bug could never recur. Of 18 engineering constraints governing this codebase, **9 originated from bugs first caught by Unblocked.** They span the full surface area:
 
-| Constraint | What It Prevents |
+| Bug Class | Constraints Generated |
 |---|---|
-| Cross-module event listener transaction pattern | Silent write discard in post-commit handlers |
-| JSONB columns require @JdbcTypeCode annotation | PostgreSQL type mismatch on insert |
-| XML parsers must use OWASP-hardened config | XXE injection via external entities |
-| URL-encode user-supplied values in form bodies | Parameter injection in HTTP requests |
-| @Value annotations need empty defaults | Bean instantiation crash on disabled profiles |
-| Never use Kotlin internal constructor on Spring beans | Synthetic parameter breaks dependency injection |
-| Jackson get() vs path() selection | Silent empty string instead of null |
-| Assigned-ID entities must implement Persistable | Deferred flush breaks deduplication |
-| NullNode guard on Jackson get()?.asText() | Literal "null" string instead of null |
+| Transaction isolation | 2 rules governing cross-module event handling and write boundaries |
+| Data serialization | 3 rules preventing silent null coercion, type mismatches, and encoding errors |
+| Security | 2 rules enforcing input sanitization and hardened XML parsing |
+| Framework-specific traps | 2 rules preventing constructor resolution failures and configuration crashes |
 
 These constraints are enforced structurally via architectural test rules, sealed types, and AI instruction files. They prevent recurrence permanently. The bugs Unblocked caught on day 10 became the rules that protected day 30. Half of my project's institutional knowledge exists because Unblocked found something worth writing down.
 
@@ -159,7 +154,7 @@ I have 18 post-mortems and a philosophy about intellectual honesty, so here are 
 
 **It reviews better than it plans.** Unblocked excels at comparing diffs against established patterns (concrete, evidence-based). It's weaker at predicting what might go wrong during planning (speculative, requires judgment). During one feature, it correctly surfaced two known bugs from a prior attempt, and both were prevented. But this created tunnel vision: the focus narrowed to preventing known bugs while missing a novel one in the same file. You can't solve all future problems by listing all past ones.
 
-**It doesn't replace integration tests.** Seven of my external API adapters had no contract tests. Unblocked caught symptoms in individual PRs but didn't flag the structural gap. That required directed research against API documentation. Unblocked sees trees with remarkable clarity; the forest is still your job.
+**It doesn't replace integration tests.** Several of our external service integrations had no contract tests. Unblocked caught symptoms in individual PRs but didn't flag the structural gap. That required directed research against API documentation. Unblocked sees trees with remarkable clarity; the forest is still your job.
 
 **It doesn't pause when uncertain.** A human reviewer might say "I'm not sure about this." Unblocked makes definitive statements. When it's right, this is efficient. When organizational context is stale, it can anchor on outdated decisions. I treat Unblocked's output as input to my judgment, not as a gate. The tool is a brilliant colleague who is always confident. You learn to calibrate.
 
@@ -167,13 +162,13 @@ I have 18 post-mortems and a philosophy about intellectual honesty, so here are 
 
 ## What This Adds Up To
 
-I'm a solo developer who shipped 25 features with financial impact (pricing engines, margin calculations, supplier order placement, payment processing) in 36 days with zero production bugs.
+Our team shipped 25 features with financial impact in 36 days with zero production bugs. Nathan validates what we should build; I build it; Unblocked makes sure what I build is consistent with everything we've already learned.
 
 I want to be careful about that claim because I'm the kind of person who writes 18 post-mortems in 36 days, which means I'm also the kind of person who finds bugs everywhere. So let me be precise: zero bugs reached production on features that went through Unblocked review. The test suite alone would not have gotten me there, because 28 bugs passed it. The AI coding assistant alone would not have gotten me there, because I proved it on March 14 when I skipped the workflow and built a feature that could not possibly function.
 
-What got me there was the combination: an AI that writes code fast, and Unblocked ensuring that code is consistent with everything the project already knows.
+What got me there was the combination: an AI that writes code fast, a business partner who keeps me honest about what matters, and Unblocked ensuring that code is consistent with everything the project already knows.
 
-Context hydration before implementation prevents known classes of mistakes. Automated PR review after implementation catches novel ones. The feedback loop between them (bugs become constraints become institutional knowledge become context for the next feature) is what turns a solo developer's output into something that resembles a well-coordinated team's. I don't have a team. I have a workflow and a memory layer, and that has been enough.
+Context hydration before implementation prevents known classes of mistakes. Automated PR review after implementation catches novel ones. The feedback loop between them (bugs become constraints become institutional knowledge become context for the next feature) is what turns a small team's output into something that resembles a much larger engineering org's. We don't have a large team. We have clarity about roles, a structured workflow, and a memory layer. That has been enough.
 
 There's a deeper thing I've come to believe over these 36 days: speed amplifies whatever your process produces. If your process produces good code, AI makes you faster at shipping good code. If your process has gaps, AI makes you faster at shipping bugs. Most of the conversation around AI-assisted development focuses on the speed. Almost nobody talks about the memory. Unblocked is the memory, and it turns out that's the part that actually matters.
 
