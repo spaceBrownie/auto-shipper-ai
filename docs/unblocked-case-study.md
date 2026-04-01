@@ -42,7 +42,7 @@ On March 14, I skipped the workflow. I had a validation module to build and it f
 
 The feature was entirely non-functional.
 
-The module was supposed to automatically validate new records when they reached a certain lifecycle stage. The event that triggers that validation was never published. No code anywhere emitted it. The 25 tests verified internal logic of handlers that would never be called. I had a green build and a feature that could not possibly work. The tests were testing themselves.
+The module was supposed to automatically validate new products against compliance rules when they reached a certain lifecycle stage. The event that triggers that validation was never published. No code anywhere emitted it. The 25 tests verified internal logic of handlers that would never be called. I had a green build and a feature that could not possibly work. The tests were testing themselves.
 
 Post-mortem analysis identified **3 critical issues, 4 high-severity gaps, and 7 medium issues**, all invisible to the test suite.
 
