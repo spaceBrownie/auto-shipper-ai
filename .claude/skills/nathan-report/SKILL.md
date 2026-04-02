@@ -221,6 +221,7 @@ Once the user approves the draft:
    - **Subject:** `[Auto Shipper] NR-{NNN}: {Title}`
    - **To:** Nathan's email — check memory first (`user_nathan_profile.md` has his email). Only ask the user if not found in memory.
    - **Body:** Convert the markdown report to styled HTML following the Email Design System below. The email should feel like a polished internal newsletter — professional but not corporate, scannable on a phone, engaging without being distracting.
+   - **Verbatim text preservation:** The source markdown is the single source of truth for all words in the email. Every header, subheader, paragraph, blockquote, table cell, and list item must appear in the HTML exactly as written in the markdown — character for character. Do not paraphrase, summarize, reorder sentences, drop paragraphs, or rewrite for brevity. The only changes permitted are structural/stylistic: wrapping text in HTML tags, applying inline CSS, converting markdown tables to HTML tables, and converting markdown formatting (bold, italic, links) to their HTML equivalents. If the source says "27 bugs" the email says "27 bugs" — not "nearly 30 bugs." Read the source file immediately before generating HTML to avoid working from memory.
 2. Tell the user the draft is ready in Gmail for final review and send
 3. The file in `docs/nathan-reports/` stays as a local reference copy
 
