@@ -22,10 +22,12 @@ Auto Shipper AI is an autonomous commerce engine designed to handle the entire p
 10. **List on platforms** — auto-create Shopify product listings on SKU approval (create, pause, archive, price sync), with WireMock contract tests validated against official Shopify Admin API documentation
 11. **Validate API contracts** — WireMock integration tests for all external API adapters (demand signal + Shopify) with recorded response fixtures from real API docs, catching request/response mismatches that unit tests miss
 12. **Detect sales** — receive Shopify `orders/create` webhooks with HMAC-SHA256 signature verification, resolve Shopify products to internal SKUs, create internal orders per line item with per-item transaction isolation, event-level deduplication, and async processing within Shopify's 5-second timeout
+13. **Place supplier orders** — event-driven CJ Dropshipping order placement triggered automatically on order confirmation, with idempotency, graceful failure handling (order marked FAILED, not rolled back), and supplier product mapping resolution
+14. **Enforce code quality** — one-time codebase audit fixing cross-module transaction violations, missing `@Value` defaults, URL-encoding vulnerabilities, plus ArchUnit structural enforcement rules
 
 **Planned (specs written, not yet built):**
 
-13. **Drive organic traffic** — automated SEO and content marketing with zero ad spend (RAT-14)
+15. **Drive organic traffic** — automated SEO and content marketing with zero ad spend (RAT-14)
 
 ### Product Flow
 
@@ -340,6 +342,8 @@ The compliance gate runs 4 concurrent checks (IP, claims, processor, sourcing) w
 Pending → Confirmed → Shipped → Delivered
    ↓          ↓          ↓          ↓
  Refunded  Refunded   Refunded   Returned / Refunded
+              ↓
+            Failed (supplier order placement failure)
 ```
 
 Transitions are enforced by `Order.VALID_TRANSITIONS` with the same pattern as `SkuStateMachine`. `OrderService` methods guard precondition status before transitioning. Invalid transitions throw `IllegalArgumentException`. Terminal states (`Refunded`, `Returned`) have no outbound transitions.
@@ -456,6 +460,7 @@ Migrations live in `modules/app/src/main/resources/db/migration/` and run automa
 | V18 | Demand scan (`demand_scan_runs`, `demand_candidates`, `candidate_rejections`, pg_trgm) |
 | V19 | Platform listings (`platform_listings` for Shopify product/variant tracking) |
 | V20 | Webhook events + order channel metadata (`webhook_events`, `orders.channel*` columns) |
+| V21 | Supplier order placement (`supplier_product_mappings`, order quantity + shipping address + supplier tracking columns) |
 
 ## Feature Requests
 
@@ -486,6 +491,8 @@ Implementation is tracked in `feature-requests/FR-NNN-name/` with a `spec.md`, `
 | FR-021 | Shopify Admin API contract tests | ✅ Complete |
 | FR-022 | Integration test coverage gaps (postmortem sweep) | ✅ Complete |
 | FR-023 | Shopify order webhook listener (RAT-26) | ✅ Complete |
+| FR-024 | Codebase quality audit | ✅ Complete |
+| FR-025 | CJ supplier order placement (RAT-27) | ✅ Complete |
 
 ## Frontend Dashboard
 
