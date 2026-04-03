@@ -44,8 +44,8 @@ class ShopifyFulfillmentAdapter(
 
     private fun queryFulfillmentOrders(orderGid: String): List<String> {
         val query = """
-            query {
-              order(id: "$orderGid") {
+            query(${'$'}orderId: ID!) {
+              order(id: ${'$'}orderId) {
                 fulfillmentOrders(first: 10) {
                   edges {
                     node {
@@ -58,7 +58,7 @@ class ShopifyFulfillmentAdapter(
             }
         """.trimIndent()
 
-        val graphqlBody = mapOf("query" to query)
+        val graphqlBody = mapOf("query" to query, "variables" to mapOf("orderId" to orderGid))
 
         val responseBody = shopifyRestClient.post()
             .uri("/admin/api/2024-01/graphql.json")

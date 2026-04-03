@@ -6,6 +6,7 @@ import com.autoshipper.fulfillment.persistence.OrderRepository
 import com.autoshipper.fulfillment.proxy.carrier.CjCarrierMapper
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
+import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
@@ -21,6 +22,7 @@ class CjTrackingProcessingService(
 ) {
     private val logger = LoggerFactory.getLogger(CjTrackingProcessingService::class.java)
 
+    @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun onCjTrackingReceived(event: CjTrackingReceivedEvent) {

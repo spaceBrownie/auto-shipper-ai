@@ -4,6 +4,7 @@ import com.autoshipper.fulfillment.persistence.OrderRepository
 import com.autoshipper.fulfillment.proxy.platform.ShopifyFulfillmentPort
 import com.autoshipper.shared.events.OrderShipped
 import org.slf4j.LoggerFactory
+import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
@@ -27,6 +28,7 @@ class ShopifyFulfillmentSyncListener(
 ) {
     private val logger = LoggerFactory.getLogger(ShopifyFulfillmentSyncListener::class.java)
 
+    @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun onOrderShipped(event: OrderShipped) {
