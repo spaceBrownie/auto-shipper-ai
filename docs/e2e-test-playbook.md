@@ -1,9 +1,9 @@
 # E2E Test Playbook
 
 End-to-end manual test script for the full SKU lifecycle through capital protection, compliance guards, and portfolio orchestration.
-Covers: SKU creation, compliance checks, state machine, cost gate, stress test, pricing, platform listing (FR-020), Shopify webhook order creation (FR-023), CJ supplier order placement (FR-025), orders, reserve management, margin monitoring, automated shutdown rules, portfolio experiments, kill window monitoring, priority ranking, demand scan job, and demand signal smoke test (FR-017).
+Covers: SKU creation, compliance checks, state machine, cost gate, stress test, pricing, platform listing (FR-020), Shopify webhook order creation (FR-023), CJ supplier order placement (FR-025), CJ tracking webhook + Shopify fulfillment sync (FR-026), orders, reserve management, margin monitoring, automated shutdown rules, portfolio experiments, kill window monitoring, priority ranking, demand scan job, and demand signal smoke test (FR-017).
 
-**Last validated:** 2026-03-21 on branch `feat/RAT-24-shopify-admin-api-contract-tests`
+**Last validated:** 2026-04-02 on branch `main` (FR-026 scenarios added)
 
 ---
 
@@ -576,6 +576,266 @@ This phase tests the CJ supplier order placement chain: when an order is confirm
 | Test | Assertion |
 |---|---|
 | `routeToVendor publishes OrderConfirmed event` | Event contains correct orderId and skuId |
+
+---
+
+## Phase 1d: CJ Tracking Webhook + Shopify Fulfillment Sync (FR-026)
+
+This phase tests the CJ Dropshipping tracking webhook flow: token verification, deduplication, order status transition to SHIPPED, and Shopify fulfillment sync. Requires a CONFIRMED order (created via Phases 1b + 1c, or via Phase 2 manual order creation).
+
+**Automated test coverage:** Core scenarios are covered by the fulfillment module test suite (`./gradlew :fulfillment:test`). The manual E2E steps below validate the full HTTP chain including the `CjWebhookTokenVerificationFilter`, controller, dedup, `CjTrackingProcessingService` AFTER_COMMIT listener, and `ShopifyFulfillmentSyncListener`.
+
+### Prerequisites
+
+Set the CJ webhook secret in the environment before starting the application:
+
+```bash
+export CJ_WEBHOOK_SECRET="e2e-test-cj-secret"
+```
+
+Restart the application if it was already running:
+
+```bash
+pkill -f "bootRun"
+./gradlew :app:bootRun --args='--spring.profiles.active=local'
+```
+
+You need a CONFIRMED order with a known UUID. **Important:** Confirming an order via `POST /api/orders/{id}/confirm` fires the `SupplierOrderPlacementListener` (FR-025), which may set the order to FAILED if no `supplier_product_mappings` row exists for the SKU. To avoid this race condition, insert a CONFIRMED order directly into the database:
+
+```bash
+# Insert a CONFIRMED order directly (bypasses SupplierOrderPlacementListener)
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c "
+  INSERT INTO orders (id, sku_id, vendor_id, customer_id, total_amount, total_currency, status, quantity, payment_intent_id, idempotency_key, created_at, updated_at, version)
+  VALUES (
+    'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+    '$SKU_ID'::uuid,
+    '$VENDOR_ID'::uuid,
+    '$(python3 -c \"import uuid; print(uuid.uuid4())\")'::uuid,
+    199.9900, 'USD', 'CONFIRMED', 1,
+    'pi_test_cj_001', 'e2e-cj-order-001',
+    NOW(), NOW(), 0
+  );
+"
+
+CJ_ORDER_ID="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+
+# Verify the order exists in CONFIRMED state
+curl -s "http://localhost:8080/api/orders/$CJ_ORDER_ID" | python3 -m json.tool
+# Expected: status = "CONFIRMED"
+```
+
+### E2E-CJ-1: CJ Tracking Webhook -- Full Chain
+
+**Action:**
+
+```bash
+curl -s -X POST http://localhost:8080/webhooks/cj/tracking \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer e2e-test-cj-secret" \
+  -d "{
+    \"messageId\": \"msg-e2e-tracking-001\",
+    \"type\": \"LOGISTIC\",
+    \"messageType\": \"UPDATE\",
+    \"openId\": 1234567890,
+    \"params\": {
+      \"orderId\": \"$CJ_ORDER_ID\",
+      \"logisticName\": \"UPS\",
+      \"trackingNumber\": \"1Z999AA10123456784\",
+      \"trackingStatus\": 1,
+      \"logisticsTrackEvents\": \"[]\"
+    }
+  }" | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `status` | `accepted` |
+| HTTP status | `200` |
+
+**Verification:** The `CjTrackingProcessingService` AFTER_COMMIT listener processes the event asynchronously. Wait 1-2 seconds, then verify:
+
+```bash
+# Order should now be SHIPPED with tracking number
+curl -s "http://localhost:8080/api/orders/$CJ_ORDER_ID" | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `status` | `SHIPPED` |
+| `trackingNumber` | `1Z999AA10123456784` |
+| `carrier` | `UPS` |
+
+**Checkpoint:** If the order is still CONFIRMED, the `CjTrackingProcessingService` AFTER_COMMIT + REQUIRES_NEW pattern is broken (same class of bug as PM-001/PM-005).
+
+```bash
+# Verify webhook event was persisted for dedup
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
+  "SELECT event_id, topic, channel FROM webhook_events WHERE event_id = 'cj:$CJ_ORDER_ID:1Z999AA10123456784';"
+```
+
+| Column | Expected |
+|---|---|
+| `event_id` | `cj:{CJ_ORDER_ID}:1Z999AA10123456784` |
+| `topic` | `tracking/update` |
+| `channel` | `cj` |
+
+**Log verification:**
+- `CJ tracking processed: order {CJ_ORDER_ID} marked SHIPPED with tracking 1Z999AA10123456784 via UPS`
+- `Shopify fulfillment synced for order {CJ_ORDER_ID}` (stub adapter in local profile returns true)
+
+### E2E-CJ-2: Duplicate CJ Webhook
+
+**Prerequisite:** E2E-CJ-1 completed successfully.
+
+**Action:** Re-send the exact same webhook payload:
+
+```bash
+curl -s -X POST http://localhost:8080/webhooks/cj/tracking \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer e2e-test-cj-secret" \
+  -d "{
+    \"messageId\": \"msg-e2e-tracking-001\",
+    \"type\": \"LOGISTIC\",
+    \"messageType\": \"UPDATE\",
+    \"openId\": 1234567890,
+    \"params\": {
+      \"orderId\": \"$CJ_ORDER_ID\",
+      \"logisticName\": \"UPS\",
+      \"trackingNumber\": \"1Z999AA10123456784\",
+      \"trackingStatus\": 1,
+      \"logisticsTrackEvents\": \"[]\"
+    }
+  }" | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `status` | `already_processed` |
+| HTTP status | `200` |
+
+**Verification:** Order status remains SHIPPED (not re-processed). No second Shopify fulfillment call in logs.
+
+```bash
+curl -s "http://localhost:8080/api/orders/$CJ_ORDER_ID" | python3 -m json.tool
+# status should still be SHIPPED
+```
+
+**Checkpoint:** If status is `accepted` instead of `already_processed`, the dedup key (`cj:{orderId}:{trackingNumber}`) is not being checked correctly.
+
+### E2E-CJ-3: CJ Webhook Without Auth Token
+
+**Action:**
+
+```bash
+curl -s -X POST http://localhost:8080/webhooks/cj/tracking \
+  -H "Content-Type: application/json" \
+  -d '{"messageId":"test","type":"LOGISTIC","messageType":"UPDATE","openId":123,"params":{}}' \
+  -w "\nHTTP_CODE:%{http_code}\n"
+```
+
+| Expected HTTP status | `401` |
+|---|---|
+| Response body | `{"error": "Invalid webhook token"}` |
+
+**Note:** In local dev with `CJ_WEBHOOK_SECRET` set to empty string (default), the filter rejects ALL requests with `{"error": "CJ webhook secret not configured"}`. When the secret is configured (as in the prerequisites above), requests without the `Authorization` header get `{"error": "Invalid webhook token"}`.
+
+**Verification:** No webhook event was persisted:
+
+```bash
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
+  "SELECT COUNT(*) FROM webhook_events WHERE channel = 'cj' AND event_id LIKE 'cj:%';"
+```
+
+The count should be exactly 1 (only the E2E-CJ-1 event).
+
+**Checkpoint:** If the request returns 200, the `CjWebhookTokenVerificationFilter` is not intercepting requests to `/webhooks/cj/*`.
+
+### E2E-CJ-4: CJ Webhook with Unknown Order UUID
+
+**Action:** Send a CJ webhook with a random UUID that does not match any order:
+
+```bash
+UNKNOWN_UUID="$(python3 -c 'import uuid; print(uuid.uuid4())')"
+
+curl -s -X POST http://localhost:8080/webhooks/cj/tracking \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer e2e-test-cj-secret" \
+  -d "{
+    \"messageId\": \"msg-e2e-tracking-unknown\",
+    \"type\": \"LOGISTIC\",
+    \"messageType\": \"UPDATE\",
+    \"openId\": 1234567890,
+    \"params\": {
+      \"orderId\": \"$UNKNOWN_UUID\",
+      \"logisticName\": \"FedEx\",
+      \"trackingNumber\": \"794644790132\",
+      \"trackingStatus\": 1,
+      \"logisticsTrackEvents\": \"[]\"
+    }
+  }" | python3 -m json.tool
+```
+
+| Field | Expected |
+|---|---|
+| `status` | `accepted` |
+| HTTP status | `200` |
+
+The controller accepts the webhook (dedup + persist), but the `CjTrackingProcessingService` AFTER_COMMIT listener logs a warning and skips processing:
+
+**Log verification:**
+- `CJ tracking event cj:{UNKNOWN_UUID}:794644790132 references unknown order {UNKNOWN_UUID}, skipping`
+
+**Verification:** No order status changed:
+
+```bash
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
+  "SELECT COUNT(*) FROM orders WHERE id = '$UNKNOWN_UUID';"
+```
+
+| Expected | `0` |
+|---|---|
+
+### E2E-CJ-5: ShipmentTracker Picks Up SHIPPED Order
+
+**Prerequisite:** E2E-CJ-1 completed — the order is now in SHIPPED status with tracking number `1Z999AA10123456784` and carrier `UPS`.
+
+The `ShipmentTracker` polls every 30 minutes (`@Scheduled(fixedRate = 1_800_000)`). It queries all SHIPPED orders and checks carrier tracking APIs for delivery status.
+
+**Verification (after next ShipmentTracker poll):**
+
+```bash
+# Check application logs for polling activity:
+# "Polling tracking status for N shipped orders"
+# If the stub carrier tracking provider returns delivered=true:
+# "Order {CJ_ORDER_ID} delivered (tracking: 1Z999AA10123456784)"
+```
+
+If the carrier stub returns `delivered = true`, the order transitions to DELIVERED and `OrderFulfilled` event fires:
+
+```bash
+curl -s "http://localhost:8080/api/orders/$CJ_ORDER_ID" | python3 -m json.tool
+```
+
+| Field | Expected (if carrier stub returns delivered) |
+|---|---|
+| `status` | `DELIVERED` |
+
+```bash
+# Verify capital_order_records created via OrderFulfilled event
+PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -c \
+  "SELECT order_id, status FROM capital_order_records WHERE order_id = '$CJ_ORDER_ID';"
+```
+
+| Column | Expected |
+|---|---|
+| `status` | `DELIVERED` |
+
+**Note:** The ShipmentTracker uses the carrier name to look up a `CarrierTrackingProvider`. In local profile, the stub provider may not return `delivered = true` on the first poll — this depends on stub implementation. The key validation is that the ShipmentTracker logs confirm the SHIPPED order is being polled. To force delivery for testing, use the REST endpoint:
+
+```bash
+curl -s -X POST "http://localhost:8080/api/orders/$CJ_ORDER_ID/deliver" | python3 -m json.tool
+# Expected: status = "DELIVERED"
+```
 
 ---
 
@@ -1254,6 +1514,7 @@ Expected: Similar product names from different sources (e.g., CJ and YouTube/Red
 | `POST` | `/api/portfolio/demand-scan/trigger` | Manually trigger demand scan (FR-016) |
 | `POST` | `/api/portfolio/demand-scan/smoke-test` | Smoke test all demand signal adapters (FR-017) |
 | `POST` | `/webhooks/shopify/orders` | Receive Shopify orders/create webhook (FR-023) |
+| `POST` | `/webhooks/cj/tracking` | Receive CJ tracking webhook (FR-026) |
 
 ---
 
@@ -1266,6 +1527,8 @@ Expected: Similar product names from different sources (e.g., CJ and YouTube/Red
 | No REST endpoint to trigger `KillWindowMonitor` on demand | Must restart app or wait for 1 AM cron | Restart the application; or insert qualifying data and check after next scheduled run |
 | Kill recommendation confirm does not auto-terminate SKU | Manual step needed after confirming recommendation | Call `POST /api/skus/{id}/state` with `TERMINATED` after confirming |
 | Compliance `SourcingCheckService` needs vendor data not in Sku entity | `vendorId` must be passed manually in the request body | Provide `vendorId` in `ManualCheckRequest` or use auto-check via `SkuReadyForComplianceCheck` event |
+| CJ webhook secret defaults to empty in local dev | `CjWebhookTokenVerificationFilter` rejects ALL CJ webhooks when `CJ_WEBHOOK_SECRET` is blank | Set `CJ_WEBHOOK_SECRET=e2e-test-cj-secret` env var before starting app for E2E testing |
+| ShipmentTracker poll interval is 30 minutes | Cannot trigger on-demand via REST; must wait for next poll cycle | Restart app or use `POST /api/orders/{id}/deliver` to manually advance order |
 
 ---
 
@@ -1287,5 +1550,7 @@ These are the cross-module event listener patterns that must hold for the system
 | `PlatformListingListener` | `SkuStateChanged` | `AFTER_COMMIT` + `REQUIRES_NEW` | Platform listing never created/paused/archived on SKU transition (FR-020) |
 | `ShopifyOrderProcessingService` | `ShopifyOrderReceivedEvent` | `AFTER_COMMIT` + `REQUIRES_NEW` | Shopify webhook accepted but orders never created (FR-023) |
 | `SupplierOrderPlacementListener` | `OrderConfirmed` | `AFTER_COMMIT` + `REQUIRES_NEW` | Confirmed orders never forwarded to CJ for supplier placement (FR-025) |
+| `CjTrackingProcessingService` | `CjTrackingReceivedEvent` | `AFTER_COMMIT` + `REQUIRES_NEW` | CJ tracking webhook accepted but orders never transition to SHIPPED (FR-026) |
+| `ShopifyFulfillmentSyncListener` | `OrderShipped` | `AFTER_COMMIT` + `REQUIRES_NEW` | Order shipped but Shopify fulfillment never synced (FR-026) |
 
 **Rule:** Any `@TransactionalEventListener(AFTER_COMMIT)` handler that writes to the database **must** use `@Transactional(propagation = Propagation.REQUIRES_NEW)`. Without it, JPA operations silently succeed but are never flushed.
