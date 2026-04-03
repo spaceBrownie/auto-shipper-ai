@@ -75,7 +75,7 @@ python3 .claude/skills/feature-request-v2/scripts/meta_controller.py --phase 5 -
   --out feature-requests/FR-{NNN}-{name}/decision-support/preflight-meta-controller.json
 ```
 
-Present the recommendation to the user at the Phase 4→5 gate. Within Phase 5, follow meta-controller recommendations autonomously (parallel agents, chunking, cognition mode).
+Present the recommendation to the user at the Phase 4→5 gate. Within Phase 5, reconcile the meta-controller's recommendations with the implementation plan's tier structure into a concrete execution plan (see phase-5-implementation.md step 4).
 
 **Override policy:** If overriding the meta-controller, document in `decision-support/override-justification.md` with: (1) recommendation, (2) what was done instead, (3) why, (4) which state parameter was wrong. If no parameter is wrong, follow the recommendation.
 
@@ -85,10 +85,10 @@ Use `/unblock` as needed at every phase — this is a standing directive, not pr
 
 ### Phase 5 Execution Order
 
-Phase 5 has three distinct steps:
+Phase 5 has four distinct steps:
 
-1. **Preflight** — run meta-controller, present recommendation at gate
-2. **Implementation** — follow recommendation, spawn sub-agents, TDD
+1. **Preflight** — run meta-controller, scan postmortems, reconcile into execution plan
+2. **Implementation** — execute in rounds (foundation → new files → mods → tests), spawn sub-agents per execution plan
 3. **E2E test playbook** — **must run in a new subagent session** (fresh context, no implementation artifacts polluting the window). Update `@docs/e2e-test-playbook.md` with new scenarios from test-spec.md, then execute the full playbook. This is mandatory, not optional.
 
 ## Test Quality Rules
