@@ -7,6 +7,7 @@ import com.autoshipper.fulfillment.persistence.OrderRepository
 import com.autoshipper.fulfillment.proxy.inventory.InventoryChecker
 import com.autoshipper.shared.events.OrderConfirmed
 import com.autoshipper.shared.events.OrderFulfilled
+import com.autoshipper.shared.events.OrderShipped
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
@@ -110,7 +111,16 @@ class OrderService(
         )
 
         val saved = orderRepository.save(order)
-        logger.info("Order {} marked SHIPPED with tracking {} via {}", orderId, trackingNumber, carrier)
+
+        eventPublisher.publishEvent(
+            OrderShipped(
+                orderId = order.orderId(),
+                skuId = order.skuId(),
+                trackingNumber = trackingNumber,
+                carrier = carrier
+            )
+        )
+        logger.info("Order {} marked SHIPPED with tracking {} via {}, OrderShipped event published", orderId, trackingNumber, carrier)
         return saved
     }
 

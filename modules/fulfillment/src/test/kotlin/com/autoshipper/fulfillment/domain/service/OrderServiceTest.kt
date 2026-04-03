@@ -7,6 +7,7 @@ import com.autoshipper.fulfillment.persistence.OrderRepository
 import com.autoshipper.fulfillment.proxy.inventory.InventoryChecker
 import com.autoshipper.shared.events.OrderConfirmed
 import com.autoshipper.shared.events.OrderFulfilled
+import com.autoshipper.shared.events.OrderShipped
 import com.autoshipper.shared.money.Currency
 import com.autoshipper.shared.money.Money
 import org.junit.jupiter.api.Test
@@ -325,5 +326,49 @@ class OrderServiceTest {
         assert(saved.countryCode == "US") { "Expected countryCode='US' but got '${saved.countryCode}'" }
         assert(saved.zip == "90001") { "Expected zip='90001' but got '${saved.zip}'" }
         assert(saved.phone == "+15551234567") { "Expected phone='+15551234567' but got '${saved.phone}'" }
+    }
+
+    @Test
+    fun `markShipped publishes OrderShipped event with correct fields`() {
+        val order = pendingOrder().apply { updateStatus(OrderStatus.CONFIRMED) }
+        val trackingNumber = "1Z999AA10123456784"
+        val carrier = "UPS"
+
+        whenever(orderRepository.findById(order.id)).thenReturn(Optional.of(order))
+        whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+
+        orderService.markShipped(order.id, trackingNumber, carrier)
+
+        verify(eventPublisher).publishEvent(argThat<OrderShipped> {
+            this.orderId.value == order.id &&
+                this.skuId.value == order.skuId &&
+                this.trackingNumber == trackingNumber &&
+                this.carrier == carrier
+        })
+    }
+
+    @Test
+    fun `markShipped publishes OrderShipped event with occurredAt set`() {
+        val order = pendingOrder().apply { updateStatus(OrderStatus.CONFIRMED) }
+        val trackingNumber = "1Z999AA10123456784"
+        val carrier = "UPS"
+
+        whenever(orderRepository.findById(order.id)).thenReturn(Optional.of(order))
+        whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+
+        val before = java.time.Instant.now()
+        orderService.markShipped(order.id, trackingNumber, carrier)
+        val after = java.time.Instant.now()
+
+        val captor = argumentCaptor<OrderShipped>()
+        verify(eventPublisher).publishEvent(captor.capture())
+
+        val event = captor.firstValue
+        assert(!event.occurredAt.isBefore(before)) {
+            "occurredAt should be >= test start time"
+        }
+        assert(!event.occurredAt.isAfter(after)) {
+            "occurredAt should be <= test end time"
+        }
     }
 }
