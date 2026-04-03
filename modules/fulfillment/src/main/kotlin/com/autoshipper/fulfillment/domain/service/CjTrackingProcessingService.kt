@@ -66,7 +66,16 @@ class CjTrackingProcessingService(
 
         val carrier = CjCarrierMapper.normalize(logisticName ?: "unknown")
 
-        orderService.markShipped(uuid, trackingNumber, carrier)
-        logger.info("CJ tracking processed: order {} marked SHIPPED with tracking {} via {}", uuid, trackingNumber, carrier)
+        try {
+            orderService.markShipped(uuid, trackingNumber, carrier)
+            logger.info("CJ tracking processed: order {} marked SHIPPED with tracking {} via {}", uuid, trackingNumber, carrier)
+        } catch (e: Exception) {
+            // Dedup record is already committed — if this fails, CJ retries will get "already_processed"
+            // and the order will be stuck in CONFIRMED. Log at ERROR for alerting/manual intervention.
+            logger.error(
+                "CJ tracking processing FAILED for order {} (dedupKey={}): {}. Manual intervention required.",
+                uuid, event.dedupKey, e.message, e
+            )
+        }
     }
 }

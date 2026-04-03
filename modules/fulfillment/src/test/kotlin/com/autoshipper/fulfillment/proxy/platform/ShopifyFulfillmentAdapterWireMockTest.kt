@@ -8,6 +8,7 @@ import com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -42,7 +43,8 @@ class ShopifyFulfillmentAdapterWireMockTest {
             .build()
         return ShopifyFulfillmentAdapter(
             shopifyRestClient = restClient,
-            accessToken = accessToken
+            accessToken = accessToken,
+            objectMapper = ObjectMapper()
         )
     }
 

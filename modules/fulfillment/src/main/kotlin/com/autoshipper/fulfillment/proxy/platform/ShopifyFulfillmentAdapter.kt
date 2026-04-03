@@ -14,11 +14,11 @@ import org.springframework.web.client.RestClient
 @Profile("!local")
 class ShopifyFulfillmentAdapter(
     @Qualifier("shopifyRestClient") private val shopifyRestClient: RestClient,
-    @Value("\${shopify.api.access-token:}") private val accessToken: String
+    @Value("\${shopify.api.access-token:}") private val accessToken: String,
+    private val objectMapper: ObjectMapper
 ) : ShopifyFulfillmentPort {
 
     private val logger = LoggerFactory.getLogger(ShopifyFulfillmentAdapter::class.java)
-    private val objectMapper = ObjectMapper()
 
     @CircuitBreaker(name = "shopify-fulfillment")
     @Retry(name = "shopify-fulfillment")

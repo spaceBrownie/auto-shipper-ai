@@ -207,6 +207,22 @@ class CjTrackingProcessingServiceTest {
     }
 
     @Test
+    fun `markShipped failure is caught and logged - does not propagate`() {
+        val svc = service()
+        val order = confirmedOrder()
+        whenever(orderRepository.findById(testOrderUuid)).thenReturn(Optional.of(order))
+        whenever(orderService.markShipped(any(), any(), any())).thenThrow(RuntimeException("DB connection lost"))
+
+        val payload = """{"messageId":"msg-1","type":"LOGISTIC","params":{"orderId":"$testOrderId","trackingNumber":"1Z999AA10123456784","logisticName":"UPS"}}"""
+        val event = CjTrackingReceivedEvent(rawPayload = payload, dedupKey = "cj:$testOrderId:1Z999AA10123456784")
+
+        // Should NOT throw — exception is caught inside the service
+        svc.onCjTrackingReceived(event)
+
+        verify(orderService).markShipped(testOrderUuid, "1Z999AA10123456784", "UPS")
+    }
+
+    @Test
     fun `NullNode trackingNumber in JSON is treated as null - skips processing`() {
         val svc = service()
 
