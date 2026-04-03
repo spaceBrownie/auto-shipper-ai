@@ -67,14 +67,14 @@ class ShopifyFulfillmentSyncListenerTest {
 
     @Test
     fun `happy path - calls adapter with channelOrderId, trackingNumber, carrier`() {
-        val order = orderWithChannelId("gid://shopify/Order/12345")
+        val order = orderWithChannelId("820982911946154500")
         whenever(orderRepository.findById(orderId)).thenReturn(Optional.of(order))
         whenever(shopifyFulfillmentPort.createFulfillment(any(), any(), any())).thenReturn(true)
 
         listener.onOrderShipped(shippedEvent())
 
         verify(shopifyFulfillmentPort).createFulfillment(
-            "gid://shopify/Order/12345",
+            "820982911946154500",
             "1Z999AA10123456784",
             "UPS"
         )
@@ -101,7 +101,7 @@ class ShopifyFulfillmentSyncListenerTest {
 
     @Test
     fun `adapter exception caught and does not propagate`() {
-        val order = orderWithChannelId("gid://shopify/Order/12345")
+        val order = orderWithChannelId("820982911946154500")
         whenever(orderRepository.findById(orderId)).thenReturn(Optional.of(order))
         whenever(shopifyFulfillmentPort.createFulfillment(any(), any(), any()))
             .thenThrow(RuntimeException("Shopify is down"))
@@ -114,7 +114,7 @@ class ShopifyFulfillmentSyncListenerTest {
 
     @Test
     fun `adapter HttpServerErrorException does not propagate`() {
-        val order = orderWithChannelId("gid://shopify/Order/12345")
+        val order = orderWithChannelId("820982911946154500")
         whenever(orderRepository.findById(orderId)).thenReturn(Optional.of(order))
         whenever(shopifyFulfillmentPort.createFulfillment(any(), any(), any()))
             .thenThrow(HttpServerErrorException.create(

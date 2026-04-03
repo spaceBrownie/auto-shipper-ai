@@ -46,20 +46,41 @@ class ShopifyFulfillmentAdapterWireMockTest {
         )
     }
 
-    @Test
-    fun `successful fulfillment creation returns true`() {
+    /**
+     * Stubs both the fulfillment order query and the fulfillment create mutation.
+     */
+    private fun stubFulfillmentOrderQueryAndCreate(createResponseFixture: String) {
+        // First call: fulfillment orders query (contains "fulfillmentOrders")
         wireMock.stubFor(
             post(urlEqualTo(GRAPHQL_ENDPOINT))
+                .withRequestBody(containing("fulfillmentOrders"))
                 .willReturn(
                     aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody(loadFixture("wiremock/shopify/fulfillment-create-success.json"))
+                        .withBody(loadFixture("wiremock/shopify/fulfillment-orders-query-success.json"))
                 )
         )
 
+        // Second call: fulfillmentCreateV2 mutation
+        wireMock.stubFor(
+            post(urlEqualTo(GRAPHQL_ENDPOINT))
+                .withRequestBody(containing("fulfillmentCreateV2"))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(loadFixture(createResponseFixture))
+                )
+        )
+    }
+
+    @Test
+    fun `successful fulfillment creation returns true`() {
+        stubFulfillmentOrderQueryAndCreate("wiremock/shopify/fulfillment-create-success.json")
+
         val result = adapter().createFulfillment(
-            shopifyOrderGid = "gid://shopify/Order/12345",
+            shopifyOrderId = "12345",
             trackingNumber = "1Z999AA10123456784",
             carrier = "UPS"
         )
@@ -68,49 +89,40 @@ class ShopifyFulfillmentAdapterWireMockTest {
     }
 
     @Test
-    fun `request body contains fulfillmentCreateV2 mutation with correct variables`() {
-        wireMock.stubFor(
-            post(urlEqualTo(GRAPHQL_ENDPOINT))
-                .willReturn(
-                    aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody(loadFixture("wiremock/shopify/fulfillment-create-success.json"))
-                )
-        )
+    fun `queries fulfillment orders with correct Order GID then creates fulfillment with FulfillmentOrder GID`() {
+        stubFulfillmentOrderQueryAndCreate("wiremock/shopify/fulfillment-create-success.json")
 
         adapter().createFulfillment(
-            shopifyOrderGid = "gid://shopify/Order/67890",
+            shopifyOrderId = "67890",
             trackingNumber = "1Z999AA10123456784",
             carrier = "UPS"
         )
 
+        // Verify step 1: fulfillment order query uses Order GID
         wireMock.verify(
             postRequestedFor(urlEqualTo(GRAPHQL_ENDPOINT))
                 .withHeader("X-Shopify-Access-Token", equalTo("test-shopify-access-token"))
-                .withHeader("Content-Type", containing("application/json"))
+                .withRequestBody(containing("fulfillmentOrders"))
+                .withRequestBody(containing("gid://shopify/Order/67890"))
+        )
+
+        // Verify step 2: fulfillment create uses FulfillmentOrder GID from query response
+        wireMock.verify(
+            postRequestedFor(urlEqualTo(GRAPHQL_ENDPOINT))
                 .withRequestBody(containing("fulfillmentCreateV2"))
+                .withRequestBody(containing("gid://shopify/FulfillmentOrder/9876543210"))
                 .withRequestBody(containing("1Z999AA10123456784"))
                 .withRequestBody(containing("UPS"))
-                .withRequestBody(containing("gid://shopify/Order/67890"))
                 .withRequestBody(containing("notifyCustomer"))
         )
     }
 
     @Test
     fun `request includes X-Shopify-Access-Token header`() {
-        wireMock.stubFor(
-            post(urlEqualTo(GRAPHQL_ENDPOINT))
-                .willReturn(
-                    aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody(loadFixture("wiremock/shopify/fulfillment-create-success.json"))
-                )
-        )
+        stubFulfillmentOrderQueryAndCreate("wiremock/shopify/fulfillment-create-success.json")
 
         adapter().createFulfillment(
-            shopifyOrderGid = "gid://shopify/Order/12345",
+            shopifyOrderId = "12345",
             trackingNumber = "1Z999AA10123456784",
             carrier = "UPS"
         )
@@ -123,18 +135,10 @@ class ShopifyFulfillmentAdapterWireMockTest {
 
     @Test
     fun `userErrors response returns false`() {
-        wireMock.stubFor(
-            post(urlEqualTo(GRAPHQL_ENDPOINT))
-                .willReturn(
-                    aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody(loadFixture("wiremock/shopify/fulfillment-create-user-errors.json"))
-                )
-        )
+        stubFulfillmentOrderQueryAndCreate("wiremock/shopify/fulfillment-create-user-errors.json")
 
         val result = adapter().createFulfillment(
-            shopifyOrderGid = "gid://shopify/Order/12345",
+            shopifyOrderId = "12345",
             trackingNumber = "1Z999AA10123456784",
             carrier = "UPS"
         )
@@ -147,21 +151,20 @@ class ShopifyFulfillmentAdapterWireMockTest {
         val blankAdapter = adapter(accessToken = "")
 
         val result = blankAdapter.createFulfillment(
-            shopifyOrderGid = "gid://shopify/Order/12345",
+            shopifyOrderId = "12345",
             trackingNumber = "1Z999AA10123456784",
             carrier = "UPS"
         )
 
         assertThat(result).isFalse()
-
-        // Verify no HTTP requests were made to WireMock
         wireMock.verify(0, postRequestedFor(urlEqualTo(GRAPHQL_ENDPOINT)))
     }
 
     @Test
-    fun `HTTP 401 throws exception`() {
+    fun `HTTP 401 on fulfillment order query throws exception`() {
         wireMock.stubFor(
             post(urlEqualTo(GRAPHQL_ENDPOINT))
+                .withRequestBody(containing("fulfillmentOrders"))
                 .willReturn(
                     aResponse()
                         .withStatus(401)
@@ -172,7 +175,7 @@ class ShopifyFulfillmentAdapterWireMockTest {
 
         assertThrows<HttpClientErrorException.Unauthorized> {
             adapter().createFulfillment(
-                shopifyOrderGid = "gid://shopify/Order/12345",
+                shopifyOrderId = "12345",
                 trackingNumber = "1Z999AA10123456784",
                 carrier = "UPS"
             )
@@ -181,18 +184,10 @@ class ShopifyFulfillmentAdapterWireMockTest {
 
     @Test
     fun `null fulfillment with empty userErrors returns false`() {
-        wireMock.stubFor(
-            post(urlEqualTo(GRAPHQL_ENDPOINT))
-                .willReturn(
-                    aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody(loadFixture("wiremock/shopify/fulfillment-create-null-fulfillment.json"))
-                )
-        )
+        stubFulfillmentOrderQueryAndCreate("wiremock/shopify/fulfillment-create-null-fulfillment.json")
 
         val result = adapter().createFulfillment(
-            shopifyOrderGid = "gid://shopify/Order/12345",
+            shopifyOrderId = "12345",
             trackingNumber = "1Z999AA10123456784",
             carrier = "UPS"
         )
@@ -201,23 +196,39 @@ class ShopifyFulfillmentAdapterWireMockTest {
     }
 
     @Test
-    fun `top-level GraphQL errors response returns false`() {
-        wireMock.stubFor(
-            post(urlEqualTo(GRAPHQL_ENDPOINT))
-                .willReturn(
-                    aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody(loadFixture("wiremock/shopify/fulfillment-create-auth-error.json"))
-                )
-        )
+    fun `top-level GraphQL errors on create mutation returns false`() {
+        stubFulfillmentOrderQueryAndCreate("wiremock/shopify/fulfillment-create-auth-error.json")
 
         val result = adapter().createFulfillment(
-            shopifyOrderGid = "gid://shopify/Order/12345",
+            shopifyOrderId = "12345",
             trackingNumber = "1Z999AA10123456784",
             carrier = "UPS"
         )
 
         assertThat(result).isFalse()
+    }
+
+    @Test
+    fun `empty fulfillment orders returns false without calling create`() {
+        wireMock.stubFor(
+            post(urlEqualTo(GRAPHQL_ENDPOINT))
+                .withRequestBody(containing("fulfillmentOrders"))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(loadFixture("wiremock/shopify/fulfillment-orders-query-empty.json"))
+                )
+        )
+
+        val result = adapter().createFulfillment(
+            shopifyOrderId = "12345",
+            trackingNumber = "1Z999AA10123456784",
+            carrier = "UPS"
+        )
+
+        assertThat(result).isFalse()
+        // Only the query call should have been made, no create call
+        wireMock.verify(1, postRequestedFor(urlEqualTo(GRAPHQL_ENDPOINT)))
     }
 }

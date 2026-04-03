@@ -46,7 +46,7 @@ class ShopifyFulfillmentSyncListener(
 
         try {
             val success = shopifyFulfillmentPort.createFulfillment(
-                shopifyOrderGid = channelOrderId,
+                shopifyOrderId = channelOrderId,
                 trackingNumber = event.trackingNumber,
                 carrier = event.carrier
             )

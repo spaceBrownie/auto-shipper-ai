@@ -128,7 +128,7 @@ class CjTrackingWebhookIntegrationTest {
         // Set Shopify channel metadata on the order
         store[order.id]!!.also {
             it.channel = "shopify"
-            it.channelOrderId = "gid://shopify/Order/98765"
+            it.channelOrderId = "98765"
             it.channelOrderNumber = "#1001"
         }
 
@@ -162,7 +162,7 @@ class CjTrackingWebhookIntegrationTest {
 
         // Verify: Shopify fulfillment adapter called with correct args
         verify(shopifyFulfillmentPort).createFulfillment(
-            "gid://shopify/Order/98765",
+            "98765",
             "1Z999AA10123456784",
             "UPS"
         )
@@ -259,7 +259,7 @@ class CjTrackingWebhookIntegrationTest {
 
         store[order.id]!!.also {
             it.channel = "shopify"
-            it.channelOrderId = "gid://shopify/Order/11111"
+            it.channelOrderId = "11111"
             it.channelOrderNumber = "#1002"
         }
 

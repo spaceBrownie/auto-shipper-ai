@@ -46,8 +46,6 @@ class CjWebhookTokenVerificationFilter(
             return
         }
 
-        val wrapper = CachingRequestWrapper(httpRequest)
-
         val authHeader = httpRequest.getHeader(AUTHORIZATION_HEADER)
         if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
             writeErrorResponse(httpResponse, HttpServletResponse.SC_UNAUTHORIZED, "Invalid webhook token")
@@ -62,6 +60,8 @@ class CjWebhookTokenVerificationFilter(
             return
         }
 
+        // Wrap AFTER auth succeeds — avoid buffering body for unauthenticated requests
+        val wrapper = CachingRequestWrapper(httpRequest)
         chain.doFilter(wrapper, httpResponse)
     }
 

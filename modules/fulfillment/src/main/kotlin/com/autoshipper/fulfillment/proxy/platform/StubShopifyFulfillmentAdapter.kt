@@ -10,10 +10,10 @@ class StubShopifyFulfillmentAdapter : ShopifyFulfillmentPort {
 
     private val logger = LoggerFactory.getLogger(StubShopifyFulfillmentAdapter::class.java)
 
-    override fun createFulfillment(shopifyOrderGid: String, trackingNumber: String, carrier: String): Boolean {
+    override fun createFulfillment(shopifyOrderId: String, trackingNumber: String, carrier: String): Boolean {
         logger.info(
             "[STUB] Would create Shopify fulfillment for order {} with tracking {} via {}",
-            shopifyOrderGid, trackingNumber, carrier
+            shopifyOrderId, trackingNumber, carrier
         )
         return true
     }
