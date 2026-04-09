@@ -26,6 +26,18 @@ Graphify — Setup & Usage Guide
   /graphify path "CostGateService" "StressTestEngine"   # shortest path between concepts
   /graphify explain "KillWindowMonitor"                 # plain-language node explanation
 
+  Compact file map (for agent context injection):
+  graphify filemap "CjDropshippingAdapter,SupplierOrderAdapter"           # exact class names
+  graphify filemap "CJ,Supplier,DemandScan"                              # keyword matching
+  graphify filemap "CjDropshippingAdapter" --methods                     # include method names
+  graphify filemap "CjDropshippingAdapter" --include-tests                # include test files
+  graphify filemap "CjDropshippingAdapter" --include-tests --methods      # both
+
+  Rebuild graph (AST-only, no LLM, ~2 seconds):
+  graphify rebuild                                     # rebuild from modules/ → graphify-out/
+  graphify rebuild ./src                               # rebuild from specific path
+  graphify rebuild modules --out graphify-out           # explicit input + output paths
+
   Ingest external content:
   /graphify add <url>                          # fetch URL → save to ./raw → update graph
   /graphify add <url> --author "Name"          # tag author
@@ -40,6 +52,21 @@ Graphify — Setup & Usage Guide
   /graphify ./modules --obsidian --obsidian-dir ~/vaults/auto-shipper
   /graphify ./modules --mcp                              # start MCP stdio server
   /graphify ./modules --watch                            # auto-rebuild on file changes (code only, no LLM)
+
+  filemap vs query
+
+  Use `filemap` when you know WHAT you're looking for (class names, keywords) and need
+  file paths to pass to agents. It filters test files, groups by source, and costs ~200 tokens.
+
+  Use `query` when you're exploring and don't know what exists. It does BFS/DFS traversal
+  from seed nodes, but output includes test methods and costs ~1500 tokens.
+
+  | Scenario                        | Use            |
+  |---------------------------------|----------------|
+  | Feature request file discovery  | filemap        |
+  | "What classes touch orders?"    | filemap        |
+  | "How does auth connect to DB?"  | query --dfs    |
+  | Architecture overview           | GRAPH_REPORT   |
 
   What it produces
 

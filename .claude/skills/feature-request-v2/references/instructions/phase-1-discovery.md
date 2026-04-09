@@ -13,7 +13,12 @@
    and feature area. Look for: related PRs, prior attempts, Slack discussions, rejected
    approaches, and existing conventions relevant to this work.
 
-3. **Explore codebase (read-only):**
+3. **Check filemap (if provided):**
+   If the orchestrator included a `## File Map` section in your prompt, use it to skip
+   glob/grep for file discovery. The filemap gives you class names → source files → line
+   numbers. Go straight to reading the files you need instead of searching for them.
+
+4. **Explore codebase (read-only):**
    - Before reading any file, validate:
      ```bash
      python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 1 --action read --path "{file}"

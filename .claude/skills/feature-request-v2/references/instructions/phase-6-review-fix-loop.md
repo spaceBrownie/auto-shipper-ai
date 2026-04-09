@@ -81,6 +81,16 @@ This phase runs an automated polling loop — do not wait for the user to report
 - All review comments addressed (no unresolved threads)
 - The loop exits automatically when all three criteria are met
 
+6. **Post-exit: Update knowledge graph:**
+   After exit criteria are met, rebuild the graphify knowledge graph so the next feature
+   request benefits from the new/changed code:
+   ```bash
+   .graphify-venv/bin/python3.14 -m graphify rebuild modules --out graphify-out
+   ```
+   This is AST-only (~2 seconds, no LLM tokens). It re-parses changed `.kt` files and
+   updates `graphify-out/graph.json` and `GRAPH_REPORT.md`. Skip if the venv is missing
+   (non-blocking — the graph will be stale but still usable).
+
 ## Deliverable
 
 PR with green CI, approval, and no unresolved review comments.

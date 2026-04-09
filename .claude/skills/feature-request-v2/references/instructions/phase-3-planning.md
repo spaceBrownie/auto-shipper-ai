@@ -10,7 +10,12 @@
    modified (classes, services, modules). Look for: team conventions for this area, patterns
    used in similar implementations, and architectural decisions that would constrain the design.
 
-3. **Design technical solution:**
+3. **Check filemap (if provided):**
+   If the orchestrator included a `## File Map` section in your prompt, use it to skip
+   glob/grep for file discovery. The filemap gives you class names → source files → line
+   numbers. Go straight to reading the files you need instead of searching for them.
+
+4. **Design technical solution:**
    - Follow DDD/hexagonal architecture
    - Identify affected layers: handler, domain, proxy, security, config, common
    - Consult layer-specific AGENTS.md files for constraints
