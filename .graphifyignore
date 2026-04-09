@@ -1,0 +1,26 @@
+# Build & config (no meaningful code or docs)
+build/
+gradle/
+gradlew
+gradlew.bat
+build.gradle.kts
+settings.gradle.kts
+gradle.properties
+docker-compose.yml
+
+# Project metadata
+CLAUDE.md
+README.md
+.claude/
+.gitignore
+.graphifyignore
+.graphify-venv/
+graphify-out/
+
+# Frontend build artifacts
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# OS junk
+.DS_Store
