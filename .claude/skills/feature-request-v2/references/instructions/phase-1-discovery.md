@@ -29,7 +29,7 @@
      python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 1 --action bash --command "{cmd}"
      ```
 
-4. **Generate feature name:**
+5. **Generate feature name:**
    - Create kebab-case name (e.g., "jwt-refresh-tokens")
    - Validate name:
      ```bash
@@ -37,7 +37,7 @@
      ```
    - If validation fails, generate a new name
 
-5. **Gut-check with /unblock** — verify the proposed feature name and scope don't conflict
+6. **Gut-check with /unblock** — verify the proposed feature name and scope don't conflict
    with in-progress work or existing features.
 
 ## Deliverable
