@@ -24,10 +24,11 @@ Auto Shipper AI is an autonomous commerce engine designed to handle the entire p
 12. **Detect sales** — receive Shopify `orders/create` webhooks with HMAC-SHA256 signature verification, resolve Shopify products to internal SKUs, create internal orders per line item with per-item transaction isolation, event-level deduplication, and async processing within Shopify's 5-second timeout
 13. **Place supplier orders** — event-driven CJ Dropshipping order placement triggered automatically on order confirmation, with idempotency, graceful failure handling (order marked FAILED, not rolled back), and supplier product mapping resolution
 14. **Enforce code quality** — one-time codebase audit fixing cross-module transaction violations, missing `@Value` defaults, URL-encoding vulnerabilities, plus ArchUnit structural enforcement rules
+15. **Ingest tracking numbers** — receive CJ Dropshipping tracking webhooks with token-based auth and deduplication, transition orders to SHIPPED, normalize carrier names, and push tracking to Shopify via `fulfillmentCreateV2` GraphQL mutation so customers get native shipping notification emails. Existing ShipmentTracker auto-activates for delivery detection
 
 **Planned (specs written, not yet built):**
 
-15. **Drive organic traffic** — automated SEO and content marketing with zero ad spend (RAT-14)
+16. **Drive organic traffic** — automated SEO and content marketing with zero ad spend (RAT-14)
 
 ### Product Flow
 
@@ -80,13 +81,15 @@ flowchart TD
         F2([Inventory Sync Check])
         F3{Stock<br/>Available?}
         F4([Route to Vendor<br/>Drop-ship · POD · 3PL])
+        F4b([CJ Tracking Webhook<br/>Token Auth · Dedup])
+        F4c([Shopify Fulfillment Sync<br/>GraphQL · Customer Email])
         F5([Real-time Tracking])
         F6([Delay Alert<br/>if SLA at risk])
         F7{SLA<br/>Breached?}
         F8([Auto-Refund Trigger])
         F1 --> F2 --> F3
         F3 -- No --> F8
-        F3 -- Yes --> F4 --> F5 --> F6 --> F7
+        F3 -- Yes --> F4 --> F4b --> F4c --> F5 --> F6 --> F7
         F7 -- Yes --> F8
         F7 -- No --> F5
     end
@@ -199,6 +202,7 @@ Most e-commerce systems launch first and optimize later. Auto Shipper AI **valid
 | List first, check compliance later | Hard compliance gate before any SKU advances past Ideation |
 | Watch individual SKU refunds | Detect systemic refund patterns across the entire portfolio |
 | Scale everything equally | Rank by risk-adjusted return; scale winners, kill losers |
+| Manually forward tracking numbers | CJ webhook auto-ingests tracking, pushes to Shopify, customer gets native email |
 | Build inventory → find customers | Scan 4 demand sources daily, score candidates, auto-create experiments |
 
 **Result:** Capital efficiency, lower risk of unsellable inventory, faster failure on unprofitable products.
@@ -408,6 +412,7 @@ Interactive API docs are available via Swagger UI at **`http://localhost:8080/sw
 | `POST` | `/api/portfolio/demand-scan/trigger` | Manually trigger a demand scan |
 | `POST` | `/api/portfolio/demand-scan/smoke-test` | Smoke test all demand signal adapters (FR-017) |
 | `POST` | `/webhooks/shopify/orders` | Receive Shopify order webhook (HMAC-verified, async processing) |
+| `POST` | `/webhooks/cj/tracking` | Receive CJ tracking webhook (Bearer token auth, dedup, async SHIPPED transition + Shopify fulfillment sync) |
 | `GET` | `/actuator/health` | Health check |
 | `GET` | `/actuator/prometheus` | Prometheus metrics |
 
@@ -431,6 +436,7 @@ See `.env.example` for all available configuration. Key variables:
 | `YOUTUBE_API_KEY` | YouTube Data API v3 key (demand scan) |
 | `REDDIT_CLIENT_ID` | Reddit API OAuth client ID (demand scan) |
 | `REDDIT_CLIENT_SECRET` | Reddit API OAuth client secret (demand scan) |
+| `CJ_WEBHOOK_SECRET` | CJ Dropshipping webhook Bearer token (tracking notifications) |
 
 **Never commit `.env` to version control.** It is listed in `.gitignore`.
 
@@ -493,6 +499,7 @@ Implementation is tracked in `feature-requests/FR-NNN-name/` with a `spec.md`, `
 | FR-023 | Shopify order webhook listener (RAT-26) | ✅ Complete |
 | FR-024 | Codebase quality audit | ✅ Complete |
 | FR-025 | CJ supplier order placement (RAT-27) | ✅ Complete |
+| FR-026 | CJ tracking webhook + Shopify fulfillment sync (RAT-28) | ✅ Complete |
 
 ## Frontend Dashboard
 
