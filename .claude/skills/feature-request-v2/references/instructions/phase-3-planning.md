@@ -10,12 +10,17 @@
    modified (classes, services, modules). Look for: team conventions for this area, patterns
    used in similar implementations, and architectural decisions that would constrain the design.
 
-3. **Design technical solution:**
+3. **Check filemap (if provided):**
+   If the orchestrator included a `## File Map` section in your prompt, use it to skip
+   glob/grep for file discovery. The filemap gives you class names → source files → line
+   numbers. Go straight to reading the files you need instead of searching for them.
+
+4. **Design technical solution:**
    - Follow DDD/hexagonal architecture
    - Identify affected layers: handler, domain, proxy, security, config, common
    - Consult layer-specific AGENTS.md files for constraints
 
-4. **Write implementation-plan.md** — validate before writing:
+5. **Write implementation-plan.md** — validate before writing:
    ```bash
    python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 3 --action write --path "feature-requests/FR-{NNN}-{name}/implementation-plan.md"
    ```
@@ -30,10 +35,10 @@
    - **Testing Strategy** — unit, integration, e2e tests
    - **Rollout Plan** — deployment steps, rollback procedure
 
-5. **Gut-check with /unblock** — verify the technical approach hasn't been tried and rejected,
+6. **Gut-check with /unblock** — verify the technical approach hasn't been tried and rejected,
    and that architecture decisions align with team patterns.
 
-6. **Validate deliverables:**
+7. **Validate deliverables:**
    ```bash
    python3 .claude/skills/feature-request-v2/scripts/validate-phase.py --phase 3 --check-deliverables --feature-dir "feature-requests/FR-{NNN}-{name}"
    ```

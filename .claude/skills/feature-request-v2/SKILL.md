@@ -79,6 +79,37 @@ Present the recommendation to the user at the Phase 4→5 gate. Within Phase 5, 
 
 **Override policy:** If overriding the meta-controller, document in `decision-support/override-justification.md` with: (1) recommendation, (2) what was done instead, (3) why, (4) which state parameter was wrong. If no parameter is wrong, follow the recommendation.
 
+### /graphify Integration
+
+The knowledge graph (`graphify-out/graph.json`) provides a free, instant file map for subagents.
+The orchestrator manages the graphify lifecycle — subagents just consume the output.
+
+**Pre-Phase 1 hydration (orchestrator runs this, not the subagent):**
+```bash
+PYTHON=".graphify-venv/bin/python3.14"
+$PYTHON -m graphify filemap "<comma-separated class names from ticket>" \
+  > feature-requests/FR-{NNN}-{name}/filemap.txt
+```
+
+Extract class names from the Linear ticket description — look for adapter names, service names,
+domain types, and entity names mentioned in the ticket. Use exact class names for precision,
+not broad keywords like "Order" which match too many files.
+
+**Between phases (enrichment):** After a phase discovers new class names not in the original
+filemap, re-run with the expanded list and overwrite the file. Each subsequent subagent
+gets the latest filemap in its prompt as a `## File Map` section.
+
+**Post-Phase 6 (graph update):** After the PR exits Phase 6, update the graph so the next
+feature request benefits from the new code:
+```bash
+$PYTHON -m graphify rebuild modules --out graphify-out
+```
+This is AST-only (no LLM tokens, ~2 seconds). It re-parses changed `.kt` files and updates
+`graphify-out/graph.json` + `GRAPH_REPORT.md`.
+
+**Cost:** ~200 tokens per filemap call, ~110ms, zero LLM tokens. Safe to run at every
+phase transition.
+
 ### /unblock Integration
 
 Use `/unblock` as needed at every phase — this is a standing directive, not prescribed hydration points. Query `unblocked_context_engine` for organizational context: PRs, Slack, docs, code history, prior attempts, rejected approaches.
@@ -141,3 +172,4 @@ If validation fails: do NOT proceed. Report the error and suggest allowed altern
 - **v1.0.0** (2026-02-09): Initial implementation with 4-phase workflow
 - **v2.0.0** (2026-03-25): Evolved to 6-phase workflow — added Phase 4 (Test-First Gate), Phase 6 (Review-Fix Loop), sub-agent dependency groups, bulk validation
 - **v3.0.0** (2026-03-28): State machine refactor per PM-017 — Phase 4 redesigned to Test Specification (test-spec.md), human gates before phases 5/6, per-phase instruction files, meta-controller binding with override justification, E2E test playbook integration, test quality rules
+- **v3.1.0** (2026-04-09): graphify integration — filemap hydration before Phase 1, enrichment between phases, graph rebuild after Phase 6. Reduces subagent discovery tool calls ~30%

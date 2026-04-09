@@ -528,6 +528,7 @@ phases:
           - "mkdir"
           - "touch"
           - "chmod"
+          - ".graphify-venv/bin/python3.14"  # graphify graph rebuild after PR exit
 
         forbidden_commands:
           - "rm -rf"
