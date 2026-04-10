@@ -1,0 +1,56 @@
+modules/catalog/src/main/kotlin/com/autoshipper/catalog/domain/CostEnvelope.kt
+  CostEnvelope (L7)
+
+modules/catalog/src/main/kotlin/com/autoshipper/catalog/domain/CostEnvelopeExpiredException.kt
+  CostEnvelopeExpiredException (L6)
+
+modules/catalog/src/main/kotlin/com/autoshipper/catalog/domain/service/CostGateService.kt
+  CostGateService (L22)
+
+modules/catalog/src/main/kotlin/com/autoshipper/catalog/handler/dto/CostEnvelopeResponse.kt
+  CostEnvelopeResponse (L7)
+
+modules/catalog/src/main/kotlin/com/autoshipper/catalog/persistence/CostEnvelopeEntity.kt
+  CostEnvelopeEntity (L9)
+
+modules/catalog/src/main/kotlin/com/autoshipper/catalog/persistence/CostEnvelopeRepository.kt
+  CostEnvelopeRepository (L6)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/ShippingAddress.kt
+  ShippingAddress (L6)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/channel/ChannelOrder.kt
+  ChannelShippingAddress (L9)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/service/SupplierOrderPlacementService.kt
+  SupplierOrderPlacementService (L13)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/proxy/supplier/CjSupplierOrderAdapter.kt
+  CjSupplierOrderAdapter (L12)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/proxy/supplier/SupplierOrderAdapter.kt
+  SupplierOrderAdapter (L5)
+  SupplierOrderRequest (L9)
+  SupplierOrderResult (L17)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/proxy/supplier/SupplierProductMappingResolver.kt
+  SupplierProductMapping (L28)
+  SupplierProductMappingResolver (L8)
+
+modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/domain/DemandSignalProvider.kt
+  DemandSignalProvider (L3)
+
+modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/domain/RawCandidate.kt
+  RawCandidate (L5)
+
+modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/domain/service/DemandScanJob.kt
+  DemandScanJob (L23)
+
+modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/proxy/CjDropshippingAdapter.kt
+  CjDropshippingAdapter (L15)
+
+modules/shared/src/main/kotlin/com/autoshipper/shared/events/CostEnvelopeVerified.kt
+  CostEnvelopeVerified (L7)
+
+---
+20 classes across 17 files (~555 tokens)

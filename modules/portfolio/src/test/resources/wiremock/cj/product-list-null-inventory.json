@@ -1,0 +1,42 @@
+{
+  "code": 200,
+  "result": true,
+  "message": "Success",
+  "requestId": "c38ef55b-2345-6789-bcde-f01234567890",
+  "data": {
+    "pageNum": 1,
+    "pageSize": 20,
+    "total": 2,
+    "list": [
+      {
+        "pid": "NULL-INV-001",
+        "productNameEn": "Product With Null Inventory",
+        "productSku": "CJNULL001",
+        "categoryName": "Electronics",
+        "categoryId": "CAT-ELEC-001",
+        "sellPrice": 5.00,
+        "productImage": "https://example.com/null-inv.png",
+        "productWeight": 100,
+        "productUnit": "unit(s)",
+        "productType": null,
+        "description": "Product with warehouseInventoryNum explicitly null",
+        "createTime": null,
+        "warehouseInventoryNum": null
+      },
+      {
+        "pid": "ABSENT-INV-001",
+        "productNameEn": "Product With Missing Inventory Field",
+        "productSku": "CJMISS001",
+        "categoryName": "Electronics",
+        "categoryId": "CAT-ELEC-001",
+        "sellPrice": 6.00,
+        "productImage": "https://example.com/missing-inv.png",
+        "productWeight": 100,
+        "productUnit": "unit(s)",
+        "productType": null,
+        "description": "Product with warehouseInventoryNum field completely absent",
+        "createTime": null
+      }
+    ]
+  }
+}

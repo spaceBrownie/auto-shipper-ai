@@ -11,7 +11,8 @@ data class SupplierOrderRequest(
     val shippingAddress: ShippingAddress?,
     val supplierProductId: String,
     val supplierVariantId: String,
-    val quantity: Int
+    val quantity: Int,
+    val warehouseCountryCode: String? = null
 )
 
 sealed class SupplierOrderResult {

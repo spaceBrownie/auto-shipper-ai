@@ -42,6 +42,7 @@ class CjDropshippingAdapter(
                         uri.path("/product/listV2")
                             .queryParam("keyWord", category)
                             .queryParam("countryCode", "US")
+                            .queryParam("verifiedWarehouse", 1)
                             .queryParam("page", 1)
                             .queryParam("size", 20)
                             .build()
@@ -52,9 +53,22 @@ class CjDropshippingAdapter(
 
                 val products = response?.path("data")?.path("list")
                 if (products != null && products.isArray) {
+                    var candidatesFromCategory = 0
                     for (product in products) {
-                        candidates.add(mapProduct(product, category))
+                        val inventoryNum = product.get("warehouseInventoryNum")
+                            ?.let { if (!it.isNull) it.asInt(-1) else null }
+
+                        if (inventoryNum == null || inventoryNum <= 0) {
+                            val pid = product.path("pid").asText("unknown")
+                            logger.debug("Excluding CJ product {} — warehouseInventoryNum is {} (zero, null, or absent)", pid, inventoryNum)
+                            continue
+                        }
+
+                        candidates.add(mapProduct(product, category, inventoryNum))
+                        candidatesFromCategory++
                     }
+                    val totalProducts = products.size()
+                    logger.info("CJ category '{}': {} total products, {} passed warehouse inventory filter", category, totalProducts, candidatesFromCategory)
                 }
             } catch (e: Exception) {
                 logger.warn("Failed to fetch CJ products for category '{}': {}", category, e.message)
@@ -65,7 +79,7 @@ class CjDropshippingAdapter(
         return candidates
     }
 
-    private fun mapProduct(product: JsonNode, category: String): RawCandidate {
+    private fun mapProduct(product: JsonNode, category: String, warehouseInventoryNum: Int): RawCandidate {
         val sellPrice = product.path("sellPrice").asDouble(0.0)
         return RawCandidate(
             productName = product.path("productNameEn").asText("Unknown Product"),
@@ -80,7 +94,8 @@ class CjDropshippingAdapter(
             demandSignals = mapOf(
                 "cj_pid" to product.path("pid").asText(""),
                 "cj_category_id" to product.path("categoryId").asText(""),
-                "cj_product_image" to product.path("productImage").asText("")
+                "cj_product_image" to product.path("productImage").asText(""),
+                "cj_warehouse_inventory_num" to warehouseInventoryNum.toString()
             )
         )
     }

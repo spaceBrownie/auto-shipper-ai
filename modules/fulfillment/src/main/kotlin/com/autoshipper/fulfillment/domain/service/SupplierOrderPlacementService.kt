@@ -49,7 +49,8 @@ class SupplierOrderPlacementService(
             shippingAddress = order.shippingAddress,
             supplierProductId = mapping.supplierProductId,
             supplierVariantId = mapping.supplierVariantId,
-            quantity = order.quantity
+            quantity = order.quantity,
+            warehouseCountryCode = mapping.warehouseCountryCode
         )
 
         val result = supplierOrderAdapter.placeOrder(request)

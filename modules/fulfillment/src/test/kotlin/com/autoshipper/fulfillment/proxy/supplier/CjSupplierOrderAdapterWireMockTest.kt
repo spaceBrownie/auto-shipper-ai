@@ -1,6 +1,7 @@
 package com.autoshipper.fulfillment.proxy.supplier
 
 import com.autoshipper.fulfillment.domain.ShippingAddress
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.containing
 import com.github.tomakehurst.wiremock.client.WireMock.equalTo
@@ -36,17 +37,21 @@ class CjSupplierOrderAdapterWireMockTest {
 
     private fun adapter(
         baseUrl: String = wireMock.baseUrl(),
-        accessToken: String = "test-cj-access-token"
+        accessToken: String = "test-cj-access-token",
+        logisticName: String = ""
     ): CjSupplierOrderAdapter = CjSupplierOrderAdapter(
         baseUrl = baseUrl,
-        accessToken = accessToken
+        accessToken = accessToken,
+        logisticName = logisticName,
+        objectMapper = jacksonObjectMapper()
     )
 
     private fun validRequest(
         orderNumber: String = "order-001",
         quantity: Int = 2,
         supplierVariantId: String = "vid-abc-123",
-        supplierProductId: String = "pid-xyz-456"
+        supplierProductId: String = "pid-xyz-456",
+        warehouseCountryCode: String? = null
     ): SupplierOrderRequest = SupplierOrderRequest(
         orderNumber = orderNumber,
         shippingAddress = ShippingAddress(
@@ -62,7 +67,8 @@ class CjSupplierOrderAdapterWireMockTest {
         ),
         supplierProductId = supplierProductId,
         supplierVariantId = supplierVariantId,
-        quantity = quantity
+        quantity = quantity,
+        warehouseCountryCode = warehouseCountryCode
     )
 
     @Test
@@ -352,5 +358,85 @@ class CjSupplierOrderAdapterWireMockTest {
             postRequestedFor(urlEqualTo(ORDER_ENDPOINT))
                 .withRequestBody(containing("\"shippingAddress\":\"123 Main St\""))
         )
+    }
+
+    @Test
+    fun `US warehouse mapping sends fromCountryCode US`() {
+        wireMock.stubFor(
+            post(urlEqualTo(ORDER_ENDPOINT))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(loadFixture("wiremock/cj/create-order-success.json"))
+                )
+        )
+
+        adapter().placeOrder(validRequest(warehouseCountryCode = "US"))
+
+        wireMock.verify(
+            postRequestedFor(urlEqualTo(ORDER_ENDPOINT))
+                .withRequestBody(containing("\"fromCountryCode\":\"US\""))
+        )
+    }
+
+    @Test
+    fun `null warehouse mapping falls back to fromCountryCode CN`() {
+        wireMock.stubFor(
+            post(urlEqualTo(ORDER_ENDPOINT))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(loadFixture("wiremock/cj/create-order-success.json"))
+                )
+        )
+
+        adapter().placeOrder(validRequest(warehouseCountryCode = null))
+
+        wireMock.verify(
+            postRequestedFor(urlEqualTo(ORDER_ENDPOINT))
+                .withRequestBody(containing("\"fromCountryCode\":\"CN\""))
+        )
+    }
+
+    @Test
+    fun `logisticName configured - included in request body`() {
+        wireMock.stubFor(
+            post(urlEqualTo(ORDER_ENDPOINT))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(loadFixture("wiremock/cj/create-order-success.json"))
+                )
+        )
+
+        adapter(logisticName = "CJPacket").placeOrder(validRequest())
+
+        wireMock.verify(
+            postRequestedFor(urlEqualTo(ORDER_ENDPOINT))
+                .withRequestBody(containing("\"logisticName\":\"CJPacket\""))
+        )
+    }
+
+    @Test
+    fun `logisticName blank - omitted from request body`() {
+        wireMock.stubFor(
+            post(urlEqualTo(ORDER_ENDPOINT))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(loadFixture("wiremock/cj/create-order-success.json"))
+                )
+        )
+
+        adapter(logisticName = "").placeOrder(validRequest())
+
+        // Verify logisticName is NOT in the request body
+        val requests = wireMock.findAll(postRequestedFor(urlEqualTo(ORDER_ENDPOINT)))
+        assertThat(requests).hasSize(1)
+        assertThat(requests.first().bodyAsString).doesNotContain("logisticName")
     }
 }

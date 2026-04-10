@@ -11,7 +11,7 @@ class SupplierProductMappingResolver(
 ) {
     fun resolve(skuId: UUID): SupplierProductMapping? {
         val results = entityManager.createNativeQuery(
-            """SELECT supplier_product_id, supplier_variant_id
+            """SELECT supplier_product_id, supplier_variant_id, warehouse_country_code
                FROM supplier_product_mappings
                WHERE sku_id = :skuId AND supplier_type = 'CJ_DROPSHIPPING'"""
         ).setParameter("skuId", skuId).resultList
@@ -20,12 +20,14 @@ class SupplierProductMappingResolver(
         val row = results.first() as Array<*>
         return SupplierProductMapping(
             supplierProductId = row[0] as String,
-            supplierVariantId = row[1] as String
+            supplierVariantId = row[1] as String,
+            warehouseCountryCode = row[2] as? String
         )
     }
 }
 
 data class SupplierProductMapping(
     val supplierProductId: String,
-    val supplierVariantId: String
+    val supplierVariantId: String,
+    val warehouseCountryCode: String? = null
 )

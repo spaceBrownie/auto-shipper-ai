@@ -21,7 +21,8 @@
         "productUnit": "unit(s)",
         "productType": null,
         "description": "Professional 5-piece stainless steel kitchen knife set with wooden block",
-        "createTime": null
+        "createTime": null,
+        "warehouseInventoryNum": 500
       },
       {
         "pid": "1B3F7E82-A4C9-4D21-B8E6-92C3A5D10F47",
@@ -36,7 +37,8 @@
         "productUnit": "unit(s)",
         "productType": null,
         "description": "Heat-resistant silicone cooking utensil set, 10 pieces",
-        "createTime": null
+        "createTime": null,
+        "warehouseInventoryNum": 1200
       },
       {
         "pid": "7C9D2A15-3E8B-4F6A-91D7-5B4C8E2F0A63",
@@ -51,7 +53,8 @@
         "productUnit": "unit(s)",
         "productType": null,
         "description": "Organic bamboo cutting board with juice groove, large size",
-        "createTime": null
+        "createTime": null,
+        "warehouseInventoryNum": 250
       }
     ]
   }
