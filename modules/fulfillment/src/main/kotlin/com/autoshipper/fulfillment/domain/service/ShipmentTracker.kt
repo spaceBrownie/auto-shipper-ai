@@ -5,6 +5,7 @@ import com.autoshipper.fulfillment.domain.ShipmentDetails
 import com.autoshipper.fulfillment.persistence.OrderRepository
 import com.autoshipper.fulfillment.proxy.carrier.CarrierTrackingProvider
 import com.autoshipper.shared.events.OrderFulfilled
+import jakarta.annotation.PostConstruct
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.scheduling.annotation.Scheduled
@@ -24,9 +25,27 @@ class ShipmentTracker(
         carrierProviders.associateBy { it.carrierName.lowercase() }
     }
 
+    @PostConstruct
+    fun warnIfNoProviders() {
+        if (carrierProviders.isEmpty()) {
+            logger.warn(
+                "No CarrierTrackingProvider beans registered — " +
+                "shipment tracking polling will be inactive. " +
+                "DELIVERED status transitions are unreachable until real carrier tracking adapters are built."
+            )
+        } else {
+            logger.info("Registered {} carrier tracking providers: {}",
+                carrierProviders.size, carrierProviders.map { it.carrierName })
+        }
+    }
+
     @Scheduled(fixedRate = 1_800_000)
     @Transactional
     fun pollAllShipments() {
+        if (carrierProviders.isEmpty()) {
+            logger.debug("No carrier tracking providers registered — skipping poll cycle")
+            return
+        }
         val shippedOrders = orderRepository.findByStatus(OrderStatus.SHIPPED)
         logger.info("Polling tracking status for {} shipped orders", shippedOrders.size)
 

@@ -1,0 +1,66 @@
+modules/capital/src/main/kotlin/com/autoshipper/capital/listener/OrderEventListener.kt
+  OrderEventListener (L15)
+
+modules/catalog/src/main/kotlin/com/autoshipper/catalog/config/ExternalApiConfig.kt
+  ExternalApiConfig (L10)
+
+modules/catalog/src/main/kotlin/com/autoshipper/catalog/proxy/platform/ShopifyListingAdapter.kt
+  ShopifyListingAdapter (L16)
+
+modules/catalog/src/main/kotlin/com/autoshipper/catalog/proxy/platform/StubPlatformAdapter.kt
+  StubPlatformAdapter (L11)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/channel/ShopifyOrderAdapter.kt
+  ShopifyOrderAdapter (L14)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/service/CjTrackingProcessingService.kt
+  CjTrackingProcessingService (L17)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/service/LineItemOrderCreator.kt
+  LineItemOrderCreator (L24)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/service/ShipmentTracker.kt
+  ShipmentTracker (L14)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/service/ShopifyOrderProcessingService.kt
+  ShopifyOrderProcessingService (L28)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/service/SupplierOrderPlacementService.kt
+  SupplierOrderPlacementService (L13)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/handler/ShopifyFulfillmentSyncListener.kt
+  ShopifyFulfillmentSyncListener (L24)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/handler/SupplierOrderPlacementListener.kt
+  SupplierOrderPlacementListener (L12)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/handler/webhook/CjWebhookTokenVerificationFilter.kt
+  CjWebhookTokenVerificationFilter (L27)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/handler/webhook/ShopifyHmacVerificationFilter.kt
+  ShopifyHmacVerificationFilter (L26)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/handler/webhook/ShopifyWebhookController.kt
+  ShopifyWebhookController (L16)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/proxy/carrier/StubCarrierTrackingConfiguration.kt
+  StubCarrierTrackingConfiguration (L10)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/proxy/payment/StripeRefundAdapter.kt
+  StripeRefundAdapter (L24)
+  StubRefundConfiguration (L64)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/proxy/platform/ShopifyFulfillmentAdapter.kt
+  ShopifyFulfillmentAdapter (L13)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/proxy/platform/StubShopifyFulfillmentAdapter.kt
+  StubShopifyFulfillmentAdapter (L7)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/proxy/supplier/CjSupplierOrderAdapter.kt
+  CjSupplierOrderAdapter (L13)
+
+modules/pricing/src/main/kotlin/com/autoshipper/pricing/proxy/ShopifyPriceSyncAdapter.kt
+  ShopifyPriceSyncAdapter (L16)
+
+modules/pricing/src/main/kotlin/com/autoshipper/pricing/proxy/StubPriceSyncAdapter.kt
+  StubPriceSyncAdapter (L9)
