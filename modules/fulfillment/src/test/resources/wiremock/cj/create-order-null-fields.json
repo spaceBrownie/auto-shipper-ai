@@ -1,10 +1,14 @@
 {
+  "_comment": "CJ Shopping API — createOrderV2 success with null orderId (NullNode boundary test)",
+  "_comment_source": "https://developers.cjdropshipping.com/en/api/api2/api/shopping.html",
+  "_comment_verified": "2026-04-14 (envelope shape verified; null orderId is synthetic boundary case)",
   "code": 200,
   "result": true,
-  "message": "success",
+  "message": "Success",
   "data": {
     "orderId": null,
-    "orderNum": null
+    "orderNumber": null
   },
-  "requestId": "h89ij01k-2345-67lm-nopq-rstuvwxyzabc"
+  "requestId": "h89ij01k-2345-67lm-nopq-rstuvwxyzabc",
+  "success": true
 }

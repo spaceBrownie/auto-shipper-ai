@@ -106,7 +106,7 @@ class CjSupplierOrderAdapterWireMockTest {
 
         assertThat(result).isInstanceOf(SupplierOrderResult.Failure::class.java)
         val failure = result as SupplierOrderResult.Failure
-        assertThat(failure.reason).contains("product out of stock")
+        assertThat(failure.reason).contains("Product stock insufficient")
     }
 
     @Test
@@ -125,7 +125,7 @@ class CjSupplierOrderAdapterWireMockTest {
 
         assertThat(result).isInstanceOf(SupplierOrderResult.Failure::class.java)
         val failure = result as SupplierOrderResult.Failure
-        assertThat(failure.reason).contains("invalid shipping address")
+        assertThat(failure.reason).contains("Param error")
     }
 
     @Test
@@ -197,7 +197,8 @@ class CjSupplierOrderAdapterWireMockTest {
                 .withHeader("Content-Type", containing("application/json"))
                 .withRequestBody(containing("\"orderNumber\":\"verify-order-789\""))
                 .withRequestBody(containing("\"shippingCustomerName\":\"Jane Doe\""))
-                .withRequestBody(containing("\"shippingAddress\":\"456 Oak Ave Suite 200\""))
+                .withRequestBody(containing("\"shippingAddress\":\"456 Oak Ave\""))
+                .withRequestBody(containing("\"shippingAddress2\":\"Suite 200\""))
                 .withRequestBody(containing("\"shippingCity\":\"Portland\""))
                 .withRequestBody(containing("\"shippingProvince\":\"Oregon\""))
                 .withRequestBody(containing("\"shippingCountryCode\":\"US\""))
@@ -271,7 +272,7 @@ class CjSupplierOrderAdapterWireMockTest {
     }
 
     @Test
-    fun `maps address line2 into shippingAddress field`() {
+    fun `sends addressLine2 as separate shippingAddress2 field`() {
         wireMock.stubFor(
             post(urlEqualTo(ORDER_ENDPOINT))
                 .willReturn(
@@ -311,12 +312,13 @@ class CjSupplierOrderAdapterWireMockTest {
 
         wireMock.verify(
             postRequestedFor(urlEqualTo(ORDER_ENDPOINT))
-                .withRequestBody(containing("\"shippingAddress\":\"123 Main St Apt 4B\""))
+                .withRequestBody(containing("\"shippingAddress\":\"123 Main St\""))
+                .withRequestBody(containing("\"shippingAddress2\":\"Apt 4B\""))
         )
     }
 
     @Test
-    fun `handles null address line2 in shippingAddress`() {
+    fun `null address line2 omits shippingAddress2 field`() {
         wireMock.stubFor(
             post(urlEqualTo(ORDER_ENDPOINT))
                 .willReturn(
@@ -354,10 +356,10 @@ class CjSupplierOrderAdapterWireMockTest {
 
         adapter().placeOrder(request)
 
-        wireMock.verify(
-            postRequestedFor(urlEqualTo(ORDER_ENDPOINT))
-                .withRequestBody(containing("\"shippingAddress\":\"123 Main St\""))
-        )
+        val requests = wireMock.findAll(postRequestedFor(urlEqualTo(ORDER_ENDPOINT)))
+        assertThat(requests).hasSize(1)
+        assertThat(requests.first().bodyAsString).contains("\"shippingAddress\":\"123 Main St\"")
+        assertThat(requests.first().bodyAsString).doesNotContain("shippingAddress2")
     }
 
     @Test

@@ -1,7 +1,11 @@
 {
+  "_comment": "CJ API — authentication error (code 1600001)",
+  "_comment_source": "https://developers.cjdropshipping.com/en/api/api2/api/shopping.html",
+  "_comment_verified": "2026-04-14 (live-verified: exact code and message confirmed)",
   "code": 1600001,
   "result": false,
   "message": "Invalid API key or access token",
   "requestId": "b23cd45e-6789-01fg-hijk-lmnopqrstuvw",
-  "data": null
+  "data": null,
+  "success": false
 }

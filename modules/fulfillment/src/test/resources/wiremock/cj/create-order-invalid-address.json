@@ -1,7 +1,11 @@
 {
-  "code": 1600502,
+  "_comment": "CJ Shopping API — parameter validation error (invalid address)",
+  "_comment_source": "https://developers.cjdropshipping.com/en/api/api2/api/shopping.html",
+  "_comment_verified": "2026-04-14 (code 1600100 from docs; 1600502 was fabricated)",
+  "code": 1600100,
   "result": false,
-  "message": "invalid shipping address",
+  "message": "Param error",
   "data": null,
-  "requestId": "f67gh89i-0123-45jk-lmno-pqrstuvwxyza"
+  "requestId": "f67gh89i-0123-45jk-lmno-pqrstuvwxyza",
+  "success": false
 }
