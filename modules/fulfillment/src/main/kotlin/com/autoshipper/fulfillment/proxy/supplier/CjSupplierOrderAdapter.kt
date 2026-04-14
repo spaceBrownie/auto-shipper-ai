@@ -37,14 +37,6 @@ class CjSupplierOrderAdapter(
         }
 
         val address = request.shippingAddress
-        val shippingAddressLine = if (address != null) {
-            listOfNotNull(address.addressLine1, address.addressLine2)
-                .filter { it.isNotBlank() }
-                .joinToString(" ")
-        } else {
-            ""
-        }
-
         val fromCountryCode = request.warehouseCountryCode ?: "CN"
 
         val body = mutableMapOf<String, Any>(
@@ -52,7 +44,7 @@ class CjSupplierOrderAdapter(
             "shippingCountryCode" to (address?.countryCode ?: "US"),
             "shippingCountry" to (address?.country ?: "United States"),
             "shippingCustomerName" to (address?.customerName ?: ""),
-            "shippingAddress" to shippingAddressLine,
+            "shippingAddress" to (address?.addressLine1 ?: ""),
             "shippingCity" to (address?.city ?: ""),
             "shippingProvince" to (address?.province ?: ""),
             "shippingZip" to (address?.zip ?: ""),
@@ -65,6 +57,10 @@ class CjSupplierOrderAdapter(
                 )
             )
         )
+
+        if (!address?.addressLine2.isNullOrBlank()) {
+            body["shippingAddress2"] = address!!.addressLine2!!
+        }
 
         if (logisticName.isNotBlank()) {
             body["logisticName"] = logisticName

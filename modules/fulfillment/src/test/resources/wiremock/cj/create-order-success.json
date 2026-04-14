@@ -1,10 +1,23 @@
 {
+  "_comment": "CJ Shopping API — createOrderV2 success response",
+  "_comment_source": "https://developers.cjdropshipping.com/en/api/api2/api/shopping.html",
+  "_comment_verified": "2026-04-14 (docs + live error shape verified)",
   "code": 200,
   "result": true,
-  "message": "success",
+  "message": "Success",
   "data": {
     "orderId": "2011152148163605",
-    "orderNum": "CJ2011152148163605"
+    "orderNumber": "PARTNER-ORDER-001",
+    "shipmentOrderId": "SH2011152148163605",
+    "postageAmount": 5.99,
+    "productAmount": 12.50,
+    "actualPayment": 18.49,
+    "orderAmount": 18.49,
+    "orderStatus": "CREATED",
+    "logisticsMiss": false,
+    "productInfoList": [],
+    "interceptOrderReasons": []
   },
-  "requestId": "a12bc34d-5678-90ef-ghij-klmnopqrstuv"
+  "requestId": "a12bc34d-5678-90ef-ghij-klmnopqrstuv",
+  "success": true
 }

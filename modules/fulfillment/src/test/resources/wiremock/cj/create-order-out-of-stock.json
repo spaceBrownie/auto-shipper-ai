@@ -1,7 +1,11 @@
 {
-  "code": 1600501,
+  "_comment": "CJ Shopping API — order creation error (product unavailable)",
+  "_comment_source": "https://developers.cjdropshipping.com/en/api/api2/api/shopping.html",
+  "_comment_verified": "2026-04-14 (code 1603000 live-verified; message format matches observed pattern)",
+  "code": 1603000,
   "result": false,
-  "message": "product out of stock",
+  "message": "100202:Product stock insufficient",
   "data": null,
-  "requestId": "e56fg78h-9012-34ij-klmn-opqrstuvwxyz"
+  "requestId": "e56fg78h-9012-34ij-klmn-opqrstuvwxyz",
+  "success": false
 }
