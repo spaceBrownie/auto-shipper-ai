@@ -11,6 +11,43 @@ services:
       - "5432:5432"
     volumes:
       - autoshipper_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autoshipper"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: autoshipper-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/autoshipper
+      DB_USERNAME: autoshipper
+      DB_PASSWORD: autoshipper
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Uncomment to expose the app via ngrok for webhook testing.
+  # Requires NGROK_AUTHTOKEN in your .env file.
+  # Get a free auth token at: https://dashboard.ngrok.com/signup
+  #
+  # ngrok:
+  #   image: ngrok/ngrok:latest
+  #   container_name: autoshipper-ngrok
+  #   restart: unless-stopped
+  #   command: http app:8080
+  #   environment:
+  #     NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+  #   ports:
+  #     - "4040:4040"  # ngrok web inspector
+  #   depends_on:
+  #     - app
 
 volumes:
   autoshipper_postgres_data:
