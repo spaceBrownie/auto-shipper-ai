@@ -86,6 +86,26 @@ Phases 2-4 were re-executed from scratch with verified CJ API documentation as t
 
 **Session cost:** ~2 hours of subagent compute wasted on the first pass of Phases 2-4. The rework added ~45 minutes to the session. Total session was still within normal bounds for a feature of this scope.
 
+### Post-fix: Live API verification revealed deeper rot
+
+After fixing the adapter and fixtures for the `listV2` endpoint, a live API call against the real CJ `listV2` endpoint revealed that **the pre-existing adapter code (before FR-027) was also wrong**. The original `product-list-success.json` fixture and `CjDropshippingAdapter` used response structures that never matched the real API:
+
+| Field | Code assumed | Real API |
+|-------|-------------|----------|
+| Response path | `data.list[]` | `data.content[].productList[]` |
+| Product ID | `pid` | `id` |
+| Product name | `productNameEn` | `nameEn` |
+| Price | `sellPrice` (number) | `sellPrice` (string range `"0.58 -- 93.24"`) |
+| Image | `productImage` | `bigImage` |
+| Category | `categoryName` | `threeCategoryName` |
+| Pagination | `pageNum`/`total` | `pageNumber`/`totalRecords` |
+
+This means the adapter would have returned **zero candidates** against the live API — `data.list` would be null, silently producing an empty result. The fixture-based WireMock tests all passed because the fixtures matched the (wrong) code, not the real API.
+
+**Verified OpenAPI YAML spec created:** `docs/api/cj_product_api.yaml` — 15/16 Product API endpoints verified against the live API with `x-cj-verified: true`. This is now the authoritative source of truth.
+
+**Scope of remaining rot:** 6 more CJ production classes, 7 WireMock fixtures, and 6 test classes have not been audited against real API contracts. Tracked in **RAT-47** (CJ API contract reconciliation).
+
 ## Lessons Learned
 
 ### What went well
@@ -113,6 +133,18 @@ Phases 2-4 were re-executed from scratch with verified CJ API documentation as t
 - [ ] **Enforce filemap inclusion in subagent prompts** — Add a validation step to `validate-phase.py` that checks whether `filemap.txt` exists for the feature directory. If it exists, the orchestrator instructions should mandate including it. Consider generating the filemap section as a string that can be copy-pasted into prompts.
 
 - [ ] **Add `logisticName` to CjSupplierOrderAdapter config** — Determine the correct CJ logistics name for US domestic shipping by querying the CJ Freight Calculation API or CJ support. Set `CJ_DEFAULT_LOGISTIC_NAME` environment variable before production deployment. (This is a deployment action, not a code prevention item.)
+
+### Live API verification (completed during this session)
+
+- [x] **Verified CJ Product API spec** — Created `docs/api/cj_product_api.yaml` with 15/16 endpoints tested against live API calls. Each verified path marked with `x-cj-verified: true`. Response schemas document real field names, types, and envelope shapes.
+
+- [x] **Fixed CjDropshippingAdapter + all 6 fixtures** — Corrected `data.list[]` → `data.content[].productList[]`, `pid` → `id`, `productNameEn` → `nameEn`, `sellPrice` number → string range parse, `productImage` → `bigImage`. All tests updated and green.
+
+### Remaining reconciliation (tracked in RAT-47)
+
+- [ ] **Audit all remaining CJ adapters against verified YAML** — 6 production classes (CjSupplierOrderAdapter, CjTrackingProcessingService, CjTrackingWebhookController, CjWebhookTokenVerificationFilter, CjCarrierMapper, DemandScanJob), 7 WireMock fixtures (order placement + error envelopes), 6 test classes. See RAT-47 for full inventory.
+
+- [ ] **Create `docs/api/cj_shopping_api.yaml`** — Same live-verification process for the Shopping/Order API. Required for auditing `CjSupplierOrderAdapter` and order placement fixtures.
 
 ### CLAUDE.md constraint candidate
 
