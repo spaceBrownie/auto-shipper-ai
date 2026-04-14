@@ -1,0 +1,20 @@
+flowchart LR
+    A["Discover\nProducts"]
+    B["Filter to\nUS Warehouses"]
+    C["Place Order\nwith CJ"]
+    D["Configure\nShipping Carrier"]
+    E["Track\nShipment"]
+    F["First\nReal Order"]
+
+    A -->|"PR #47\nDONE"| B
+    B -->|"PR #47\nDONE"| C
+    C -->|"PR #48\nDONE"| D
+    D -->|"ONE CONFIG\nVALUE"| E
+    E -->|"PR #48\nDONE"| F
+
+    style A fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#6ee7b7
+    style B fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#6ee7b7
+    style C fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#6ee7b7
+    style D fill:#78350f,stroke:#e5a00d,stroke-width:3px,color:#fcd34d
+    style E fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#6ee7b7
+    style F fill:#78350f,stroke:#e5a00d,stroke-width:3px,color:#fcd34d

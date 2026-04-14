@@ -1,0 +1,37 @@
+flowchart TD
+    subgraph S1["SESSION 1 — RAT-45"]
+        direction TB
+        A["Routine feature:\nUS warehouse filtering"] --> B["AI generated fake\nCJ data structures"]
+        B --> C["Spot-checked existing integration:\n7 mismatches on one endpoint"]
+        C --> D["Product discovery completely\nbroken against real API"]
+        D --> E["Called real API\nVerified 15 endpoints\nFixed everything"]
+        E --> F["Shipped PR #47"]
+    end
+
+    subgraph S2["SESSION 2 — RAT-47"]
+        direction TB
+        G["Full audit:\norders + tracking"] --> H["Tracking: already correct\n62 checks, 0 changes"]
+        G --> I["Orders: 3 invented error codes\n+ address truncation risk"]
+        I --> J["Verified against live API\nFixed error handling\nFixed addresses"]
+        H --> K["Shipped PR #48"]
+        J --> K
+    end
+
+    F --> G
+    K --> L["First real CJ handshake\nCJ accepts our requests"]
+
+    style A fill:#1a365d,stroke:#3b82f6,stroke-width:2px,color:#93c5fd
+    style B fill:#7f1d1d,stroke:#ef4444,stroke-width:2px,color:#fca5a5
+    style C fill:#7f1d1d,stroke:#ef4444,stroke-width:2px,color:#fca5a5
+    style D fill:#7f1d1d,stroke:#ef4444,stroke-width:2px,color:#fca5a5
+    style E fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#6ee7b7
+    style F fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#6ee7b7
+    style G fill:#1a365d,stroke:#3b82f6,stroke-width:2px,color:#93c5fd
+    style H fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#6ee7b7
+    style I fill:#7f1d1d,stroke:#ef4444,stroke-width:2px,color:#fca5a5
+    style J fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#6ee7b7
+    style K fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#6ee7b7
+    style L fill:#78350f,stroke:#e5a00d,stroke-width:3px,color:#fcd34d
+
+    style S1 fill:#141416,stroke:#2a2a32,stroke-width:1px,color:#e5a00d
+    style S2 fill:#141416,stroke:#2a2a32,stroke-width:1px,color:#e5a00d
