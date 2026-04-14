@@ -1,0 +1,1995 @@
+openapi: 3.0.3
+info:
+  title: CJ Dropshipping Product API
+  version: '1.0.0'
+  description: |
+    OpenAPI-style YAML derived from the CJ Dropshipping Product docs page.
+
+    Source page:
+    https://developers.cjdropshipping.cn/en/api/api2/api/product.html
+
+    Notes:
+      - This spec was transcribed from the HTML docs and validated for YAML syntax.
+      - It documents the Product section endpoints shown on the page.
+      - Some CJ examples are internally inconsistent or malformed in the HTML docs; those cases are preserved as notes under `description` or `x-cj-doc-notes` rather than silently normalized.
+      - Authentication is modeled as the required `CJ-Access-Token` header.
+servers:
+  - url: https://developers.cjdropshipping.com/api2.0/v1
+security:
+  - cjAccessToken: []
+tags:
+  - name: Product Categories
+  - name: Products
+  - name: Variants
+  - name: Inventory
+  - name: Product Reviews
+  - name: Sourcing
+paths:
+  /product/getCategory:
+    get:
+      tags: [Product Categories]
+      summary: Category List
+      operationId: getProductCategories
+      description: Get product categories from CJ.
+      responses:
+        '200':
+          description: Success wrapper from CJ docs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryListResponse'
+              example:
+                code: 200
+                result: true
+                message: Success
+                data:
+                  - categoryFirstName: Computer & Office
+                    categoryFirstList:
+                      - categorySecondName: Office Electronics
+                        categorySecondList:
+                          - categoryId: 2252588B-72E3-4397-8C92-7D9967161084
+                            categoryName: Office & School Supplies
+                requestId: ae543fd1-cdd7-4a61-974a-1340fea678c6
+        default:
+          $ref: '#/components/responses/StandardError'
+      x-cj-verified: true
+      x-cj-doc-source:
+        page: product.html
+        section: '1.1 Category List(GET)'
+  /product/listV2:
+    get:
+      tags: [Products]
+      summary: Product List V2
+      operationId: listProductsV2
+      description: |
+        Get all available products from CJ with criteria inquiry supported.
+        The docs say V2 uses Elasticsearch for higher performance search.
+
+        Doc notes:
+          - Supports keyword search.
+          - Supports multiple filters such as price range, category, and country.
+          - Supports sorting.
+          - `features` can selectively return extra product details and category information.
+          - `page` min 1 max 1000; `size` min 1 max 100.
+      parameters:
+        - $ref: '#/components/parameters/keyWord'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+            maximum: 1000
+          description: Page number.
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+          description: Quantity of results on each page.
+        - name: categoryId
+          in: query
+          schema:
+            type: string
+          description: Filter products by third level category ID.
+        - name: lv2categoryList
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          description: Second level category ID list.
+        - name: lv3categoryList
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          description: Third level category ID list.
+        - name: countryCode
+          in: query
+          schema:
+            type: string
+          description: 'Country code such as CN, US, GB, FR. Filters products with inventory in the specified countries.'
+        - name: startSellPrice
+          in: query
+          schema:
+            type: number
+            format: decimal
+          description: Price filter start value.
+        - name: endSellPrice
+          in: query
+          schema:
+            type: number
+            format: decimal
+          description: Price filter end value.
+        - name: addMarkStatus
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1]
+          description: 0 = not free shipping, 1 = free shipping.
+        - name: productType
+          in: query
+          schema:
+            type: integer
+            enum: [4, 10, 11]
+          description: 4 = Supplier product, 10 = Video product, 11 = Non-video product.
+        - name: productFlag
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1, 2, 3]
+          description: 0 = Trending, 1 = New, 2 = Video, 3 = Slow-moving.
+        - name: startWarehouseInventory
+          in: query
+          schema:
+            type: integer
+          description: Inventory greater than or equal to this value.
+        - name: endWarehouseInventory
+          in: query
+          schema:
+            type: integer
+          description: Inventory less than or equal to this value.
+        - name: verifiedWarehouse
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1, 2]
+          description: null/0 = All(default), 1 = Verified inventory, 2 = Unverified inventory.
+        - name: timeStart
+          in: query
+          schema:
+            type: integer
+            format: int64
+          description: Listing start time timestamp in milliseconds.
+        - name: timeEnd
+          in: query
+          schema:
+            type: integer
+            format: int64
+          description: Listing end time timestamp in milliseconds.
+        - name: zonePlatform
+          in: query
+          schema:
+            type: string
+          description: 'Suggested platform such as shopify, ebay, amazon, tiktok, etsy.'
+        - name: isWarehouse
+          in: query
+          schema:
+            type: boolean
+          description: true = yes, false = no.
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [desc, asc]
+            default: desc
+          description: Sort direction.
+        - name: orderBy
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1, 2, 3, 4]
+            default: 0
+          description: 0 = best match, 1 = listing count, 2 = sell price, 3 = create time, 4 = inventory.
+        - name: features
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - enable_description
+                - enable_category
+                - enable_combine
+                - enable_video
+          style: form
+          explode: true
+          description: Controls optional extra fields in the response.
+        - name: supplierId
+          in: query
+          schema:
+            type: string
+          description: Filter products by supplier ID.
+        - name: hasCertification
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1]
+          description: 0 = No, 1 = Yes.
+        - name: isSelfPickup
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1]
+          description: 0 = No, 1 = Yes.
+        - name: customization
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1]
+          description: 0 = No, 1 = Yes.
+      responses:
+        '200':
+          description: Product list V2 response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListV2Response'
+        default:
+          $ref: '#/components/responses/StandardError'
+      x-cj-verified: true
+      x-cj-doc-source:
+        page: product.html
+        section: '1.2 Product List V2(GET)'
+  /product/globalWarehouseList:
+    get:
+      tags: [Products]
+      summary: Global Warehouse List
+      operationId: listGlobalWarehouses
+      description: Get the list of all available global warehouses.
+      responses:
+        '200':
+          description: Global warehouse list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GlobalWarehouseListResponse'
+        default:
+          $ref: '#/components/responses/StandardError'
+      x-cj-verified: true
+      x-cj-doc-source:
+        page: product.html
+        section: '1.3 Global Warehouse List(GET)'
+  /product/list:
+    get:
+      tags: [Products]
+      summary: Product List
+      operationId: listProducts
+      description: |
+        Get all available products from CJ with criteria inquiry supported.
+
+        Doc notes:
+          - Docs say 20 results for each page, fixed.
+          - Same docs also say maximum return is 200 per page, and `pageSize` defaults to 20 with max 200.
+          - Free users or v1 users are limited to 1000 requests/day and one IP is limited to three users.
+          - `deliveryTime` was added per docs on 2024-11-15 with values 24, 48, 72, or null.
+      parameters:
+        - name: pageNum
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Page number.
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 200
+          description: Number of products returned per page.
+        - name: categoryId
+          in: query
+          schema:
+            type: string
+          description: Filter products by category ID.
+        - name: pid
+          in: query
+          schema:
+            type: string
+          description: Filter by unique product identifier.
+        - name: productSku
+          in: query
+          schema:
+            type: string
+          description: Filter by product SKU.
+      responses:
+        '200':
+          description: Product list response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+        default:
+          $ref: '#/components/responses/StandardError'
+      x-cj-verified: true
+      x-cj-doc-source:
+        page: product.html
+        section: '1.4 Product List(GET)'
+      x-cj-doc-notes:
+        - The HTML page contains contradictory pagination wording; this spec preserves both facts in the description instead of guessing.
+  /product/query:
+    get:
+      tags: [Products]
+      summary: Product Details
+      operationId: getProductDetails
+      description: Query a single product by one of pid, productSku, or variantSku.
+      parameters:
+        - name: pid
+          in: query
+          schema:
+            type: string
+          description: Unique product identifier. Choose one of pid, productSku, or variantSku.
+        - name: productSku
+          in: query
+          schema:
+            type: string
+          description: Product SPU code. Choose one of pid, productSku, or variantSku.
+        - name: variantSku
+          in: query
+          schema:
+            type: string
+          description: Variant SKU code. Choose one of pid, productSku, or variantSku.
+      responses:
+        '200':
+          description: Product details response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetailsResponse'
+        default:
+          $ref: '#/components/responses/StandardError'
+      x-cj-verified: true
+      x-cj-doc-source:
+        page: product.html
+        section: '1.3 Product Details(GET)'
+  /product/addToMyProduct:
+    post:
+      tags: [Products]
+      summary: Add to My Product
+      operationId: addToMyProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productId]
+              properties:
+                productId:
+                  type: string
+                  maxLength: 100
+                  description: CJ product id.
+            example:
+              productId: '1658748072937136128'
+      responses:
+        '200':
+          description: |
+            Returns the standard CJ envelope. `data` is a boolean `true` on success.
+            Live response includes both `result` (boolean) and `success` (boolean) at the top level.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardSuccessEnvelope'
+              example:
+                code: 200
+                result: true
+                message: success
+                data: true
+                requestId: e230ad0c7cec45d1b2c344930c62e627
+                success: true
+        default:
+          $ref: '#/components/responses/StandardError'
+      x-cj-verified: true
+      x-cj-doc-source:
+        page: product.html
+        section: '1.4 Add to My Product (POST)'
+      x-cj-doc-notes:
+        - The cURL example on the page uses localhost instead of the public host. The URL section shows the real endpoint.
+        - Live response includes both `result` and `success` boolean fields; `data` is a bare boolean true.
+  /product/myProduct/query:
+    get:
+      tags: [Products]
+      summary: My Product List
+      operationId: listMyProducts
+      parameters:
+        - name: pageNum
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Page number.
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+          description: Page size.
+        - name: keyword
+          in: query
+          schema:
+            type: string
+          description: SKU, SPU, or product name.
+        - name: categoryId
+          in: query
+          schema:
+            type: string
+        - name: startAt
+          in: query
+          schema:
+            type: string
+        - name: endAt
+          in: query
+          schema:
+            type: string
+          description: The docs spell this note as `ent time`.
+        - name: isListed
+          in: query
+          schema:
+            type: integer
+        - name: visiable
+          in: query
+          schema:
+            type: integer
+          description: Field name follows CJ docs typo.
+        - name: hasPacked
+          in: query
+          schema:
+            type: integer
+        - name: hasVirPacked
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: My product list response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyProductListResponse'
+        default:
+          $ref: '#/components/responses/StandardError'
+      x-cj-verified: true
+      x-cj-doc-source:
+        page: product.html
+        section: '1.3 My Product List(GET)'
+  /product/variant/query:
+    get:
+      tags: [Variants]
+      summary: Inquiry Of All Variants
+      operationId: queryAllVariants
+      parameters:
+        - name: pid
+          in: query
+          schema:
+            type: string
+          description: Choose one of pid, productSku, or variantSku.
+        - name: productSku
+          in: query
+          schema:
+            type: string
+          description: Choose one of pid, productSku, or variantSku.
+        - name: variantSku
+          in: query
+          schema:
+            type: string
+          description: Choose one of pid, productSku, or variantSku.
+        - name: countryCode
+          in: query
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 2
+          description: If passed, only variants with inventory in that country will be returned.
+      responses:
+        '200':
+          description: Variant list response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VariantListResponse'
+        default:
+          $ref: '#/components/responses/StandardError'
+      x-cj-verified: true
+      x-cj-doc-source:
+        page: product.html
+        section: '2.1 Inquiry Of All Variants (GET)'
+  /product/variant/queryByVid:
+    get:
+      tags: [Variants]
+      summary: Variant Id Inquiry
+      operationId: queryVariantByVid
+      parameters:
+        - name: vid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Variant ID.
+        - name: features
+          in: query
+          schema:
+            type: string
+            enum: [enable_inventory]
+          description: Includes inventory and returns variant inventory info including storage id.
+      responses:
+        '200':
+          description: Variant detail by vid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VariantByVidResponse'
+        default:
+          $ref: '#/components/responses/StandardError'
+      x-cj-verified: true
+      x-cj-doc-source:
+        page: product.html
+        section: '2.2 Variant Id Inquiry (GET)'
+  /product/stock/queryByVid:
+    get:
+      tags: [Inventory]
+      summary: Inventory Inquiry
+      operationId: queryInventoryByVid
+      parameters:
+        - name: vid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Unique variant identifier.
+      responses:
+        '200':
+          description: Inventory list for the variant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryByVidResponse'
+        default:
+          $ref: '#/components/responses/StandardError'
+      x-cj-verified: true
+      x-cj-doc-source:
+        page: product.html
+        section: '3.1 Inventory Inquiry(GET)'
+  /product/stock/queryBySku:
+    get:
+      tags: [Inventory]
+      summary: Query Inventory by SKU
+      operationId: queryInventoryBySku
+      parameters:
+        - name: sku
+          in: query
+          required: true
+          schema:
+            type: string
+          description: SKU or SPU.
+      responses:
+        '200':
+          description: Inventory by SKU response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryBySkuResponse'
+        default:
+          $ref: '#/components/responses/StandardError'
+      x-cj-verified: true
+      x-cj-doc-source:
+        page: product.html
+        section: '3.2 Query Inventory by SKU (GET)'
+  /product/stock/getInventoryByPid:
+    get:
+      tags: [Inventory]
+      summary: Query inventory by product ID
+      operationId: queryInventoryByPid
+      parameters:
+        - name: pid
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 40
+          description: Product Id.
+      responses:
+        '200':
+          description: Inventory by product id response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryByPidResponse'
+        default:
+          $ref: '#/components/responses/StandardError'
+      x-cj-verified: true
+      x-cj-doc-source:
+        page: product.html
+        section: '3.3 Query inventory by product ID (GET)'
+  /product/comments:
+    get:
+      tags: [Product Reviews]
+      summary: Inquiry Reviews (deprecated)
+      operationId: queryProductCommentsDeprecated
+      description: |
+        Deprecated product review endpoint.
+
+        Doc warning: "Will be deprecated on June 1, 2024, Please use the new api Inquiry Reviews".
+
+        Note: Live verification was blocked by daily rate limit (1600200). Envelope shape assumed to
+        match ProductCommentsResponse based on CJ docs; use /product/productComments which was verified.
+      parameters:
+        - $ref: '#/components/parameters/reviewPid'
+        - $ref: '#/components/parameters/reviewScore'
+        - $ref: '#/components/parameters/reviewPageNum'
+        - $ref: '#/components/parameters/reviewPageSize'
+      responses:
+        '200':
+          description: Review list response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductCommentsResponse'
+        default:
+          $ref: '#/components/responses/StandardError'
+      deprecated: true
+      x-cj-doc-source:
+        page: product.html
+        section: '4.1 Inquiry Reviews (GET)'
+      x-cj-doc-notes:
+        - Live call blocked by daily rate limit; envelope shape unconfirmed for this deprecated endpoint.
+  /product/productComments:
+    get:
+      tags: [Product Reviews]
+      summary: Inquiry Reviews
+      operationId: queryProductComments
+      parameters:
+        - $ref: '#/components/parameters/reviewPid'
+        - $ref: '#/components/parameters/reviewScore'
+        - $ref: '#/components/parameters/reviewPageNum'
+        - $ref: '#/components/parameters/reviewPageSize'
+      responses:
+        '200':
+          description: |
+            Review list response. Live response uses the STANDARD `result` envelope (not the `success`
+            variant). `data.pageNum`, `data.pageSize`, and `data.total` are integers (not strings).
+            Returns empty list when product has no reviews.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductCommentsResponse'
+              example:
+                code: 200
+                result: true
+                message: Success
+                data:
+                  pageNum: 1
+                  pageSize: 3
+                  total: 0
+                  list: []
+                requestId: 9a4aeec2be5c4e9c888f81236847d23b
+                success: true
+        default:
+          $ref: '#/components/responses/StandardError'
+      x-cj-verified: true
+      x-cj-doc-source:
+        page: product.html
+        section: '4.2 Inquiry Reviews (GET)'
+      x-cj-doc-notes:
+        - Live response uses standard `result` envelope (code/result/message/data/requestId/success), not the `success`-only variant the docs describe.
+        - pageNum, pageSize, total in data are integers in the live response, contrary to the string types in some CJ docs.
+  /product/sourcing/create:
+    post:
+      tags: [Sourcing]
+      summary: Create Sourcing
+      operationId: createSourcing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSourcingRequest'
+            example:
+              thirdProductId: ''
+              thirdVariantId: ''
+              thirdProductSku: ''
+              productName: ''
+              productImage: ''
+              productUrl: ''
+              remark: ''
+              price: ''
+      responses:
+        '200':
+          description: |
+            Create sourcing response. Live response uses the STANDARD `result` envelope (not
+            the `success`-only variant). `data` contains `cjSourcingId`, `sourceNumber`, and `result`.
+            Note: this endpoint CREATES a real sourcing record in CJ — use only for genuine requests.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateSourcingResponse'
+              example:
+                code: 200
+                result: true
+                message: Success
+                data:
+                  cjSourcingId: '2604140521444503900'
+                  sourceNumber: CJSPU956715970
+                  result: success
+                requestId: 0ed1e862f6cb4c8ca0928ded7dabd126
+                success: true
+        default:
+          $ref: '#/components/responses/StandardError'
+      x-cj-verified: true
+      x-cj-doc-source:
+        page: product.html
+        section: '5.1 Create Sourcing (POST)'
+      x-cj-doc-notes:
+        - The docs mark `price` as BigDecimal but do not clearly mark it Y/N in the parameter table.
+        - The success example in the HTML is malformed JSON; this schema models the intended structure.
+        - Live response uses standard `result` envelope with both `result` and `success` booleans.
+        - Creates a real sourcing record; a test call with dummy data created record CJSPU956715970.
+  /product/sourcing/query:
+    post:
+      tags: [Sourcing]
+      summary: Query Sourcing
+      operationId: querySourcing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sourceIds]
+              properties:
+                sourceIds:
+                  type: array
+                  items:
+                    type: string
+                  description: CJ sourcing ids.
+            example:
+              sourceIds: ['2604140521444503900']
+      responses:
+        '200':
+          description: |
+            Query sourcing response. Returns a single sourcing item (not an array) when one ID is queried.
+            Live response uses the standard `result` envelope.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourcingQueryResponse'
+              example:
+                code: 200
+                result: true
+                message: Success
+                data:
+                  sourceId: '2604140521444503900'
+                  sourceNumber: CJSPU956715970
+                  productId: '2604140521444503901'
+                  variantId: '2604140521444503902'
+                  shopId: '2603180606423538600'
+                  shopName: Denny Joy_api
+                  sourceStatus: '12'
+                  sourceStatusStr: Pending
+                  cjProductId: ''
+                  cjVariantSku: null
+                requestId: dcb43d20e4e2455fa85c53b7b1c0eb5d
+                success: true
+        default:
+          $ref: '#/components/responses/StandardError'
+      x-cj-verified: true
+      x-cj-doc-source:
+        page: product.html
+        section: '5.2 Query Sourcing(POST)'
+      x-cj-doc-notes:
+        - Querying a single sourceId returns a single object in `data`, not an array.
+        - sourceStatus is a string ("12" = Pending) despite looking numeric.
+components:
+  securitySchemes:
+    cjAccessToken:
+      type: apiKey
+      in: header
+      name: CJ-Access-Token
+  parameters:
+    keyWord:
+      name: keyWord
+      in: query
+      schema:
+        type: string
+      description: Product name or SKU keyword search.
+    reviewPid:
+      name: pid
+      in: query
+      required: true
+      schema:
+        type: string
+      description: Product id.
+    reviewScore:
+      name: score
+      in: query
+      schema:
+        type: integer
+      description: Review score filter.
+    reviewPageNum:
+      name: pageNum
+      in: query
+      schema:
+        type: integer
+        default: 1
+      description: Page number.
+    reviewPageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        default: 20
+      description: Page size.
+  responses:
+    StandardError:
+      description: Standard CJ error wrapper.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/StandardErrorEnvelope'
+          example:
+            code: 1600100
+            result: false
+            message: Param error
+            data: null
+            requestId: 323fda9d-3c94-41dc-a944-5cc1b8baf5b1
+  schemas:
+    StandardSuccessEnvelope:
+      type: object
+      description: |
+        Standard CJ success response envelope. Most product endpoints return this shape.
+        Live responses consistently include both `result` (boolean) and `success` (boolean) at the top level.
+        Exceptions: /product/globalWarehouseList and /product/stock/getInventoryByPid use `success`-only
+        envelopes (no `result` field) — those are modeled separately.
+      properties:
+        code:
+          type: integer
+        result:
+          type: boolean
+          description: Standard CJ success flag. Present in all standard-envelope endpoints.
+        success:
+          type: boolean
+          description: Also present alongside `result` in live responses for all standard-envelope endpoints.
+        message:
+          type: string
+          nullable: true
+        data:
+          nullable: true
+        requestId:
+          type: string
+      additionalProperties: true
+    StandardErrorEnvelope:
+      type: object
+      required: [code, result, message, data, requestId]
+      properties:
+        code:
+          type: integer
+        result:
+          type: boolean
+        message:
+          type: string
+        data:
+          nullable: true
+        requestId:
+          type: string
+    CategoryLevel3:
+      type: object
+      properties:
+        categoryId:
+          type: string
+        categoryName:
+          type: string
+    CategoryLevel2:
+      type: object
+      properties:
+        categorySecondId:
+          type: string
+          description: Level-2 category UUID.
+        categorySecondName:
+          type: string
+        categorySecondList:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryLevel3'
+    CategoryLevel1:
+      type: object
+      properties:
+        categoryFirstId:
+          type: string
+          description: Level-1 category UUID.
+        categoryFirstName:
+          type: string
+        categoryFirstList:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryLevel2'
+    CategoryListResponse:
+      allOf:
+        - $ref: '#/components/schemas/StandardSuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/CategoryLevel1'
+    ProductListV2Response:
+      allOf:
+        - $ref: '#/components/schemas/StandardSuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                pageSize:
+                  type: integer
+                  format: int64
+                pageNumber:
+                  type: integer
+                  format: int64
+                totalRecords:
+                  type: integer
+                  format: int64
+                totalPages:
+                  type: integer
+                  format: int64
+                content:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      productList:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ProductV2'
+                      relatedCategoryList:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            categoryId:
+                              type: string
+                            categoryName:
+                              type: string
+                      keyWord:
+                        type: string
+                      keyWordOld:
+                        type: string
+    ProductV2:
+      type: object
+      properties:
+        id:
+          type: string
+        nameEn:
+          type: string
+        sku:
+          type: string
+        spu:
+          nullable: true
+          type: string
+        bigImage:
+          type: string
+        sellPrice:
+          type: string
+        nowPrice:
+          nullable: true
+          type: string
+        discountPrice:
+          nullable: true
+          type: string
+        discountPriceRate:
+          nullable: true
+          type: string
+        listedNum:
+          type: integer
+        isCollect:
+          type: integer
+          enum: [0, 1]
+        categoryId:
+          type: string
+        threeCategoryName:
+          nullable: true
+          type: string
+        twoCategoryId:
+          nullable: true
+          type: string
+        twoCategoryName:
+          nullable: true
+          type: string
+        oneCategoryId:
+          nullable: true
+          type: string
+        oneCategoryName:
+          nullable: true
+          type: string
+        addMarkStatus:
+          type: integer
+          enum: [0, 1]
+        isVideo:
+          type: integer
+          enum: [0, 1]
+          description: Alias for isVedio (CJ API returns both; isVideo is the canonical one).
+        isVedio:
+          type: integer
+          enum: [0, 1]
+          description: CJ API typo — same as isVideo. Both fields are present in the response.
+        videoList:
+          type: array
+          items:
+            type: string
+        productType:
+          type: string
+        supplierName:
+          nullable: true
+          type: string
+        createAt:
+          nullable: true
+          type: integer
+          format: int64
+        setRecommendedTime:
+          nullable: true
+          type: integer
+          format: int64
+        warehouseInventoryNum:
+          type: integer
+          format: int64
+        totalVerifiedInventory:
+          type: integer
+        totalUnVerifiedInventory:
+          nullable: true
+          type: integer
+        verifiedWarehouse:
+          type: integer
+          enum: [1, 2]
+        customization:
+          nullable: true
+          type: integer
+          enum: [0, 1]
+        isPersonalized:
+          type: integer
+          enum: [0, 1]
+        hasCECertification:
+          nullable: true
+          type: integer
+        myProduct:
+          type: boolean
+        description:
+          nullable: true
+          type: string
+        deliveryCycle:
+          nullable: true
+          type: string
+        saleStatus:
+          nullable: true
+          type: string
+        authorityStatus:
+          type: string
+        directMinOrderNum:
+          nullable: true
+          type: integer
+        zoneRecommendJson:
+          nullable: true
+          type: string
+        autStatus:
+          type: string
+        isAut:
+          type: string
+          description: String "0"/"1" — whether product is authorized.
+        isList:
+          type: integer
+          enum: [0, 1]
+        isAd:
+          type: integer
+          enum: [0, 1]
+        activityId:
+          nullable: true
+          type: string
+        syncListedProductStatus:
+          nullable: true
+          type: integer
+        currency:
+          nullable: true
+          type: string
+        inventoryInfo:
+          nullable: true
+          type: object
+          additionalProperties: true
+        variantKeyEn:
+          nullable: true
+          type: string
+        variantInventories:
+          nullable: true
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        propertyKey:
+          nullable: true
+          type: string
+      additionalProperties: true
+    GlobalWarehouseListResponse:
+      type: object
+      description: |
+        This endpoint uses a different success envelope from most product endpoints:
+        `success` (boolean) + `code` (integer) instead of `result` + standard code 200.
+        The field table is now fully documented from the live API response.
+      properties:
+        success:
+          type: boolean
+        code:
+          type: integer
+        message:
+          nullable: true
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/GlobalWarehouse'
+        requestId:
+          type: string
+      additionalProperties: true
+    GlobalWarehouse:
+      type: object
+      properties:
+        areaId:
+          type: integer
+          description: Numeric warehouse area ID (e.g. 1=CN, 2=US, 4=DE, 17=GB, 40=BR).
+        countryCode:
+          type: string
+          description: ISO 3166-1 alpha-2 country code.
+        areaCn:
+          nullable: true
+          type: string
+          description: Chinese name of the area (null in practice).
+        areaEn:
+          nullable: true
+          type: string
+          description: English area name (null in practice; use `en` instead).
+        nameEn:
+          nullable: true
+          type: string
+        valueEn:
+          nullable: true
+          type: string
+        disabled:
+          nullable: true
+          type: boolean
+        en:
+          type: string
+          description: Country name in English.
+        de:
+          type: string
+          description: Country name in German.
+        fr:
+          type: string
+          description: Country name in French.
+        zh:
+          type: string
+          description: Country name in Chinese.
+        th:
+          type: string
+          description: Country name in Thai.
+        id:
+          type: string
+          description: Country name in Indonesian (confusingly named `id`; not a numeric ID).
+      additionalProperties: true
+    ProductListResponse:
+      allOf:
+        - $ref: '#/components/schemas/StandardSuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                pageNum:
+                  type: integer
+                pageSize:
+                  type: integer
+                total:
+                  type: integer
+                list:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ProductSummary'
+      description: Models the visible fields from the product list section. The CJ HTML page includes additional narrative enums for product type, sale status, and customization version.
+    ProductSummary:
+      type: object
+      properties:
+        pid:
+          type: string
+        productName:
+          type: string
+          description: Raw product name as a JSON array string (e.g. "[\"name part1\",\"name part2\"]").
+        productNameEn:
+          type: string
+        productSku:
+          type: string
+        productImage:
+          type: string
+        productWeight:
+          type: string
+          description: Weight as a string, unit grams (e.g. "4454").
+        productType:
+          type: string
+          description: String enum such as "SUPPLIER_SHIPPED_PRODUCT" (not an integer as previously documented).
+        productUnit:
+          nullable: true
+          type: string
+        categoryId:
+          type: string
+        categoryName:
+          type: string
+        remark:
+          type: string
+        addMarkStatus:
+          type: string
+          description: String "0"/"1" in the real response (not integer). Deprecated per docs.
+          deprecated: true
+        isFreeShipping:
+          type: boolean
+        listedNum:
+          type: integer
+        listingCount:
+          type: integer
+          description: Alias/additional count field present in live response alongside listedNum.
+        supplierName:
+          type: string
+        supplierId:
+          type: string
+        sellPrice:
+          type: string
+          description: Price as a string (e.g. "45.30").
+        createTime:
+          type: integer
+          format: int64
+          description: Unix epoch timestamp in milliseconds (integer, not string).
+        isVideo:
+          nullable: true
+          type: integer
+        saleStatus:
+          type: integer
+        customizationVersion:
+          nullable: true
+          type: integer
+        deliveryTime:
+          nullable: true
+          oneOf:
+            - type: integer
+              enum: [24, 48, 72]
+            - type: 'null'
+        sourceFrom:
+          type: string
+          description: String "0" in observed responses.
+        shippingCountryCodes:
+          type: array
+          items:
+            type: string
+          description: List of country codes this product ships to (e.g. ["US"]).
+        threeCategoryName:
+          nullable: true
+          type: string
+        twoCategoryId:
+          nullable: true
+          type: string
+        twoCategoryName:
+          nullable: true
+          type: string
+        oneCategoryId:
+          nullable: true
+          type: string
+        oneCategoryName:
+          nullable: true
+          type: string
+        isTestProduct:
+          type: boolean
+      additionalProperties: true
+    ProductDetailsResponse:
+      allOf:
+        - $ref: '#/components/schemas/StandardSuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ProductDetails'
+    ProductDetails:
+      type: object
+      description: Full product detail object returned by /product/query.
+      properties:
+        pid:
+          type: string
+        productName:
+          type: string
+          description: Raw product name as a JSON array string.
+        productNameSet:
+          type: array
+          items:
+            type: string
+          description: Parsed name parts.
+        productNameEn:
+          type: string
+        productSku:
+          type: string
+        bigImage:
+          type: string
+        productImage:
+          type: string
+          description: JSON array string of image URLs.
+        productImageSet:
+          type: array
+          items:
+            type: string
+        productWeight:
+          type: string
+          description: Weight range as string (e.g. "30.00-875.00"), unit grams.
+        productUnit:
+          type: string
+        productType:
+          type: string
+          description: String enum such as "ORDINARY_PRODUCT" or "SUPPLIER_SHIPPED_PRODUCT".
+        categoryId:
+          type: string
+        categoryName:
+          type: string
+        entryCode:
+          type: string
+          description: HS customs entry code (e.g. "8211100000").
+        entryName:
+          type: string
+          description: HS entry name in Chinese.
+        entryNameEn:
+          type: string
+        materialName:
+          type: string
+          description: JSON array string of material names in Chinese.
+        materialNameSet:
+          type: array
+          items:
+            type: string
+        materialNameEn:
+          type: string
+          description: JSON array string of material names in English.
+        materialNameEnSet:
+          type: array
+          items:
+            type: string
+        materialKey:
+          type: string
+          description: JSON array string of material keys (e.g. "[\"METAL\"]").
+        materialKeySet:
+          type: array
+          items:
+            type: string
+        packingWeight:
+          type: string
+          description: Packing weight range as string, unit grams.
+        packingName:
+          type: string
+          description: JSON array string of packing names in Chinese.
+        packingNameSet:
+          type: array
+          items:
+            type: string
+        packingNameEn:
+          type: string
+        packingNameEnSet:
+          type: array
+          items:
+            type: string
+        packingKey:
+          type: string
+        packingKeySet:
+          type: array
+          items:
+            type: string
+        productKey:
+          type: string
+          description: JSON array string of variant property keys in Chinese (e.g. "[\"颜色\"]").
+        productKeySet:
+          type: array
+          items:
+            type: string
+        productKeyEn:
+          type: string
+          description: Variant property key in English (e.g. "Color").
+        productPro:
+          type: string
+          description: JSON array string of product attributes in Chinese.
+        productProSet:
+          type: array
+          items:
+            type: string
+        productProEn:
+          type: string
+        productProEnSet:
+          type: array
+          items:
+            type: string
+        sellPrice:
+          type: string
+          description: Sell price or price range as string (e.g. "0.58-93.24").
+        sourceFrom:
+          type: integer
+        description:
+          type: string
+          description: Full HTML product description.
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Variant'
+      additionalProperties: true
+    MyProductListResponse:
+      allOf:
+        - $ref: '#/components/schemas/StandardSuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                pageSize:
+                  type: integer
+                pageNumber:
+                  type: integer
+                totalRecords:
+                  type: integer
+                totalPages:
+                  type: integer
+                content:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/MyProductItem'
+    MyProductItem:
+      type: object
+      description: A product item in the My Product list. Field set observed from live API.
+      properties:
+        productId:
+          type: string
+        userId:
+          nullable: true
+          type: string
+        packWeight:
+          type: string
+          description: Packing weight range as string (e.g. "50.00-965.00"), unit grams.
+        weight:
+          type: string
+          description: Product weight range as string (e.g. "30.00-875.00"), unit grams.
+        productType:
+          type: string
+          description: String "0" in observed responses.
+        propertyKeyList:
+          type: array
+          items:
+            type: string
+          description: List of property keys (e.g. ["EDGE"]).
+        bigImage:
+          type: string
+          description: Main product image URL.
+        nameEn:
+          type: string
+          description: Product name in English.
+        sku:
+          type: string
+          description: Product SPU code (e.g. "CJJJCFCF00514").
+        isPod:
+          type: integer
+          enum: [0, 1]
+          description: 0 = not print-on-demand.
+        hasPacked:
+          type: integer
+          enum: [0, 1]
+        folderId:
+          type: array
+          items:
+            type: string
+          description: Folder IDs this product belongs to.
+        createAt:
+          type: integer
+          format: int64
+          description: Unix timestamp in milliseconds when added to My Product.
+        sellPrice:
+          type: string
+          description: Sell price or range (e.g. "0.58-93.24").
+        discountPrice:
+          type: string
+          nullable: true
+          description: Discounted price or range (e.g. "0.47-9.32").
+        discountPriceRate:
+          nullable: true
+          type: string
+        defaultArea:
+          type: string
+          description: Default warehouse area name (e.g. "China Warehouse").
+        shopMethod:
+          type: string
+          description: Default shipping method (e.g. "CJPacket Ordinary").
+        trialCountry:
+          nullable: true
+          type: string
+        trialFreight:
+          type: string
+          description: Trial freight cost as string (e.g. "0").
+        totalPrice:
+          type: string
+          description: Total price range including any discounts (e.g. "0.47-9.32").
+        listedShopNum:
+          type: string
+          description: Number of shops this product is listed in, as string.
+        listedShopIds:
+          nullable: true
+          type: string
+        vid:
+          type: string
+          description: Default variant ID (UUID).
+        areaId:
+          type: string
+          description: Default warehouse area ID as string (e.g. "1" = China).
+        areaCountryCode:
+          type: string
+          description: Default warehouse country code (e.g. "CN").
+        freightDiscount:
+          type: string
+          description: Freight discount as string (e.g. "0").
+        lengthList:
+          type: array
+          items:
+            type: integer
+          description: Min/max length range across variants (e.g. [1, 380]), unit mm.
+        heightList:
+          type: array
+          items:
+            type: integer
+          description: Min/max height range across variants (e.g. [1, 30]), unit mm.
+        widthList:
+          type: array
+          items:
+            type: integer
+          description: Min/max width range across variants (e.g. [1, 80]), unit mm.
+        volumeList:
+          type: array
+          items:
+            type: integer
+          description: Min/max volume range across variants in cubic mm (e.g. [1, 912000]).
+        addMarkStatus:
+          type: string
+          description: Free shipping flag as string ("0" = not free).
+        isSafeProduct:
+          type: boolean
+          description: Whether product has passed safety certification.
+        hasVirPacked:
+          type: integer
+          enum: [0, 1]
+      additionalProperties: true
+    VariantListResponse:
+      allOf:
+        - $ref: '#/components/schemas/StandardSuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Variant'
+    Variant:
+      type: object
+      properties:
+        vid:
+          type: string
+        pid:
+          type: string
+        variantName:
+          nullable: true
+          type: string
+        variantNameEn:
+          type: string
+        variantSku:
+          type: string
+        variantStandard:
+          type: string
+          description: Dimension summary string (e.g. "long=380,width=80,height=30").
+        variantUnit:
+          nullable: true
+          type: string
+        variantKey:
+          type: string
+        variantImage:
+          type: string
+          description: Image URL for this variant.
+        variantProperty:
+          type: string
+          description: JSON array string of variant properties (often "[]").
+        variantLength:
+          type: number
+        variantWidth:
+          type: number
+        variantHeight:
+          type: number
+        variantVolume:
+          type: number
+        variantWeight:
+          type: number
+        variantSellPrice:
+          type: number
+        variantSugSellPrice:
+          type: number
+          description: Suggested sell price.
+        createTime:
+          nullable: true
+          type: integer
+          format: int64
+        combineNum:
+          nullable: true
+          type: integer
+        inventoryNum:
+          nullable: true
+          type: integer
+        combineVariants:
+          nullable: true
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        inventories:
+          nullable: true
+          type: array
+          description: Populated when countryCode filter is applied or features=enable_inventory is used. Each element mirrors InventoryWarehouseByVid.
+          items:
+            $ref: '#/components/schemas/InventoryWarehouseByVid'
+      additionalProperties: true
+    VariantByVidResponse:
+      allOf:
+        - $ref: '#/components/schemas/StandardSuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Variant'
+      description: Returns a single Variant object (not an array). When features=enable_inventory is passed, the variant's `inventories` field is populated with per-country inventory data.
+    InventoryStock:
+      type: object
+      properties:
+        stockId:
+          type: string
+        inventory:
+          type: integer
+        factoryInventory:
+          type: integer
+      additionalProperties: true
+    InventoryWarehouse:
+      type: object
+      description: |
+        Inventory record per warehouse/country. Used in queryByVid (stock endpoint), queryBySku, and getInventoryByPid top-level inventories.
+        Note: queryByVid uses `*Num`-suffixed fields; getInventoryByPid's variantInventories uses unprefixed field names. Both shapes are captured here.
+      properties:
+        areaId:
+          description: Integer in most contexts, string "1"/"2" in stock/queryByVid response.
+          oneOf:
+            - type: integer
+            - type: string
+        areaEn:
+          type: string
+          description: Warehouse area name in English (e.g. "China Warehouse", "US Warehouse").
+        countryCode:
+          type: string
+        countryNameEn:
+          type: string
+        storageNum:
+          type: integer
+          description: Present in stock/queryByVid — same as totalInventoryNum.
+        totalInventoryNum:
+          type: integer
+          description: Total inventory count (used in stock/queryByVid and queryBySku responses).
+        cjInventoryNum:
+          type: integer
+          description: CJ-owned inventory count (used in stock/queryByVid and queryBySku responses).
+        factoryInventoryNum:
+          type: integer
+          description: Factory/supplier inventory count (used in stock/queryByVid and queryBySku responses).
+        totalInventory:
+          type: integer
+          description: Total inventory count (used in variantInventories[].inventory[] within getInventoryByPid).
+        cjInventory:
+          type: integer
+          description: CJ-owned inventory count (used in getInventoryByPid and Variant.inventories).
+        factoryInventory:
+          type: integer
+          description: Factory inventory count (used in getInventoryByPid and Variant.inventories).
+        verifiedWarehouse:
+          type: integer
+          enum: [1, 2]
+          description: 1=verified, 2=unverified.
+        stock:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/InventoryStock'
+      additionalProperties: true
+    InventoryWarehouseByVid:
+      type: object
+      description: Per-country inventory shape used inside Variant.inventories (from queryByVid with enable_inventory, and getInventoryByPid variantInventories).
+      properties:
+        countryCode:
+          type: string
+        totalInventory:
+          type: integer
+        cjInventory:
+          type: integer
+        factoryInventory:
+          type: integer
+        verifiedWarehouse:
+          type: integer
+          enum: [1, 2]
+        stock:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/InventoryStock'
+      additionalProperties: true
+    InventoryByVidResponse:
+      allOf:
+        - $ref: '#/components/schemas/StandardSuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: array
+              description: Each item is an InventoryWarehouse with an added `vid` field at top level.
+              items:
+                allOf:
+                  - $ref: '#/components/schemas/InventoryWarehouse'
+                  - type: object
+                    properties:
+                      vid:
+                        type: string
+    InventoryBySkuResponse:
+      allOf:
+        - $ref: '#/components/schemas/StandardSuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: array
+              description: Array of per-warehouse inventory records (same shape as InventoryWarehouse with *Num-suffixed counts).
+              items:
+                $ref: '#/components/schemas/InventoryWarehouse'
+      description: Returns an array of warehouse inventory records (not an object as previously marked). Each item has areaId (integer), areaEn, countryCode, countryNameEn, totalInventoryNum, cjInventoryNum, factoryInventoryNum, stock.
+    InventoryByPidResponse:
+      type: object
+      description: |
+        This endpoint uses a different success envelope from most product endpoints:
+        `success` (boolean) + `code` (integer) instead of `result`. Also has `message: ""` (empty string, not null).
+        The `data` object contains both a top-level `inventories` array (per-warehouse totals across all variants)
+        and a `variantInventories` array (per-variant per-warehouse breakdown).
+      properties:
+        success:
+          type: boolean
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            inventories:
+              type: array
+              description: Aggregate inventory per warehouse across all variants.
+              items:
+                type: object
+                properties:
+                  areaId:
+                    type: integer
+                  areaEn:
+                    type: string
+                  countryCode:
+                    type: string
+                  countryNameEn:
+                    type: string
+                  totalInventoryNum:
+                    type: integer
+                  cjInventoryNum:
+                    type: integer
+                  factoryInventoryNum:
+                    type: integer
+                  stock:
+                    nullable: true
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryStock'
+                additionalProperties: true
+            variantInventories:
+              type: array
+              items:
+                type: object
+                properties:
+                  vid:
+                    type: string
+                  inventory:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryWarehouseByVid'
+                additionalProperties: true
+          additionalProperties: true
+        requestId:
+          type: string
+      additionalProperties: true
+    ProductCommentsResponse:
+      type: object
+      description: |
+        Reviews endpoint response. Live verification of /product/productComments shows the STANDARD
+        envelope with `result` (boolean), not the `success`-only variant described in some CJ docs.
+        Both `result` and `success` are present in the live response. `pageNum`, `pageSize`, and
+        `total` in `data` are integers in the live response (not strings as shown in some CJ examples).
+      properties:
+        code:
+          type: integer
+        result:
+          type: boolean
+        success:
+          type: boolean
+          description: Also present alongside `result` in the live response.
+        message:
+          nullable: true
+          type: string
+        data:
+          type: object
+          properties:
+            pageNum:
+              type: integer
+              description: Current page number (integer in live response, despite some docs showing string).
+            pageSize:
+              type: integer
+              description: Page size (integer in live response).
+            total:
+              type: integer
+              description: Total number of reviews (integer in live response).
+            list:
+              type: array
+              items:
+                type: object
+                properties:
+                  commentId:
+                    type: integer
+                    format: int64
+                  pid:
+                    type: string
+                  comment:
+                    type: string
+                  commentDate:
+                    type: string
+                  commentUser:
+                    type: string
+                  score:
+                    type: string
+                  commentUrls:
+                    type: array
+                    items:
+                      type: string
+                  countryCode:
+                    type: string
+                  flagIconUrl:
+                    type: string
+                additionalProperties: true
+        requestId:
+          type: string
+      additionalProperties: true
+    SourcingItem:
+      type: object
+      description: A single sourcing request record returned by /product/sourcing/query.
+      properties:
+        sourceId:
+          type: string
+          description: CJ internal sourcing request ID (numeric string).
+        sourceNumber:
+          type: string
+          description: Human-readable sourcing request number (e.g. "CJSPU956715970").
+        productId:
+          type: string
+          description: Associated product ID (numeric string, may differ from CJ product UUID).
+        variantId:
+          type: string
+          description: Associated variant ID (numeric string).
+        shopId:
+          type: string
+          description: CJ shop/account ID (numeric string).
+        shopName:
+          type: string
+          description: Name of the CJ shop that submitted the sourcing request.
+        sourceStatus:
+          type: string
+          description: |
+            Sourcing status as a string-encoded integer.
+            Known values: "12" = Pending. Other values undocumented.
+        sourceStatusStr:
+          type: string
+          description: Human-readable status string (e.g. "Pending").
+        cjProductId:
+          type: string
+          description: CJ product ID after sourcing completes. Empty string while pending.
+        cjVariantSku:
+          nullable: true
+          type: string
+          description: CJ variant SKU after sourcing completes. Null while pending.
+      additionalProperties: true
+    SourcingQueryResponse:
+      type: object
+      description: |
+        Response for /product/sourcing/query. Uses the standard `result` envelope.
+        When a single sourceId is queried, `data` is a single SourcingItem object (not an array).
+      properties:
+        code:
+          type: integer
+        result:
+          type: boolean
+        success:
+          type: boolean
+        message:
+          nullable: true
+          type: string
+        data:
+          $ref: '#/components/schemas/SourcingItem'
+        requestId:
+          type: string
+      additionalProperties: true
+    CreateSourcingRequest:
+      type: object
+      required: [productName, productImage]
+      properties:
+        thirdProductId:
+          type: string
+        thirdVariantId:
+          type: string
+        thirdProductSku:
+          type: string
+        productName:
+          type: string
+        productImage:
+          type: string
+        productUrl:
+          type: string
+        remark:
+          type: string
+        price:
+          oneOf:
+            - type: string
+            - type: number
+      additionalProperties: false
+    CreateSourcingResponse:
+      type: object
+      description: |
+        Live response uses the STANDARD `result` envelope (code/result/message/data/requestId/success),
+        not the `success`-only variant described in some CJ docs.
+      properties:
+        code:
+          type: integer
+        result:
+          type: boolean
+          description: Standard CJ success flag.
+        success:
+          type: boolean
+          description: Also present alongside `result` in the live response.
+        message:
+          nullable: true
+          type: string
+        data:
+          type: object
+          properties:
+            cjSourcingId:
+              type: string
+              description: CJ internal sourcing request ID (numeric string).
+            sourceNumber:
+              type: string
+              description: Human-readable sourcing request number (e.g. "CJSPU956715970").
+            result:
+              type: string
+              description: String "success" on success.
+        requestId:
+          type: string
+      additionalProperties: true

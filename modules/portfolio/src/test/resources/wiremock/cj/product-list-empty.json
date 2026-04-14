@@ -4,9 +4,10 @@
   "message": "Success",
   "requestId": "a12bc34d-5678-90ef-ghij-klmnopqrstuv",
   "data": {
-    "pageNum": 1,
     "pageSize": 20,
-    "total": 0,
-    "list": []
+    "pageNumber": 1,
+    "totalRecords": 0,
+    "totalPages": 0,
+    "content": []
   }
 }

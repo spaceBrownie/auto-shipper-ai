@@ -1,0 +1,52 @@
+{
+  "code": 200,
+  "result": true,
+  "message": "Success",
+  "requestId": "b27de44a-1234-5678-abcd-ef0123456789",
+  "data": {
+    "pageSize": 20,
+    "pageNumber": 1,
+    "totalRecords": 2,
+    "totalPages": 1,
+    "content": [
+      {
+        "productList": [
+          {
+            "id": "ZERO-INV-001",
+            "nameEn": "LED Desk Lamp",
+            "sku": "CJLED001",
+            "threeCategoryName": "Home & Garden / Lighting",
+            "categoryId": "CAT-HOME-001",
+            "sellPrice": "15.00",
+            "bigImage": "https://example.com/led-lamp.png",
+            "description": "Adjustable LED desk lamp with USB charging port",
+            "warehouseInventoryNum": 0,
+            "totalVerifiedInventory": 0,
+            "verifiedWarehouse": 1,
+            "listedNum": 50,
+            "isCollect": 0,
+            "productType": "0"
+          },
+          {
+            "id": "ZERO-INV-002",
+            "nameEn": "Bamboo Phone Stand",
+            "sku": "CJBAM001",
+            "threeCategoryName": "Electronics / Accessories",
+            "categoryId": "CAT-ELEC-001",
+            "sellPrice": "3.50",
+            "bigImage": "https://example.com/phone-stand.png",
+            "description": "Bamboo phone holder stand for desk",
+            "warehouseInventoryNum": 0,
+            "totalVerifiedInventory": 0,
+            "verifiedWarehouse": 1,
+            "listedNum": 30,
+            "isCollect": 0,
+            "productType": "0"
+          }
+        ],
+        "relatedCategoryList": [],
+        "keyWord": "Home & Garden"
+      }
+    ]
+  }
+}

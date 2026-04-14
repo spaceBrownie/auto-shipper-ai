@@ -1,0 +1,49 @@
+{
+  "code": 200,
+  "result": true,
+  "message": "Success",
+  "requestId": "c38ef55b-2345-6789-bcde-f01234567890",
+  "data": {
+    "pageSize": 20,
+    "pageNumber": 1,
+    "totalRecords": 2,
+    "totalPages": 1,
+    "content": [
+      {
+        "productList": [
+          {
+            "id": "NULL-INV-001",
+            "nameEn": "Product With Null Inventory",
+            "sku": "CJNULL001",
+            "threeCategoryName": "Electronics",
+            "categoryId": "CAT-ELEC-001",
+            "sellPrice": "5.00",
+            "bigImage": "https://example.com/null-inv.png",
+            "description": "Product with warehouseInventoryNum explicitly null",
+            "warehouseInventoryNum": null,
+            "totalVerifiedInventory": null,
+            "verifiedWarehouse": 1,
+            "listedNum": 10,
+            "isCollect": 0,
+            "productType": "0"
+          },
+          {
+            "id": "ABSENT-INV-001",
+            "nameEn": "Product With Missing Inventory Field",
+            "sku": "CJMISS001",
+            "threeCategoryName": "Electronics",
+            "categoryId": "CAT-ELEC-001",
+            "sellPrice": "6.00",
+            "bigImage": "https://example.com/missing-inv.png",
+            "description": "Product with warehouseInventoryNum field completely absent",
+            "listedNum": 5,
+            "isCollect": 0,
+            "productType": "0"
+          }
+        ],
+        "relatedCategoryList": [],
+        "keyWord": "Electronics"
+      }
+    ]
+  }
+}

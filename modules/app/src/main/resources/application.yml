@@ -207,6 +207,7 @@ cj-dropshipping:
   api:
     base-url: ${CJ_API_BASE_URL:https://developers.cjdropshipping.com/api2.0/v1}
     access-token: ${CJ_ACCESS_TOKEN:}
+  default-logistic-name: ${CJ_DEFAULT_LOGISTIC_NAME:}
   webhook:
     secret: ${CJ_WEBHOOK_SECRET:}
 

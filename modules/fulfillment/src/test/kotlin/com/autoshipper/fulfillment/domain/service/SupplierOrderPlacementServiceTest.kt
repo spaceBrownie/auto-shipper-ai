@@ -200,4 +200,28 @@ class SupplierOrderPlacementServiceTest {
         verify(supplierOrderAdapter, never()).placeOrder(any())
         verify(orderRepository, never()).save(any<Order>())
     }
+
+    @Test
+    fun `US warehouse country code flows from mapping to order request`() {
+        val order = confirmedOrder(quantity = 2)
+        val mapping = SupplierProductMapping(
+            supplierProductId = "pid1",
+            supplierVariantId = "vid1",
+            warehouseCountryCode = "US"
+        )
+
+        whenever(orderRepository.findById(order.id)).thenReturn(Optional.of(order))
+        whenever(supplierProductMappingResolver.resolve(order.skuId)).thenReturn(mapping)
+        whenever(supplierOrderAdapter.placeOrder(any())).thenReturn(SupplierOrderResult.Success("cj-us-456"))
+        whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+
+        service.placeSupplierOrder(order.id)
+
+        verify(supplierOrderAdapter).placeOrder(argThat<SupplierOrderRequest> {
+            warehouseCountryCode == "US" && supplierProductId == "pid1" && supplierVariantId == "vid1"
+        })
+        assert(order.supplierOrderId == "cj-us-456") {
+            "Expected supplierOrderId='cj-us-456', got '${order.supplierOrderId}'"
+        }
+    }
 }

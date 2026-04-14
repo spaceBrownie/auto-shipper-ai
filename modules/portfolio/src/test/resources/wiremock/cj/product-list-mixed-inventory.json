@@ -1,0 +1,129 @@
+{
+  "code": 200,
+  "result": true,
+  "message": "Success",
+  "requestId": "d49fg66c-3456-7890-cdef-012345678901",
+  "data": {
+    "pageSize": 20,
+    "pageNumber": 1,
+    "totalRecords": 7,
+    "totalPages": 1,
+    "content": [
+      {
+        "productList": [
+          {
+            "id": "GOOD-INV-001",
+            "nameEn": "Stainless Steel Water Bottle",
+            "sku": "CJWAT001",
+            "threeCategoryName": "Sports & Outdoors / Hydration",
+            "categoryId": "CAT-SPORT-001",
+            "sellPrice": "9.25 -- 15.00",
+            "bigImage": "https://example.com/water-bottle.png",
+            "description": "Insulated stainless steel water bottle, 32oz",
+            "warehouseInventoryNum": 800,
+            "totalVerifiedInventory": 800,
+            "verifiedWarehouse": 1,
+            "listedNum": 300,
+            "isCollect": 0,
+            "productType": "0"
+          },
+          {
+            "id": "ZERO-INV-MIX",
+            "nameEn": "Silicone Keyboard Cover",
+            "sku": "CJKEY001",
+            "threeCategoryName": "Electronics / Accessories",
+            "categoryId": "CAT-ELEC-001",
+            "sellPrice": "2.10",
+            "bigImage": "https://example.com/keyboard-cover.png",
+            "description": "Ultra-thin silicone keyboard cover for laptop",
+            "warehouseInventoryNum": 0,
+            "totalVerifiedInventory": 0,
+            "verifiedWarehouse": 1,
+            "listedNum": 20,
+            "isCollect": 0,
+            "productType": "0"
+          },
+          {
+            "id": "NULL-INV-MIX",
+            "nameEn": "Mini USB Fan",
+            "sku": "CJFAN001",
+            "threeCategoryName": "Electronics / Accessories",
+            "categoryId": "CAT-ELEC-001",
+            "sellPrice": "4.20",
+            "bigImage": "https://example.com/usb-fan.png",
+            "description": "Portable mini USB fan for desk",
+            "warehouseInventoryNum": null,
+            "totalVerifiedInventory": null,
+            "verifiedWarehouse": 1,
+            "listedNum": 15,
+            "isCollect": 0,
+            "productType": "0"
+          },
+          {
+            "id": "ABSENT-INV-MIX",
+            "nameEn": "Glass Tea Infuser",
+            "sku": "CJTEA001",
+            "threeCategoryName": "Kitchen & Dining / Tea",
+            "categoryId": "CAT-HOME-001",
+            "sellPrice": "7.80",
+            "bigImage": "https://example.com/tea-infuser.png",
+            "description": "Borosilicate glass tea infuser with lid",
+            "listedNum": 10,
+            "isCollect": 0,
+            "productType": "0"
+          },
+          {
+            "id": "GOOD-INV-002",
+            "nameEn": "Yoga Mat Premium",
+            "sku": "CJYOG001",
+            "threeCategoryName": "Sports & Outdoors / Yoga",
+            "categoryId": "CAT-SPORT-001",
+            "sellPrice": "11.50",
+            "bigImage": "https://example.com/yoga-mat.png",
+            "description": "Premium non-slip yoga mat, 6mm thick",
+            "warehouseInventoryNum": 150,
+            "totalVerifiedInventory": 150,
+            "verifiedWarehouse": 1,
+            "listedNum": 45,
+            "isCollect": 0,
+            "productType": "0"
+          },
+          {
+            "id": "NEG-INV-MIX",
+            "nameEn": "Wireless Charging Pad",
+            "sku": "CJWCP001",
+            "threeCategoryName": "Electronics / Accessories",
+            "categoryId": "CAT-ELEC-001",
+            "sellPrice": "8.00",
+            "bigImage": "https://example.com/charging-pad.png",
+            "description": "Wireless charging pad with negative inventory (B16)",
+            "warehouseInventoryNum": -5,
+            "totalVerifiedInventory": 0,
+            "verifiedWarehouse": 1,
+            "listedNum": 5,
+            "isCollect": 0,
+            "productType": "0"
+          },
+          {
+            "id": "STR-INV-MIX",
+            "nameEn": "Portable Bluetooth Speaker",
+            "sku": "CJSPK001",
+            "threeCategoryName": "Electronics / Audio",
+            "categoryId": "CAT-ELEC-001",
+            "sellPrice": "14.00",
+            "bigImage": "https://example.com/speaker.png",
+            "description": "Portable speaker with string-type inventory (B17)",
+            "warehouseInventoryNum": "not-a-number",
+            "totalVerifiedInventory": 0,
+            "verifiedWarehouse": 1,
+            "listedNum": 3,
+            "isCollect": 0,
+            "productType": "0"
+          }
+        ],
+        "relatedCategoryList": [],
+        "keyWord": "Sports & Outdoors"
+      }
+    ]
+  }
+}

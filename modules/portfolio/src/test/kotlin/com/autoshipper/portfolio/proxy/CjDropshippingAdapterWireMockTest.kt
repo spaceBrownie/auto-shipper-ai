@@ -3,7 +3,9 @@ package com.autoshipper.portfolio.proxy
 import com.autoshipper.shared.money.Currency
 import com.autoshipper.shared.money.Money
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
+import com.github.tomakehurst.wiremock.client.WireMock.equalTo
 import com.github.tomakehurst.wiremock.client.WireMock.get
+import com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension
@@ -58,7 +60,16 @@ class CjDropshippingAdapterWireMockTest : WireMockAdapterTestBase() {
         assertSignalPresent(first, "cj_pid")
         assertSignalPresent(first, "cj_category_id")
         assertSignalPresent(first, "cj_product_image")
+        assertSignalPresent(first, "cj_warehouse_inventory_num")
         assertThat(first.demandSignals["cj_pid"]).isEqualTo("04A22450-67F0-4617-A132-E7AE7F8963B0")
+        assertThat(first.demandSignals["cj_warehouse_inventory_num"]).isEqualTo("500")
+
+        // Verify verifiedWarehouse=1 and countryCode=US query params are sent
+        wireMock.verify(
+            getRequestedFor(urlPathEqualTo("/product/listV2"))
+                .withQueryParam("verifiedWarehouse", equalTo("1"))
+                .withQueryParam("countryCode", equalTo("US"))
+        )
     }
 
     @Test
@@ -129,5 +140,62 @@ class CjDropshippingAdapterWireMockTest : WireMockAdapterTestBase() {
         val candidates = adapter().fetch()
 
         assertThat(candidates).isEmpty()
+    }
+
+    @Test
+    fun `zero inventory products excluded - returns empty list`() {
+        wireMock.stubFor(
+            get(urlPathEqualTo("/product/listV2"))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(loadFixture("cj/product-list-zero-inventory.json"))
+                )
+        )
+
+        val candidates = adapter().fetch()
+
+        assertThat(candidates).isEmpty()
+    }
+
+    @Test
+    fun `null and absent inventory products excluded - fail closed`() {
+        wireMock.stubFor(
+            get(urlPathEqualTo("/product/listV2"))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(loadFixture("cj/product-list-null-inventory.json"))
+                )
+        )
+
+        val candidates = adapter().fetch()
+
+        assertThat(candidates).isEmpty()
+    }
+
+    @Test
+    fun `mixed inventory - only positive inventory products returned`() {
+        wireMock.stubFor(
+            get(urlPathEqualTo("/product/listV2"))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(loadFixture("cj/product-list-mixed-inventory.json"))
+                )
+        )
+
+        val candidates = adapter().fetch()
+
+        // 7 products in fixture, only 2 have positive warehouseInventoryNum (GOOD-INV-001, GOOD-INV-002)
+        // The stub returns the same fixture for all 4 category requests: 2 passing × 4 categories = 8
+        assertThat(candidates).hasSize(8)
+        assertThat(candidates.map { it.demandSignals["cj_pid"] }).contains("GOOD-INV-001", "GOOD-INV-002")
+        assertThat(candidates.map { it.demandSignals["cj_pid"] }).doesNotContain(
+            "ZERO-INV-MIX", "NULL-INV-MIX", "ABSENT-INV-MIX", "NEG-INV-MIX", "STR-INV-MIX"
+        )
     }
 }

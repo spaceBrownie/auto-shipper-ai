@@ -3,6 +3,7 @@ package com.autoshipper.fulfillment.proxy.supplier
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker
 import io.github.resilience4j.retry.annotation.Retry
+import jakarta.annotation.PostConstruct
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Profile
@@ -13,11 +14,19 @@ import org.springframework.web.client.RestClient
 @Profile("!local")
 class CjSupplierOrderAdapter(
     @Value("\${cj-dropshipping.api.base-url:}") private val baseUrl: String,
-    @Value("\${cj-dropshipping.api.access-token:}") private val accessToken: String
+    @Value("\${cj-dropshipping.api.access-token:}") private val accessToken: String,
+    @Value("\${cj-dropshipping.default-logistic-name:}") private val logisticName: String,
+    private val objectMapper: ObjectMapper
 ) : SupplierOrderAdapter {
 
     private val logger = LoggerFactory.getLogger(CjSupplierOrderAdapter::class.java)
-    private val objectMapper = ObjectMapper()
+
+    @PostConstruct
+    private fun warnIfLogisticNameBlank() {
+        if (logisticName.isBlank()) {
+            logger.warn("cj-dropshipping.default-logistic-name is not configured — orders will omit logisticName")
+        }
+    }
 
     @CircuitBreaker(name = "cj-supplier-order")
     @Retry(name = "cj-supplier-order")
@@ -36,7 +45,9 @@ class CjSupplierOrderAdapter(
             ""
         }
 
-        val body = mapOf(
+        val fromCountryCode = request.warehouseCountryCode ?: "CN"
+
+        val body = mutableMapOf<String, Any>(
             "orderNumber" to request.orderNumber,
             "shippingCountryCode" to (address?.countryCode ?: "US"),
             "shippingCountry" to (address?.country ?: "United States"),
@@ -46,13 +57,22 @@ class CjSupplierOrderAdapter(
             "shippingProvince" to (address?.province ?: ""),
             "shippingZip" to (address?.zip ?: ""),
             "shippingPhone" to (address?.phone ?: ""),
-            "fromCountryCode" to "CN",
+            "fromCountryCode" to fromCountryCode,
             "products" to listOf(
                 mapOf(
                     "vid" to request.supplierVariantId,
                     "quantity" to request.quantity
                 )
             )
+        )
+
+        if (logisticName.isNotBlank()) {
+            body["logisticName"] = logisticName
+        }
+
+        logger.info(
+            "CJ order {}: fromCountryCode={}, logisticName={}",
+            request.orderNumber, fromCountryCode, logisticName.ifBlank { "(not configured)" }
         )
 
         val restClient = RestClient.builder()
