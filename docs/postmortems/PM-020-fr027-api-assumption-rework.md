@@ -142,9 +142,9 @@ This means the adapter would have returned **zero candidates** against the live 
 
 ### Remaining reconciliation (tracked in RAT-47)
 
-- [ ] **Audit all remaining CJ adapters against verified YAML** — 6 production classes (CjSupplierOrderAdapter, CjTrackingProcessingService, CjTrackingWebhookController, CjWebhookTokenVerificationFilter, CjCarrierMapper, DemandScanJob), 7 WireMock fixtures (order placement + error envelopes), 6 test classes. See RAT-47 for full inventory.
+- [x] **Audit all remaining CJ adapters against verified YAML** — 6 production classes (CjSupplierOrderAdapter, CjTrackingProcessingService, CjTrackingWebhookController, CjWebhookTokenVerificationFilter, CjCarrierMapper, DemandScanJob), 7 WireMock fixtures (order placement + error envelopes), 6 test classes. Completed in FR-028/RAT-47 (PR #48). Fixed shippingAddress2, fabricated error codes, missing `success` field, and `orderNum` -> `orderNumber`.
 
-- [ ] **Create `docs/api/cj_shopping_api.yaml`** — Same live-verification process for the Shopping/Order API. Required for auditing `CjSupplierOrderAdapter` and order placement fixtures.
+- [x] **Create `docs/api/cj_shopping_api.yaml`** — Same live-verification process for the Shopping/Order API. Required for auditing `CjSupplierOrderAdapter` and order placement fixtures. Completed in FR-028/RAT-47 (PR #48). Covers 16 Shopping API endpoints + 7 webhook payload schemas with `x-cj-verified` markers.
 
 ### CLAUDE.md constraint candidate
 

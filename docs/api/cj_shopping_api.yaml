@@ -1,0 +1,1078 @@
+openapi: 3.0.3
+info:
+  title: CJ Dropshipping Shopping & Webhook API
+  version: '1.0.0'
+  description: |
+    OpenAPI-style YAML derived from the CJ Dropshipping Shopping and Webhook docs pages.
+
+    Source pages:
+    - Shopping: https://developers.cjdropshipping.com/en/api/api2/api/shopping.html
+    - Webhooks: https://developers.cjdropshipping.com/en/api/start/webhook.html
+    - Webhook API: https://developers.cjdropshipping.com/en/api/api2/api/webhook.html
+
+    Verification:
+    - Shopping endpoints verified against docs + selective live API calls (2026-04-14).
+    - Webhook payloads verified against docs only (push-based, cannot trigger on demand).
+    - Live-verified error codes: 1600001 (auth), 1600300 (param), 1603000 (order error).
+    - All live responses include both `result` (boolean) and `success` (boolean) fields.
+
+    Notes:
+    - Error codes 1600501 (out of stock), 1600502 (invalid address), 1600200 (rate limit)
+      are NOT documented by CJ and were NOT observed in live calls. They appear to be
+      fabricated in prior code and should not be assumed correct.
+    - CJ webhook documentation does NOT specify any authentication mechanism for incoming
+      webhook requests. No Bearer token, HMAC, or custom header is documented.
+
+servers:
+  - url: https://developers.cjdropshipping.com/api2.0/v1
+
+security:
+  - cjAccessToken: []
+
+tags:
+  - name: Orders
+  - name: Payment
+  - name: Shipping
+  - name: Webhooks
+  - name: Webhook Payloads
+    description: Push payloads CJ sends to registered callback URLs (not API endpoints you call).
+
+paths:
+  # ──────────────────────────────────────────────────────────
+  # Orders
+  # ──────────────────────────────────────────────────────────
+  /shopping/order/createOrderV2:
+    post:
+      tags: [Orders]
+      summary: Create Order V2
+      operationId: createOrderV2
+      description: |
+        Create a dropshipping order. This is the primary order creation endpoint used by
+        CjSupplierOrderAdapter.
+
+        Live test (2026-04-14): Sent request with invalid VID, received:
+          code=1603000, message="100202:Invalid products.", data=null
+      x-cj-verified: true
+      x-cj-doc-source:
+        page: shopping.html
+        section: '1.1 Create Order V2'
+      x-cj-live-tested: true
+      x-cj-live-test-date: '2026-04-14'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderV2Request'
+      responses:
+        '200':
+          description: |
+            CJ always returns HTTP 200 with the result in the envelope.
+            Check `result` and `code` fields for actual success/failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateOrderV2Response'
+              examples:
+                success:
+                  summary: Successful order creation
+                  value:
+                    code: 200
+                    result: true
+                    message: Success
+                    data:
+                      orderId: "2011152148163605"
+                      orderNumber: "PARTNER-ORDER-001"
+                      shipmentOrderId: "SH2011152148163605"
+                      postageAmount: 5.99
+                      productAmount: 12.50
+                      productOriginalAmount: 15.00
+                      productDiscountAmount: 2.50
+                      postageDiscountAmount: 0.00
+                      postageOriginalAmount: 5.99
+                      totalDiscountAmount: 2.50
+                      actualPayment: 18.49
+                      orderOriginalAmount: 20.99
+                      orderAmount: 18.49
+                      orderStatus: "CREATED"
+                      logisticsMiss: false
+                      productInfoList:
+                        - variantId: "vid-abc-123"
+                          lineItemId: "LI001"
+                          quantity: 1
+                          isGroup: false
+                      interceptOrderReasons: []
+                    requestId: "a12bc34d-5678-90ef-ghij-klmnopqrstuv"
+                    success: true
+                invalidProducts:
+                  summary: Invalid product error (live-verified 2026-04-14)
+                  value:
+                    code: 1603000
+                    result: false
+                    message: "100202:Invalid products."
+                    data: null
+                    requestId: "5c7c106d279f4b828b81dca67d257a31"
+                    success: false
+                authError:
+                  summary: Authentication error (live-verified 2026-04-14)
+                  value:
+                    code: 1600001
+                    result: false
+                    message: "Invalid API key or access token. How to get access token: https://developers.cjdropshipping.cn/en/api/api2/api/auth.html#_1-1-get-access-token-post"
+                    data: null
+                    requestId: "9ba2a0208f084ef08da79f44f1f6d655"
+                    success: false
+                paramError:
+                  summary: Parameter error (docs)
+                  value:
+                    code: 1600100
+                    result: false
+                    message: "Param error"
+                    data: null
+                    requestId: "323fda9d-3c94-41dc-a944-5cc1b8baf5b1"
+                    success: false
+        default:
+          $ref: '#/components/responses/StandardError'
+
+  /shopping/order/list:
+    get:
+      tags: [Orders]
+      summary: List Orders
+      operationId: listOrders
+      description: |
+        List orders with pagination and filtering.
+        Live test (2026-04-14): Empty list returned (no orders in account).
+        Envelope shape verified: {code, result, message, data: {pageNum, pageSize, total, list}, requestId, success}
+      x-cj-verified: true
+      x-cj-doc-source:
+        page: shopping.html
+        section: '1.6 List Order'
+      x-cj-live-tested: true
+      x-cj-live-test-date: '2026-04-14'
+      parameters:
+        - name: pageNum
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: orderIds
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: shipmentOrderId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [CREATED, IN_CART, UNPAID, UNSHIPPED, SHIPPED, DELIVERED, CANCELLED, OTHER]
+      responses:
+        '200':
+          description: Paginated order list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderListResponse'
+        default:
+          $ref: '#/components/responses/StandardError'
+
+  /shopping/order/getOrderDetail:
+    get:
+      tags: [Orders]
+      summary: Query Order Detail
+      operationId: getOrderDetail
+      description: Get order details by order ID (custom or CJ order ID).
+      x-cj-verified: docs-only
+      x-cj-doc-source:
+        page: shopping.html
+        section: '1.7 Query Order Detail'
+      parameters:
+        - name: orderId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Custom order ID or CJ order ID.
+        - name: features
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [LOGISTICS_TIMELINESS]
+      responses:
+        '200':
+          description: Order detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetailResponse'
+        default:
+          $ref: '#/components/responses/StandardError'
+
+  /shopping/order/deleteOrder:
+    delete:
+      tags: [Orders]
+      summary: Delete Order
+      operationId: deleteOrder
+      x-cj-verified: docs-only
+      x-cj-doc-source:
+        page: shopping.html
+        section: '1.8 Delete Order'
+      parameters:
+        - name: orderId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Returns the deleted order ID as string in data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringDataResponse'
+        default:
+          $ref: '#/components/responses/StandardError'
+
+  /shopping/order/confirmOrder:
+    patch:
+      tags: [Orders]
+      summary: Confirm Order
+      operationId: confirmOrder
+      x-cj-verified: docs-only
+      x-cj-doc-source:
+        page: shopping.html
+        section: '1.9 Confirm Order'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderId]
+              properties:
+                orderId:
+                  type: string
+      responses:
+        '200':
+          description: Returns the confirmed order ID as string in data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringDataResponse'
+        default:
+          $ref: '#/components/responses/StandardError'
+
+  # ──────────────────────────────────────────────────────────
+  # Payment
+  # ──────────────────────────────────────────────────────────
+  /shopping/pay/getBalance:
+    get:
+      tags: [Payment]
+      summary: Get Balance
+      operationId: getBalance
+      x-cj-verified: docs-only
+      x-cj-doc-source:
+        page: shopping.html
+        section: '2.1 Get Balance'
+      responses:
+        '200':
+          description: Account balance.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+        default:
+          $ref: '#/components/responses/StandardError'
+
+  # ──────────────────────────────────────────────────────────
+  # Webhook Configuration
+  # ──────────────────────────────────────────────────────────
+  /webhook/set:
+    post:
+      tags: [Webhooks]
+      summary: Configure Webhooks
+      operationId: setWebhook
+      description: |
+        Register callback URLs for webhook event types.
+        Each type can be ENABLE or CANCEL, with a single public HTTPS URL.
+      x-cj-verified: docs-only
+      x-cj-doc-source:
+        page: webhook.html
+        section: 'Webhook Set'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookSetRequest'
+      responses:
+        '200':
+          description: Webhook configuration result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BooleanDataResponse'
+        default:
+          $ref: '#/components/responses/StandardError'
+
+components:
+  securitySchemes:
+    cjAccessToken:
+      type: apiKey
+      in: header
+      name: CJ-Access-Token
+
+  responses:
+    StandardError:
+      description: |
+        Standard CJ error wrapper. All errors return HTTP 200 with error details in the envelope.
+        Live-verified error codes: 1600001 (auth), 1600300 (missing param), 1603000 (order error).
+        Docs-only codes: 1600100 (param error), 1603001 (confirm fail).
+        Unverified codes (not in docs, not observed live): 1600200, 1600501, 1600502.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/StandardErrorEnvelope'
+          example:
+            code: 1600100
+            result: false
+            message: Param error
+            data: null
+            requestId: 323fda9d-3c94-41dc-a944-5cc1b8baf5b1
+            success: false
+
+  schemas:
+    # ──────────────────────────────────────────────────────────
+    # Common Envelopes
+    # ──────────────────────────────────────────────────────────
+    StandardErrorEnvelope:
+      type: object
+      description: |
+        Standard CJ error response. Live responses always include both `result` and `success`.
+      properties:
+        code:
+          type: integer
+          description: CJ error code.
+        result:
+          type: boolean
+          description: Always false for errors.
+        message:
+          type: string
+        data:
+          nullable: true
+          description: Always null for errors.
+        requestId:
+          type: string
+          format: uuid
+        success:
+          type: boolean
+          description: Always false for errors. Present in all live responses.
+
+    # ──────────────────────────────────────────────────────────
+    # Error Codes (verified)
+    # ──────────────────────────────────────────────────────────
+    VerifiedErrorCodes:
+      type: integer
+      description: |
+        Error codes verified from live API calls and/or documentation:
+
+        | Code | Source | Message |
+        |------|--------|---------|
+        | 1600001 | live | Invalid API key or access token |
+        | 1600100 | docs | Param error |
+        | 1600300 | live | [field] must not be empty / Order not found |
+        | 1603000 | live | 100202:Invalid products |
+        | 1603001 | docs | Order confirm fail |
+
+        Codes NOT verified (assumed fabricated in prior code):
+        | 1600200 | unverified | Rate limit (plausible but not documented) |
+        | 1600501 | unverified | Out of stock (not documented, not observed) |
+        | 1600502 | unverified | Invalid address (not documented, not observed) |
+
+    # ──────────────────────────────────────────────────────────
+    # Order Schemas
+    # ──────────────────────────────────────────────────────────
+    CreateOrderV2Request:
+      type: object
+      required:
+        - orderNumber
+        - shippingCountryCode
+        - shippingCountry
+        - shippingProvince
+        - shippingCity
+        - shippingCustomerName
+        - shippingAddress
+        - logisticName
+        - fromCountryCode
+        - products
+      properties:
+        orderNumber:
+          type: string
+          maxLength: 50
+          description: Unique identifier from partner.
+        shippingZip:
+          type: string
+          maxLength: 20
+        shippingCountryCode:
+          type: string
+          maxLength: 20
+          description: Two-letter country code.
+        shippingCountry:
+          type: string
+          maxLength: 50
+          description: Country name.
+        shippingProvince:
+          type: string
+          maxLength: 50
+          description: Province or state.
+        shippingCity:
+          type: string
+          maxLength: 50
+        shippingCounty:
+          type: string
+          maxLength: 50
+        shippingPhone:
+          type: string
+          maxLength: 20
+        shippingCustomerName:
+          type: string
+          maxLength: 50
+          description: Recipient name.
+        shippingAddress:
+          type: string
+          maxLength: 200
+          description: Primary address line.
+        shippingAddress2:
+          type: string
+          maxLength: 200
+          description: Secondary address line (apt, suite, etc). Optional.
+        houseNumber:
+          type: string
+          maxLength: 20
+        email:
+          type: string
+          maxLength: 50
+        taxId:
+          type: string
+          maxLength: 20
+        remark:
+          type: string
+          maxLength: 500
+        consigneeID:
+          type: string
+          maxLength: 20
+        payType:
+          type: integer
+          description: "1=page payment (default), 2=balance, 3=create only"
+        shopAmount:
+          type: number
+          description: Order amount in USD.
+        logisticName:
+          type: string
+          maxLength: 50
+          description: |
+            Logistics provider name. Required.
+            Exact values not enumerated in CJ docs. Known examples from order list
+            responses include carrier-like strings.
+        fromCountryCode:
+          type: string
+          maxLength: 20
+          description: Shipment origin country code (e.g. "CN", "US").
+        platform:
+          type: string
+          maxLength: 20
+          description: Defaults to "Api".
+        iossType:
+          type: integer
+          description: "1=No IOSS, 2=Own IOSS, 3=CJ IOSS"
+        shopLogisticsType:
+          type: integer
+          description: "1=Platform (user warehouse), 2=Seller, 3=Platform (CJ warehouse)"
+        storageId:
+          type: string
+          maxLength: 40
+          description: CJ warehouse ID.
+        iossNumber:
+          type: string
+          maxLength: 10
+        storeName:
+          type: string
+          maxLength: 50
+        storeOrderTime:
+          type: integer
+          format: int64
+          description: Timestamp (seconds) of order creation.
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderProduct'
+
+    OrderProduct:
+      type: object
+      required:
+        - quantity
+      properties:
+        vid:
+          type: string
+          maxLength: 50
+          description: CJ variant ID. Either vid or sku must be provided.
+        sku:
+          type: string
+          maxLength: 50
+          description: CJ variant SKU. Either vid or sku must be provided.
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+          description: Item price in USD.
+        storeLineItemId:
+          type: string
+          maxLength: 125
+        podProperties:
+          type: string
+          maxLength: 500
+          description: POD customization JSON string.
+
+    CreateOrderV2Response:
+      type: object
+      description: |
+        Response envelope for createOrderV2.
+        Live test confirmed: error responses include both `result: false` and `success: false`.
+        Success responses include `result: true` and `success: true`.
+      properties:
+        code:
+          type: integer
+          description: 200 for success, error code otherwise.
+        result:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/CreateOrderV2Data'
+        requestId:
+          type: string
+        success:
+          type: boolean
+
+    CreateOrderV2Data:
+      type: object
+      nullable: true
+      description: |
+        Null on error responses.
+        On success, contains order details including pricing breakdown.
+        Note: docs show `orderNumber` (not `orderNum`) in this response.
+      properties:
+        orderId:
+          type: string
+          description: CJ-assigned order ID.
+        orderNumber:
+          type: string
+          description: |
+            Partner's order number (echo of request).
+            IMPORTANT: docs show `orderNumber`, NOT `orderNum`. The order/list endpoint
+            uses `orderNum` in its response — this is an inconsistency in CJ's API.
+        shipmentOrderId:
+          type: string
+        iossAmount:
+          type: number
+        iossTaxHandlingFee:
+          type: number
+        postageAmount:
+          type: number
+        productAmount:
+          type: number
+        productOriginalAmount:
+          type: number
+        productDiscountAmount:
+          type: number
+        postageDiscountAmount:
+          type: number
+        postageOriginalAmount:
+          type: number
+        totalDiscountAmount:
+          type: number
+        actualPayment:
+          type: number
+        orderOriginalAmount:
+          type: number
+        cjPayUrl:
+          type: string
+        orderAmount:
+          type: number
+        logisticsMiss:
+          type: boolean
+        orderStatus:
+          type: string
+          enum: [CREATED, IN_CART, UNPAID, UNSHIPPED, SHIPPED, DELIVERED, CANCELLED, OTHER]
+        productInfoList:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderProductInfo'
+        interceptOrderReasons:
+          type: array
+          items:
+            $ref: '#/components/schemas/InterceptReason'
+
+    OrderProductInfo:
+      type: object
+      properties:
+        storeLineItemId:
+          type: string
+        lineItemId:
+          type: string
+        variantId:
+          type: string
+        isGroup:
+          type: boolean
+        quantity:
+          type: integer
+        subOrderProducts:
+          type: array
+          items:
+            type: object
+            properties:
+              lineItemId:
+                type: string
+              variantId:
+                type: string
+              quantity:
+                type: integer
+
+    InterceptReason:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+
+    # ──────────────────────────────────────────────────────────
+    # Order List/Detail Schemas
+    # ──────────────────────────────────────────────────────────
+    OrderListResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+        result:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/OrderListData'
+        requestId:
+          type: string
+        success:
+          type: boolean
+
+    OrderListData:
+      type: object
+      description: |
+        Live-verified shape (2026-04-14): {pageNum, pageSize, total, list}.
+      properties:
+        pageNum:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        list:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderListItem'
+
+    OrderListItem:
+      type: object
+      description: |
+        Note: order list uses `orderNum` while createOrderV2 response uses `orderNumber`.
+        This is a CJ API inconsistency.
+      properties:
+        orderId:
+          type: string
+        orderNum:
+          type: string
+          description: Different from createOrderV2 response which uses `orderNumber`.
+        cjOrderId:
+          type: string
+        shippingCountryCode:
+          type: string
+        shippingProvince:
+          type: string
+        shippingCity:
+          type: string
+        shippingPhone:
+          type: string
+        shippingAddress:
+          type: string
+        shippingCustomerName:
+          type: string
+        remark:
+          type: string
+        orderWeight:
+          type: integer
+        orderStatus:
+          type: string
+          enum: [CREATED, IN_CART, UNPAID, UNSHIPPED, SHIPPED, DELIVERED, CANCELLED, OTHER]
+        orderAmount:
+          type: number
+        productAmount:
+          type: number
+        postageAmount:
+          type: number
+        logisticName:
+          type: string
+        trackNumber:
+          type: string
+        createDate:
+          type: string
+          description: Format "yyyy-MM-dd HH:mm:ss"
+        paymentDate:
+          type: string
+        productList:
+          nullable: true
+        storageId:
+          type: string
+        storageName:
+          type: string
+
+    OrderDetailResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+        result:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/OrderDetailData'
+        requestId:
+          type: string
+        success:
+          type: boolean
+
+    OrderDetailData:
+      type: object
+      properties:
+        orderId:
+          type: string
+        orderNum:
+          type: string
+        platformOrderId:
+          type: string
+        cjOrderId:
+          type: string
+        shippingCountryCode:
+          type: string
+        shippingProvince:
+          type: string
+        shippingCity:
+          type: string
+        shippingPhone:
+          type: string
+        shippingAddress:
+          type: string
+        shippingCustomerName:
+          type: string
+        remark:
+          type: string
+        orderWeight:
+          type: integer
+        orderStatus:
+          type: string
+        orderAmount:
+          type: number
+        productAmount:
+          type: number
+        postageAmount:
+          type: number
+        logisticName:
+          type: string
+        trackNumber:
+          type: string
+        createDate:
+          type: string
+        paymentDate:
+          type: string
+        isComplete:
+          type: integer
+        fromCountryCode:
+          type: string
+        storageId:
+          type: string
+        storageName:
+          type: string
+        productList:
+          type: array
+          items:
+            type: object
+            properties:
+              vid:
+                type: string
+              quantity:
+                type: integer
+              sellPrice:
+                type: number
+              lineItemId:
+                type: string
+              storeLineItemId:
+                type: string
+              productionOrderStatus:
+                type: integer
+                description: "1=Pending, 2=Production Pending, 3=In Production, 4=Completed, 5=Abnormality"
+              abnormalType:
+                type: array
+                items:
+                  type: integer
+
+    # ──────────────────────────────────────────────────────────
+    # Simple response wrappers
+    # ──────────────────────────────────────────────────────────
+    StringDataResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+        result:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: string
+        requestId:
+          type: string
+        success:
+          type: boolean
+
+    BooleanDataResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+        result:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: boolean
+        requestId:
+          type: string
+        success:
+          type: boolean
+
+    BalanceResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+        result:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            amount:
+              type: number
+            noWithdrawalAmount:
+              type: number
+            freezeAmount:
+              type: number
+        requestId:
+          type: string
+        success:
+          type: boolean
+
+    # ──────────────────────────────────────────────────────────
+    # Webhook Configuration
+    # ──────────────────────────────────────────────────────────
+    WebhookSetRequest:
+      type: object
+      properties:
+        product:
+          $ref: '#/components/schemas/WebhookTypeConfig'
+        stock:
+          $ref: '#/components/schemas/WebhookTypeConfig'
+        order:
+          $ref: '#/components/schemas/WebhookTypeConfig'
+        logistics:
+          $ref: '#/components/schemas/WebhookTypeConfig'
+
+    WebhookTypeConfig:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [ENABLE, CANCEL]
+        callbackUrls:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: Single public HTTPS URL required.
+
+    # ──────────────────────────────────────────────────────────
+    # Webhook Payloads (push notifications from CJ)
+    # ──────────────────────────────────────────────────────────
+    # These are NOT API responses — they are payloads CJ POSTs to your callback URL.
+    # Authentication: CJ docs do NOT document any auth mechanism for incoming webhooks.
+    # Requirements: HTTPS, respond 200 OK within 3 seconds, Content-Type: application/json.
+
+    WebhookLogisticPayload:
+      type: object
+      x-cj-verified: docs-only
+      x-cj-doc-source:
+        page: webhook.html
+        section: 'LOGISTIC Message'
+      x-cj-doc-notes: |
+        This is the tracking webhook payload parsed by CjTrackingProcessingService
+        and CjTrackingWebhookController. Field names verified against CJ webhook docs.
+        Cannot be live-tested (push-based).
+      description: |
+        CJ sends this when logistics tracking updates occur.
+        Used by CjTrackingProcessingService to mark orders as SHIPPED.
+      properties:
+        messageId:
+          type: string
+        type:
+          type: string
+          enum: [LOGISTIC]
+        messageType:
+          type: string
+          enum: [INSERT, UPDATE, DELETE]
+        openId:
+          type: integer
+          description: CJ account ID (integer, not string).
+        params:
+          type: object
+          properties:
+            orderId:
+              type: string
+              description: Partner's order ID (used for order lookup in our system).
+            logisticName:
+              type: string
+              description: |
+                Carrier/logistics name. Exact values NOT enumerated in CJ docs.
+                CjCarrierMapper normalizes these to internal carrier names.
+            trackingNumber:
+              type: string
+              description: Shipment tracking number.
+            trackingStatus:
+              type: integer
+              description: |
+                0=No tracking info, 1=Shipped, 2=Forwarder received, 3=Return initiated,
+                4=Dispatched, 5=International transit, 6=Destination arrival,
+                7=Customs initiated, 8=Customs cleared, 9=Last-mile pickup,
+                10=Out for delivery, 11=Ready for pickup, 12=Delivered,
+                13=Failed/Exception, 14=Return
+            logisticsTrackEvents:
+              type: string
+              description: |
+                JSON string (NOT a nested array) containing tracking events.
+                Must be parsed separately. Format:
+                [{"status":int, "activity":"string", "location":"string",
+                  "eventTime":"string", "statusDesc":"string"}]
+      example:
+        messageId: "msg-tracking-001"
+        type: "LOGISTIC"
+        messageType: "UPDATE"
+        openId: 35392
+        params:
+          orderId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+          logisticName: "UPS"
+          trackingNumber: "1Z999AA10123456784"
+          trackingStatus: 1
+          logisticsTrackEvents: "[]"
+
+    WebhookOrderPayload:
+      type: object
+      x-cj-verified: docs-only
+      x-cj-doc-source:
+        page: webhook.html
+        section: 'ORDER Message'
+      description: CJ sends this for order lifecycle events.
+      properties:
+        messageId:
+          type: string
+        type:
+          type: string
+          enum: [ORDER]
+        messageType:
+          type: string
+          enum: [INSERT, UPDATE, DELETE, ORDER_CONNNECTED]
+          description: Note the typo "ORDER_CONNNECTED" (3 N's) is from the CJ docs.
+        params:
+          type: object
+          properties:
+            orderNumber:
+              type: string
+              description: Partner's order number.
+            cjOrderId:
+              type: string
+            orderStatus:
+              type: string
+            logisticName:
+              type: string
+            trackNumber:
+              type: string
+              description: Note this uses `trackNumber`, while LOGISTIC webhook uses `trackingNumber`.
+            createDate:
+              type: string
+              description: Format "yyyy-MM-dd HH:mm:ss"
+            updateDate:
+              type: string
+            payDate:
+              type: string
+            deliveryDate:
+              type: string
+            completeDate:
+              type: string
+            orderItems:
+              type: array
+              items:
+                type: object
+                properties:
+                  vid:
+                    type: string
+                  quantity:
+                    type: integer
+                  sellPrice:
+                    type: number
+                  lineItemId:
+                    type: string
+                  storeLineItemId:
+                    type: string
+                  productionOrderStatus:
+                    type: integer
+                  abnormalType:
+                    type: array
+                    items:
+                      type: integer
+
+    WebhookAuthenticationNote:
+      type: object
+      x-cj-verified: unverified
+      description: |
+        CJ webhook documentation does NOT specify any authentication mechanism for
+        incoming webhook requests. The following are NOT documented:
+        - Bearer token in Authorization header
+        - HMAC signature verification
+        - Custom authentication headers
+
+        Our CjWebhookTokenVerificationFilter uses Bearer token authentication as a
+        defensive measure, but this is NOT verified against CJ's actual behavior.
+        CJ may or may not send an Authorization header with webhooks.
+
+        Until verified (e.g., by registering a webhook endpoint and inspecting the
+        actual headers CJ sends), this remains unverified.

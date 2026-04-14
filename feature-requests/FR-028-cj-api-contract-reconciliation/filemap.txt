@@ -1,0 +1,29 @@
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/service/CjTrackingProcessingService.kt
+  CjTrackingProcessingService (L17)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/service/SupplierOrderPlacementService.kt
+  SupplierOrderPlacementService (L13)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/handler/webhook/CjTrackingWebhookController.kt
+  CjTrackingWebhookController (L13)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/handler/webhook/CjWebhookTokenVerificationFilter.kt
+  CjWebhookTokenVerificationFilter (L22)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/proxy/carrier/CjCarrierMapper.kt
+  CjCarrierMapper (L3)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/proxy/supplier/CjSupplierOrderAdapter.kt
+  CjSupplierOrderAdapter (L13)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/proxy/supplier/SupplierProductMappingResolver.kt
+  SupplierProductMappingResolver (L8)
+
+modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/domain/service/DemandScanJob.kt
+  DemandScanJob (L23)
+
+modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/proxy/CjDropshippingAdapter.kt
+  CjDropshippingAdapter (L15)
+
+---
+9 classes across 9 files (~270 tokens)

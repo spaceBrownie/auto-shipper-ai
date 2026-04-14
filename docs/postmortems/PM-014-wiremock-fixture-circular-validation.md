@@ -109,4 +109,4 @@ No runtime error — all tests passed. The symptom was conceptual: fixtures were
 
 - [x] Saved feedback memory: WireMock fixtures must be based on real API docs, not reverse-engineered from adapter code
 - [ ] Add to CLAUDE.md: "WireMock/recorded-response fixtures must be verified against official API documentation before commit. Never synthesize fixtures solely from adapter parsing code — this creates circular validation."
-- [ ] Consider adding a fixture README template in `src/test/resources/wiremock/` that requires documenting the API doc source URL for each fixture set
+- [x] Consider adding a fixture README template in `src/test/resources/wiremock/` that requires documenting the API doc source URL for each fixture set — Addressed via `_comment` / `_comment_source` / `_comment_verified` JSON fields in every CJ fixture (FR-027 PR #47 + FR-028 PR #48). All 12 CJ fixtures now cite their API doc URL inline.

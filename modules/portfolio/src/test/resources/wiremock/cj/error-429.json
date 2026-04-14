@@ -1,7 +1,11 @@
 {
+  "_comment": "CJ API — rate limit error (code 1600200)",
+  "_comment_source": "https://developers.cjdropshipping.com/en/api/api2/api/shopping.html",
+  "_comment_verified": "2026-04-14 (code 1600200 is NOT in CJ docs — unverified, kept as plausible)",
   "code": 1600200,
   "result": false,
   "message": "Too much request",
   "requestId": "c34de56f-7890-12gh-ijkl-mnopqrstuvwx",
-  "data": null
+  "data": null,
+  "success": false
 }

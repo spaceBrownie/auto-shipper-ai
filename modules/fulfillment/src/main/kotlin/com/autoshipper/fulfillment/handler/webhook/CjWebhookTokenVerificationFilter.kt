@@ -15,6 +15,11 @@ import java.security.MessageDigest
  * This filter is NOT a Spring component — it is instantiated and registered via
  * FilterRegistrationBean by CjWebhookFilterConfig.
  *
+ * x-cj-verified: unverified — CJ webhook docs do not document any authentication
+ * mechanism for incoming webhooks. Bearer token auth is a defensive measure, not
+ * a verified CJ contract. If CJ webhooks arrive without an Authorization header,
+ * this filter will reject them and must be updated.
+ *
  * Security considerations:
  * - Uses MessageDigest.isEqual() for constant-time comparison to prevent timing attacks.
  * - Never logs the token value (NFR-7).
