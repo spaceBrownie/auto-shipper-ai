@@ -51,7 +51,12 @@ class CjDropshippingAdapter(
                     .retrieve()
                     .body(JsonNode::class.java)
 
-                val products = response?.path("data")?.path("list")
+                // Real CJ listV2 response: data.content[].productList[]
+                val contentArray = response?.path("data")?.path("content")
+                val products = if (contentArray != null && contentArray.isArray && contentArray.size() > 0) {
+                    contentArray[0]?.path("productList")
+                } else null
+
                 if (products != null && products.isArray) {
                     var candidatesFromCategory = 0
                     for (product in products) {
@@ -59,8 +64,8 @@ class CjDropshippingAdapter(
                             ?.let { if (!it.isNull) it.asInt(-1) else null }
 
                         if (inventoryNum == null || inventoryNum <= 0) {
-                            val pid = product.path("pid").asText("unknown")
-                            logger.debug("Excluding CJ product {} — warehouseInventoryNum is {} (zero, null, or absent)", pid, inventoryNum)
+                            val productId = product.path("id").asText("unknown")
+                            logger.debug("Excluding CJ product {} — warehouseInventoryNum is {} (zero, null, or absent)", productId, inventoryNum)
                             continue
                         }
 
@@ -80,10 +85,14 @@ class CjDropshippingAdapter(
     }
 
     private fun mapProduct(product: JsonNode, category: String, warehouseInventoryNum: Int): RawCandidate {
-        val sellPrice = product.path("sellPrice").asDouble(0.0)
+        // CJ sellPrice is a string range like "0.58 -- 93.24"; parse the minimum
+        val sellPriceText = product.path("sellPrice").asText("")
+        val sellPrice = sellPriceText.split("--", "-")
+            .firstOrNull()?.trim()?.toDoubleOrNull() ?: 0.0
+
         return RawCandidate(
-            productName = product.path("productNameEn").asText("Unknown Product"),
-            category = product.path("categoryName").asText(category),
+            productName = product.path("nameEn").asText("Unknown Product"),
+            category = product.path("threeCategoryName").asText(category),
             description = product.path("description").asText(""),
             sourceType = sourceType(),
             supplierUnitCost = Money.of(BigDecimal.valueOf(sellPrice), Currency.USD),
@@ -92,9 +101,9 @@ class CjDropshippingAdapter(
                 Currency.USD
             ),
             demandSignals = mapOf(
-                "cj_pid" to product.path("pid").asText(""),
+                "cj_pid" to product.path("id").asText(""),
                 "cj_category_id" to product.path("categoryId").asText(""),
-                "cj_product_image" to product.path("productImage").asText(""),
+                "cj_product_image" to product.path("bigImage").asText(""),
                 "cj_warehouse_inventory_num" to warehouseInventoryNum.toString()
             )
         )

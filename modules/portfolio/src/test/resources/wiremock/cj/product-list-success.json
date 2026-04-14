@@ -4,57 +4,64 @@
   "message": "Success",
   "requestId": "f95cd31d-3907-47ce-ac1a-dfdee4315960",
   "data": {
-    "pageNum": 1,
     "pageSize": 20,
-    "total": 3,
-    "list": [
+    "pageNumber": 1,
+    "totalRecords": 3,
+    "totalPages": 1,
+    "content": [
       {
-        "pid": "04A22450-67F0-4617-A132-E7AE7F8963B0",
-        "productNameEn": "Stainless Steel Kitchen Knife Set",
-        "productName": "[\"不锈钢厨刀套装\"]",
-        "productSku": "CJNSSYWY01847",
-        "categoryName": "Kitchen & Dining / Knives & Accessories",
-        "categoryId": "5E656DFB-9BAE-44DD-A755-40AFA2E0E686",
-        "sellPrice": 12.50,
-        "productImage": "https://cc-west-usa.oss-us-west-1.aliyuncs.com/20210129/knife-set.png",
-        "productWeight": 350,
-        "productUnit": "unit(s)",
-        "productType": null,
-        "description": "Professional 5-piece stainless steel kitchen knife set with wooden block",
-        "createTime": null,
-        "warehouseInventoryNum": 500
-      },
-      {
-        "pid": "1B3F7E82-A4C9-4D21-B8E6-92C3A5D10F47",
-        "productNameEn": "Silicone Cooking Utensil Set",
-        "productName": "[\"硅胶厨具套装\"]",
-        "productSku": "CJNSSYWY02103",
-        "categoryName": "Kitchen & Dining / Kitchen Utensils",
-        "categoryId": "5E656DFB-9BAE-44DD-A755-40AFA2E0E686",
-        "sellPrice": 8.99,
-        "productImage": "https://cc-west-usa.oss-us-west-1.aliyuncs.com/20210215/utensil-set.png",
-        "productWeight": 280,
-        "productUnit": "unit(s)",
-        "productType": null,
-        "description": "Heat-resistant silicone cooking utensil set, 10 pieces",
-        "createTime": null,
-        "warehouseInventoryNum": 1200
-      },
-      {
-        "pid": "7C9D2A15-3E8B-4F6A-91D7-5B4C8E2F0A63",
-        "productNameEn": "Bamboo Cutting Board",
-        "productName": "[\"竹砧板\"]",
-        "productSku": "CJNSSYWY03291",
-        "categoryName": "Kitchen & Dining / Cutting Boards",
-        "categoryId": "5E656DFB-9BAE-44DD-A755-40AFA2E0E686",
-        "sellPrice": 6.75,
-        "productImage": "https://cc-west-usa.oss-us-west-1.aliyuncs.com/20210301/cutting-board.png",
-        "productWeight": 420,
-        "productUnit": "unit(s)",
-        "productType": null,
-        "description": "Organic bamboo cutting board with juice groove, large size",
-        "createTime": null,
-        "warehouseInventoryNum": 250
+        "productList": [
+          {
+            "id": "04A22450-67F0-4617-A132-E7AE7F8963B0",
+            "nameEn": "Stainless Steel Kitchen Knife Set",
+            "sku": "CJNSSYWY01847",
+            "threeCategoryName": "Kitchen & Dining / Knives & Accessories",
+            "categoryId": "5E656DFB-9BAE-44DD-A755-40AFA2E0E686",
+            "sellPrice": "12.50 -- 25.00",
+            "bigImage": "https://cc-west-usa.oss-us-west-1.aliyuncs.com/20210129/knife-set.png",
+            "description": "Professional 5-piece stainless steel kitchen knife set with wooden block",
+            "warehouseInventoryNum": 500,
+            "totalVerifiedInventory": 500,
+            "verifiedWarehouse": 1,
+            "listedNum": 120,
+            "isCollect": 0,
+            "productType": "0"
+          },
+          {
+            "id": "1B3F7E82-A4C9-4D21-B8E6-92C3A5D10F47",
+            "nameEn": "Silicone Cooking Utensil Set",
+            "sku": "CJNSSYWY02103",
+            "threeCategoryName": "Kitchen & Dining / Kitchen Utensils",
+            "categoryId": "5E656DFB-9BAE-44DD-A755-40AFA2E0E686",
+            "sellPrice": "8.99 -- 14.50",
+            "bigImage": "https://cc-west-usa.oss-us-west-1.aliyuncs.com/20210215/utensil-set.png",
+            "description": "Heat-resistant silicone cooking utensil set, 10 pieces",
+            "warehouseInventoryNum": 1200,
+            "totalVerifiedInventory": 1200,
+            "verifiedWarehouse": 1,
+            "listedNum": 85,
+            "isCollect": 0,
+            "productType": "0"
+          },
+          {
+            "id": "7C9D2A15-3E8B-4F6A-91D7-5B4C8E2F0A63",
+            "nameEn": "Bamboo Cutting Board",
+            "sku": "CJNSSYWY03291",
+            "threeCategoryName": "Kitchen & Dining / Cutting Boards",
+            "categoryId": "5E656DFB-9BAE-44DD-A755-40AFA2E0E686",
+            "sellPrice": "6.75",
+            "bigImage": "https://cc-west-usa.oss-us-west-1.aliyuncs.com/20210301/cutting-board.png",
+            "description": "Organic bamboo cutting board with juice groove, large size",
+            "warehouseInventoryNum": 250,
+            "totalVerifiedInventory": 250,
+            "verifiedWarehouse": 1,
+            "listedNum": 200,
+            "isCollect": 0,
+            "productType": "0"
+          }
+        ],
+        "relatedCategoryList": [],
+        "keyWord": "Kitchen & Dining"
       }
     ]
   }
