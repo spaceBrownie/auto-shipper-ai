@@ -1,14 +1,14 @@
 # NR-010: The CJ Integration Was Built on Fiction — Now It's Real
 
-**Date:** 2026-04-14
-**Linear:** [RAT-45](https://linear.app/ratrace/issue/RAT-45), [RAT-47](https://linear.app/ratrace/issue/RAT-47)
-**Status:** Completed
+**Date:** 2026-04-14 (updated)
+**Linear:** [RAT-45](https://linear.app/ratrace/issue/RAT-45), [RAT-47](https://linear.app/ratrace/issue/RAT-47), [RAT-42](https://linear.app/ratrace/issue/RAT-42)
+**Status:** In Progress
 
 ---
 
 ## TL;DR
 
-Our entire CJ Dropshipping integration — product discovery, order placement, shipment tracking — was never tested against the real API. Every automated check passed, but they were all validating against made-up data. We skipped the step that any good engineering team does before shipping a third-party integration: actually calling the service. We've now done that work. **CJ is accepting our requests and sending real responses back.** We're one shipping carrier config away from placing a live order. Two PRs shipped (#47, #48), both approved clean.
+Our entire CJ Dropshipping integration — product discovery, order placement, shipment tracking — was never tested against the real API. Every automated check passed, but they were all validating against made-up data. We've now fixed that: CJ is accepting our requests and sending real responses back. **And as of today, the operational infrastructure to run the full pipeline with real APIs is built** — a one-command deployment, complete credentials documentation, and a 550-line step-by-step runbook to execute the live test. Three PRs shipped (#47, #48, #49). The gap to a real order is now just credentials and a button press.
 
 ## The Bigger Lesson
 
@@ -54,6 +54,20 @@ We authenticated with CJ, called the order system, deliberately triggered errors
 
 We sent a test order request to CJ's live system. CJ parsed it, looked up the (fake) product, and responded: "Invalid products." Not "I can't understand your request" — a proper business-level rejection. **The request format was correct. CJ understood us.** First real supplier handshake.
 
+### Act 4: Building the Test Track
+
+The contracts are right. CJ understands us. But the system had never run outside a developer's laptop — there was no way for Shopify or CJ to reach our application with real webhook notifications. No deployment configuration, no public URL, no runbook explaining how to wire everything together.
+
+RAT-42 closed that gap. The system now has:
+
+- **A one-command deployment** — one command builds the application, another brings up the full stack (database + application + optional public tunnel for receiving Shopify and CJ notifications). No manual steps, no "works on my machine."
+- **Complete credentials documentation** — every API key and secret the system needs, organized by service, with instructions on where to get each one. An operator with Shopify and CJ accounts can configure everything from a single reference file.
+- **A 550-line live test runbook** — step-by-step instructions covering tunnel setup, Shopify and CJ notification registration, supplier product mapping, and then the 8-step pipeline walkthrough. Each step has verification checks: what to look for, how to confirm the system processed it correctly, and what a failure looks like.
+
+One fix was needed: the system assumed it would always have connections to UPS, FedEx, and USPS for tracking package deliveries. Without those connections (which haven't been built yet), the system refused to start at all. It now starts cleanly and says explicitly: "I can't detect deliveries yet." Honest about what it can't do instead of refusing to do anything.
+
+**The test track is paved. The car has gas.** What's left is turning the key: configure real credentials, register webhooks, and run the runbook.
+
 ## Before and After
 
 ![Before vs after — trust state of each integration point](assets/nr-010-trust-state.png)
@@ -88,20 +102,27 @@ One configuration value — which CJ shipping carrier to use for US domestic del
 | Carrier name mapping | Unverified | CJ doesn't publish the list |
 | Verified API contracts | Done | Two spec documents, full coverage |
 | PM-020 cleanup | 4 of 6 closed | Remaining: workflow guardrails |
+| **Deployment infrastructure** | **Done** | One-command build + deploy, verified |
+| **Credentials documentation** | **Done** | 25+ keys/secrets documented with setup instructions |
+| **Live test runbook** | **Done** | 550-line step-by-step guide, 8 pipeline stages |
+| **Delivery detection** | Not Available | UPS/FedEx/USPS connections not built yet — documented gap |
 
 ## What's Next
 
-- **Merge PRs #47 and #48** — Both approved, stacked in order.
+- **Execute the live E2E runbook** — The infrastructure is built. Merge PR #49, configure real Shopify + CJ credentials, start the tunnel, register webhooks, and run through the 8-step pipeline. This is the first real transaction — a product bought with a real credit card, shipped by CJ, tracked through to Shopify fulfillment.
 - **Configure the shipping carrier** — One value: which CJ logistics option for US-to-US. Once set, we can place a real order.
-- **Register a live webhook** — Confirms how CJ authenticates tracking updates and reveals actual carrier names. Closes the last two unverified items.
-- **Add integration testing to the workflow** — The two remaining PM-020 items are about adding live API verification as a required gate in our feature workflow. This is the structural fix that prevents us from shipping against fictional data again — same discipline that a traditional team would have from day one.
+- **Build the refund handler (RAT-43)** — When we return the test product, the system needs to know about it. The data model is 80% built; the missing piece is receiving refund notifications from Shopify.
+- **Add integration testing to the workflow** — The two remaining PM-020 items are about adding live API verification as a required gate in our feature workflow. The structural fix that prevents us from shipping against fictional data again.
 
 ## Risks & Decisions Needed
 
-- **Shipping carrier selection:** We need the correct CJ logistics name for US domestic shipping before we can place a real order. **Ask:** Can you check the CJ dashboard or ping CJ support for available US-to-US options? Once we have the name, it's a single config change.
+- **Shipping carrier selection:** We still need the correct CJ logistics name for US domestic shipping. **Ask:** Can you check the CJ dashboard or ping CJ support for available US-to-US options? Once we have the name, it's a single config change.
+
+- **Delivery detection is a known gap:** The pipeline gets an order to "shipped" status but can't automatically detect when it arrives at the customer's door — that requires connections to UPS/FedEx/USPS tracking systems, which haven't been built yet. The reserve credit that happens on delivery won't fire during the test. The runbook documents this explicitly so we're not surprised. Not a blocker for the live test — just a known limitation.
 
 ## Session Notes
 
 - The tracking integration being correct was a nice surprise — whoever built it apparently did verify against the docs. The problem was concentrated in product discovery (completely wrong) and order placement (wrong error codes and response shapes).
 - CJ's live API was more reliable than their own documentation in some cases. We documented both when they disagreed.
 - We've now added "cite the API documentation source" as a requirement on every piece of test data. If something doesn't have a source citation, it's assumed fictional until verified. Same principle as financial audit trails — if you can't trace it, you can't trust it.
+- The RAT-42 deployment infrastructure was straightforward — the application builds in under a minute and the full system spins up cleanly. The real value is the runbook: 550 lines of step-by-step instructions with verification at every stage. An operator with the right credentials should be able to go from zero to live test in about an hour.
