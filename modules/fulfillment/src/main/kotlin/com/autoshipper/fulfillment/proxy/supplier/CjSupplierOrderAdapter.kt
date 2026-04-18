@@ -16,6 +16,7 @@ class CjSupplierOrderAdapter(
     @Value("\${cj-dropshipping.api.base-url:}") private val baseUrl: String,
     @Value("\${cj-dropshipping.api.access-token:}") private val accessToken: String,
     @Value("\${cj-dropshipping.default-logistic-name:}") private val logisticName: String,
+    @Value("\${autoshipper.cj.dev-store-dry-run:false}") private val devStoreDryRun: Boolean,
     private val objectMapper: ObjectMapper
 ) : SupplierOrderAdapter {
 
@@ -31,6 +32,14 @@ class CjSupplierOrderAdapter(
     @CircuitBreaker(name = "cj-supplier-order")
     @Retry(name = "cj-supplier-order")
     override fun placeOrder(request: SupplierOrderRequest): SupplierOrderResult {
+        if (devStoreDryRun) {
+            logger.info(
+                "[DEV-STORE DRY RUN] would have placed CJ order: skuCode={}, qty={}, orderNumber={}",
+                request.supplierVariantId, request.quantity, request.orderNumber
+            )
+            return SupplierOrderResult.Success(supplierOrderId = "dry-run-${java.util.UUID.randomUUID()}")
+        }
+
         if (baseUrl.isBlank() || accessToken.isBlank()) {
             logger.warn("CJ Dropshipping API credentials blank — cannot place order")
             return SupplierOrderResult.Failure("CJ API credentials not configured")

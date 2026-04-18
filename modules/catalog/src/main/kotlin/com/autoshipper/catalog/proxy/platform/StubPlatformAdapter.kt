@@ -26,7 +26,8 @@ class StubPlatformAdapter : PlatformAdapter {
 
         return PlatformListingResult(
             externalListingId = externalListingId,
-            externalVariantId = externalVariantId
+            externalVariantId = externalVariantId,
+            inventoryItemId = null
         )
     }
 

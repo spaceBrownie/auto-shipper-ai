@@ -260,3 +260,20 @@ compliance:
   auto-check-enabled: true
   sanctions-list-path: classpath:compliance/sanctions-list.txt
   prohibited-categories-path: classpath:compliance/prohibited-categories.txt
+
+# FR-030 (RAT-53) — Shopify dev-store gate-zero configuration
+# See docs/live-e2e-runbook.md Section 0 and Section 12 before enabling any of these.
+autoshipper:
+  admin:
+    # Gate for the DevAdminController (/admin/dev/sku/{id}/list). MUST be false in prod.
+    dev-listing-enabled: ${AUTOSHIPPER_ADMIN_DEV_LISTING_ENABLED:false}
+    # HTTP Basic token for the gated dev-listing endpoint. Leave blank in prod.
+    dev-token: ${DEV_ADMIN_TOKEN:}
+  webhook-archival:
+    # When true, raw webhook bodies are written under output-dir for fixture capture (PM-013).
+    enabled: ${AUTOSHIPPER_WEBHOOK_ARCHIVAL_ENABLED:false}
+    output-dir: docs/fixtures/shopify-dev-store
+  cj:
+    # CJ safety gate. When true, CjSupplierOrderAdapter.placeOrder() short-circuits with a
+    # stub response and makes ZERO HTTP calls. Use when no CJ sandbox account is available.
+    dev-store-dry-run: ${AUTOSHIPPER_CJ_DEV_STORE_DRY_RUN:false}

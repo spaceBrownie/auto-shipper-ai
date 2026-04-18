@@ -104,7 +104,8 @@ class PlatformListingListener(
             externalVariantId = result.externalVariantId,
             currentPriceAmount = price.normalizedAmount,
             currency = currency.name,
-            status = "ACTIVE"
+            status = "ACTIVE",
+            shopifyInventoryItemId = result.inventoryItemId
         )
         platformListingRepository.save(entity)
 

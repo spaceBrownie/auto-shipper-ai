@@ -42,4 +42,29 @@ class PlatformListingResolver(
         val results = query.resultList
         return if (results.isNotEmpty()) results.first() as UUID else null
     }
+
+    /**
+     * Resolves the Shopify `inventory_item_id` (persisted via ShopifyListingAdapter after
+     * product creation) for the given internal SKU UUID.
+     *
+     * Returns null when no Shopify row exists for the SKU or when the row has a null
+     * `shopify_inventory_item_id` (pre-V23 data or non-Shopify platforms).
+     *
+     * Tiebreaker: if multiple Shopify rows exist for the same SKU (not expected in
+     * practice — idempotency guard in PlatformListingListener prevents this — but
+     * T-22 demands determinism), the most recently created row wins.
+     */
+    fun resolveInventoryItemId(skuId: UUID): String? {
+        val results = entityManager.createNativeQuery(
+            """SELECT shopify_inventory_item_id FROM platform_listings
+               WHERE sku_id = :skuId
+               AND platform = :platform
+               AND shopify_inventory_item_id IS NOT NULL
+               ORDER BY created_at DESC"""
+        ).setParameter("skuId", skuId)
+            .setParameter("platform", "SHOPIFY")
+            .resultList
+
+        return if (results.isNotEmpty()) results.first() as String else null
+    }
 }

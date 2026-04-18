@@ -63,16 +63,17 @@ class ShopifyListingAdapter(
             ?: throw RuntimeException("Missing 'product.id' in Shopify response")
 
         val variants = product.get("variants")
-        val variantId = if (variants != null && variants.isArray && variants.size() > 0) {
-            variants[0].get("id")?.asText()
-        } else null
+        val variantNode = if (variants != null && variants.isArray && variants.size() > 0) variants[0] else null
+        val variantId = variantNode?.get("id")?.let { if (!it.isNull) it.asText() else null }
+        val inventoryItemId = variantNode?.get("inventory_item_id")?.let { if (!it.isNull) it.asText() else null }
 
-        log.info("Created Shopify listing for SKU {}: productId={}, variantId={}",
-            sku.sku.skuId(), productId, variantId)
+        log.info("Created Shopify listing for SKU {}: productId={}, variantId={}, inventoryItemId={}",
+            sku.sku.skuId(), productId, variantId, inventoryItemId)
 
         return PlatformListingResult(
             externalListingId = productId,
-            externalVariantId = variantId
+            externalVariantId = variantId,
+            inventoryItemId = inventoryItemId
         )
     }
 

@@ -257,54 +257,54 @@ The filter uses the existing `CachingRequestWrapper` so downstream filters (HMAC
 
 ### 4.1 Catalog module — schema + entity + adapter response (AD-1)
 
-- [ ] Write Flyway migration `V23__platform_listings_inventory_item_id.sql` (ADD COLUMN + index)
-- [ ] Add `shopifyInventoryItemId: String?` field to `PlatformListingEntity` (nullable, updatable=true to allow backfill)
-- [ ] Add `inventoryItemId: String?` to `PlatformListingResult` data class in `PlatformAdapter.kt`
-- [ ] Edit `ShopifyListingAdapter.listSku()` to parse `variants[0].inventory_item_id` from Shopify response and include in returned `PlatformListingResult`
-- [ ] Edit `StubPlatformAdapter.listSku()` to return `inventoryItemId = null` (stub only — not used in dev-store run)
-- [ ] Edit `PlatformListingListener.handleListed()` to persist `result.inventoryItemId` onto the new entity column
+- [x] Write Flyway migration `V23__platform_listings_inventory_item_id.sql` (ADD COLUMN + index)
+- [x] Add `shopifyInventoryItemId: String?` field to `PlatformListingEntity` (nullable, updatable=true to allow backfill)
+- [x] Add `inventoryItemId: String?` to `PlatformListingResult` data class in `PlatformAdapter.kt`
+- [x] Edit `ShopifyListingAdapter.listSku()` to parse `variants[0].inventory_item_id` from Shopify response and include in returned `PlatformListingResult`
+- [x] Edit `StubPlatformAdapter.listSku()` to return `inventoryItemId = null` (stub only — not used in dev-store run)
+- [x] Edit `PlatformListingListener.handleListed()` to persist `result.inventoryItemId` onto the new entity column
 
 ### 4.2 Fulfillment module — adapter fix (AD-1)
 
-- [ ] Add `resolveInventoryItemId(skuId: UUID): String?` method to `PlatformListingResolver` (native SQL against new column)
-- [ ] Refactor `ShopifyInventoryCheckAdapter.isAvailable()` to resolve `inventory_item_id` via `PlatformListingResolver` before calling Shopify
-- [ ] Inject `PlatformListingResolver` into `ShopifyInventoryCheckAdapter` constructor
-- [ ] Add log warning for unmapped SKU path (`return false`); document behaviour in class KDoc
+- [x] Add `resolveInventoryItemId(skuId: UUID): String?` method to `PlatformListingResolver` (native SQL against new column)
+- [x] Refactor `ShopifyInventoryCheckAdapter.isAvailable()` to resolve `inventory_item_id` via `PlatformListingResolver` before calling Shopify
+- [x] Inject `PlatformListingResolver` into `ShopifyInventoryCheckAdapter` constructor
+- [x] Add log warning for unmapped SKU path (`return false`); document behaviour in class KDoc
 
 ### 4.3 Fulfillment module — webhook archival (AD-3)
 
-- [ ] Create `WebhookArchivalFilter.kt` — writes request body to disk, uses `CachingRequestWrapper`, forwards chain unchanged
-- [ ] Create `WebhookArchivalFilterConfig.kt` — `FilterRegistrationBean` with order **before** `ShopifyHmacVerificationFilter`, URL patterns `/webhooks/shopify/*`, `/webhooks/cj/*`, `@ConditionalOnProperty("autoshipper.webhook-archival.enabled")`
-- [ ] Add `autoshipper.webhook-archival.enabled: false` and `autoshipper.webhook-archival.output-dir: docs/fixtures/shopify-dev-store` defaults to `application.yml`
+- [x] Create `WebhookArchivalFilter.kt` — writes request body to disk, uses `CachingRequestWrapper`, forwards chain unchanged
+- [x] Create `WebhookArchivalFilterConfig.kt` — `FilterRegistrationBean` with order **before** `ShopifyHmacVerificationFilter`, URL patterns `/webhooks/shopify/*`, `/webhooks/cj/*`, `@ConditionalOnProperty("autoshipper.webhook-archival.enabled")`
+- [x] Add `autoshipper.webhook-archival.enabled: false` and `autoshipper.webhook-archival.output-dir: docs/fixtures/shopify-dev-store` defaults to `application.yml`
 
 ### 4.3b Fulfillment module — CJ dry-run kill-switch (AD-3b, BR-6b)
 
-- [ ] Add `@Value("\${autoshipper.cj.dev-store-dry-run:false}") devStoreDryRun: Boolean` constructor parameter to `CjSupplierOrderAdapter` (CLAUDE.md #13: empty default)
-- [ ] Add short-circuit at top of `placeOrder()` — INFO log `[DEV-STORE DRY RUN] would have placed CJ order: skuCode=... qty=... orderNumber=...`, return `SupplierOrderResult.success(supplierOrderId = "dry-run-${UUID.randomUUID()}")` — MUST NOT make any HTTP call
-- [ ] Add `autoshipper.cj.dev-store-dry-run: false` default to `application.yml`
-- [ ] Add `AUTOSHIPPER_CJ_DEV_STORE_DRY_RUN=false` to `.env.example` with comment linking to runbook sandbox vs dry-run guidance
+- [x] Add `@Value("\${autoshipper.cj.dev-store-dry-run:false}") devStoreDryRun: Boolean` constructor parameter to `CjSupplierOrderAdapter` (CLAUDE.md #13: empty default)
+- [x] Add short-circuit at top of `placeOrder()` — INFO log `[DEV-STORE DRY RUN] would have placed CJ order: skuCode=... qty=... orderNumber=...`, return `SupplierOrderResult.success(supplierOrderId = "dry-run-${UUID.randomUUID()}")` — MUST NOT make any HTTP call
+- [x] Add `autoshipper.cj.dev-store-dry-run: false` default to `application.yml`
+- [x] Add `AUTOSHIPPER_CJ_DEV_STORE_DRY_RUN=false` to `.env.example` with comment linking to runbook sandbox vs dry-run guidance
 
 ### 4.4 Catalog module — dev admin endpoint (AD-2)
 
-- [ ] Create `DevAdminController.kt` — `@RestController @ConditionalOnProperty("autoshipper.admin.dev-listing-enabled")`, `POST /admin/dev/sku/{id}/list`, HTTP Basic auth check, calls `skuService.transition(skuId, SkuState.Listed)`
-- [ ] Add `autoshipper.admin.dev-listing-enabled: false` and `autoshipper.admin.dev-token:` defaults to `application.yml`
+- [x] Create `DevAdminController.kt` — `@RestController @ConditionalOnProperty("autoshipper.admin.dev-listing-enabled")`, `POST /admin/dev/sku/{id}/list`, HTTP Basic auth check, calls `skuService.transition(skuId, SkuState.Listed)`
+- [x] Add `autoshipper.admin.dev-listing-enabled: false` and `autoshipper.admin.dev-token:` defaults to `application.yml`
 
 ### 4.5 Build — Gradle audit task (AD-4)
 
-- [ ] Register `devStoreAuditKeys` task in `build.gradle.kts` — reads `.env`, validates prefixes, prints last-4, fails on violation
+- [x] Register `devStoreAuditKeys` task in `build.gradle.kts` — reads `.env`, validates prefixes, prints last-4, fails on violation
 
 ### 4.6 Docs + runbook (BR-7, BR-8, BR-9)
 
-- [ ] Create `docs/fixtures/shopify-dev-store/` directory with `.gitkeep` and `README.md`
-- [ ] Insert new `## 0. Pre-flight Key Audit` section at top of `docs/live-e2e-runbook.md` — includes `./gradlew devStoreAuditKeys` step, checklist to sign off, last-4 recording
-- [ ] Add new `## 12. Shopify Dev Store Walkthrough` section to `docs/live-e2e-runbook.md` — covers Partners signup, custom app + scopes, Stripe test-mode payment-provider config, `.env` population with test keys, starting `bootRun`, enabling `autoshipper.admin.dev-listing-enabled` for the listing step, enabling `autoshipper.webhook-archival.enabled` for the webhook step, buyer purchase with `4242 4242 4242 4242`, verification, CJ-order cancellation cleanup
-- [ ] Cross-link Section 12 from existing Section 1 "Overview" and from Section 10 "Known Gaps" (the inventory-check gap entry marks as resolved)
-- [ ] Update `.env.example` with new keys (`DEV_ADMIN_TOKEN`, `AUTOSHIPPER_ADMIN_DEV_LISTING_ENABLED`, `AUTOSHIPPER_WEBHOOK_ARCHIVAL_ENABLED`) all commented/documented
+- [x] Create `docs/fixtures/shopify-dev-store/` directory with `.gitkeep` and `README.md`
+- [x] Insert new `## 0. Pre-flight Key Audit` section at top of `docs/live-e2e-runbook.md` — includes `./gradlew devStoreAuditKeys` step, checklist to sign off, last-4 recording
+- [x] Add new `## 12. Shopify Dev Store Walkthrough` section to `docs/live-e2e-runbook.md` — covers Partners signup, custom app + scopes, Stripe test-mode payment-provider config, `.env` population with test keys, starting `bootRun`, enabling `autoshipper.admin.dev-listing-enabled` for the listing step, enabling `autoshipper.webhook-archival.enabled` for the webhook step, buyer purchase with `4242 4242 4242 4242`, verification, CJ-order cancellation cleanup
+- [x] Cross-link Section 12 from existing Section 1 "Overview" and from Section 10 "Known Gaps" (the inventory-check gap entry marks as resolved)
+- [x] Update `.env.example` with new keys (`DEV_ADMIN_TOKEN`, `AUTOSHIPPER_ADMIN_DEV_LISTING_ENABLED`, `AUTOSHIPPER_WEBHOOK_ARCHIVAL_ENABLED`) all commented/documented
 
 ### 4.7 Housekeeping
 
-- [ ] Update `docs/live-e2e-runbook.md` Section 10 Known Gaps — mark the inventory-check row as fixed under the dev-store walkthrough
-- [ ] Verify `.gitignore` still excludes `.env` (spot-check, no expected change)
+- [x] Update `docs/live-e2e-runbook.md` Section 10 Known Gaps — mark the inventory-check row as fixed under the dev-store walkthrough
+- [x] Verify `.gitignore` still excludes `.env` (spot-check, no expected change)
 
 **Total tasks:** 24 (4 added for CJ dry-run kill-switch)
 

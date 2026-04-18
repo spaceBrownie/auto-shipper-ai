@@ -35,6 +35,9 @@ class PlatformListingEntity(
     @Column(name = "status", nullable = false, length = 30)
     var status: String = "DRAFT",
 
+    @Column(name = "shopify_inventory_item_id")
+    var shopifyInventoryItemId: String? = null,
+
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: Instant = Instant.now(),
 

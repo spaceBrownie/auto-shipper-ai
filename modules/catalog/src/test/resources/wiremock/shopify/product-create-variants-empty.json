@@ -1,0 +1,11 @@
+{
+  "_comment": "Shopify Admin REST API — product-create response with empty variants array (T-11 edge case).",
+  "_comment_source": "https://shopify.dev/docs/api/admin-rest/2024-01/resources/product#post-products",
+  "_comment_verified": "2026-04-18 (FR-030 / RAT-53 — synthetic: real Shopify always returns >=1 variant)",
+  "product": {
+    "id": 7890123456789,
+    "title": "Test Product",
+    "status": "active",
+    "variants": []
+  }
+}
