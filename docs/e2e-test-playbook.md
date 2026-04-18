@@ -1473,6 +1473,222 @@ Expected: Similar product names from different sources (e.g., CJ and YouTube/Red
 
 ---
 
+## Phase 9: Shopify Dev Store + Stripe Test Mode Validation (FR-030 / RAT-53)
+
+Gate-zero, one-shot operator run validating the full listing → webhook → CJ chain against a real Shopify dev store in Stripe test mode. Each scenario is atomic: **preconditions → action → observable outcomes → abort criteria**. Scenarios execute in order.
+
+Binding source: `feature-requests/FR-030-shopify-dev-store-stripe-test-mode/test-spec.md` §4. See also `docs/live-e2e-runbook.md` Section 12 for step-by-step ops commands. The automated unit/integration subset (T-01 through T-68) is covered by `./gradlew test`; this phase covers only the assertions that require a live dev store and real Shopify/Stripe traffic.
+
+SC-RAT53-01 through SC-RAT53-05 are **operator-manual** (Shopify Partners dashboard, Stripe dashboard, browser checkout). SC-RAT53-06 through SC-RAT53-14 are **operator-executed observations** once the app is running under the dev-store config.
+
+### 9.1 SC-RAT53-01: Dev store provisioning (ops-only)
+
+- **Preconditions:** Operator has a Shopify Partners account; no dev store yet exists for this test.
+- **Action:** Create development store via Partners dashboard; note the `*.myshopify.com` subdomain; install Custom App with scopes `write_products, write_orders, read_orders, write_fulfillments, read_fulfillments`; capture `shpat_…` Admin API access token and `whsec_…` webhook signing secret into local `.env` (never committed).
+- **Observable outcomes:**
+  - `curl -s https://<subdomain>.myshopify.com/` returns HTTP 200 with storefront HTML (spec §7.1 criterion 1).
+  - `.env` file exists and is listed in `.gitignore`.
+- **Abort criteria:** Shopify Partners approval delayed > 24h → file RAT-53 blocker, switch to alternate dev account, do not proceed to SC-02.
+
+### 9.2 SC-RAT53-02: Stripe test mode activation (ops-only)
+
+- **Preconditions:** SC-RAT53-01 complete.
+- **Action:** In Stripe dashboard, switch to test mode; obtain `sk_test_…` and `pk_test_…`; configure as payment provider in Shopify dev-store admin → Settings → Payments.
+- **Fallback action:** If Stripe partner approval delays config, enable Shopify "Bogus Gateway" as documented fallback (spec §2.1 BR-3). Record fallback usage in the run log with rationale.
+- **Observable outcomes:**
+  - Dev-store checkout page shows Stripe (test mode) or Bogus Gateway as the active payment option.
+  - `.env` contains `STRIPE_SECRET_KEY=sk_test_…` (NOT `sk_live_…`).
+- **Abort criteria:** Neither Stripe test mode nor Bogus Gateway is available → abort; real money is the only remaining path and that violates NFR-3.
+
+### 9.3 SC-RAT53-03: Pre-flight key audit + clean app boot under `production` profile
+
+- **Preconditions:** `.env` populated from SC-01 and SC-02; V23 migration merged; new admin + archival properties present (but not yet enabled).
+- **Action:**
+  ```bash
+  ./gradlew devStoreAuditKeys
+  ./gradlew flywayMigrate
+  SPRING_PROFILES_ACTIVE=production ./gradlew bootRun
+  ```
+- **Observable outcomes:**
+
+  | Check | Expected |
+  |---|---|
+  | `devStoreAuditKeys` exit code | 0, output prints key last-4 only |
+  | `GET /actuator/health` | `{"status":"UP"}` within 30s |
+  | Startup logs | No `IllegalStateException` from `@Value` bean wiring (CLAUDE.md #13) |
+  | `\d platform_listings` (psql) | Column `shopify_inventory_item_id` present |
+
+- **Abort criteria:** `devStoreAuditKeys` fails → do NOT proceed; fix `.env`; rerun. App fails to start under `production` profile → open Phase 6 bug, do not proceed.
+
+### 9.4 SC-RAT53-04: Automated listing via DevAdminController
+
+- **Preconditions:** SC-03 complete; operator has set `autoshipper.admin.dev-listing-enabled=true` and `autoshipper.admin.dev-token=<rotating-secret>` for this session. A SKU exists in `STRESS_TESTED` state.
+- **Action:**
+  ```bash
+  curl -u "admin:$DEV_ADMIN_TOKEN" -X POST \
+    http://localhost:8080/admin/dev/sku/$SKU_ID/list
+  ```
+- **Observable outcomes:**
+
+  | Check | Expected |
+  |---|---|
+  | HTTP status | 202 |
+  | App log | `Creating Shopify listing for SKU {}` |
+  | `SELECT * FROM platform_listings WHERE sku_id = $SKU_ID` | One row, `status='ACTIVE'`, `external_listing_id` non-null, **`shopify_inventory_item_id` non-null** (AC 2 of spec §7.2) |
+  | Storefront `GET /products/<handle>.json` | Returns product JSON (spec §7.1 criterion 4) |
+
+- **Abort criteria:** Listing row present but `shopify_inventory_item_id IS NULL` → AD-1 implementation is broken; do not proceed to purchase. Investigate `ShopifyListingAdapter` response parsing.
+
+### 9.5 SC-RAT53-05: Dummy-card purchase
+
+- **Preconditions:** SC-04 complete; product visible on storefront; `autoshipper.webhook-archival.enabled=true` set in `.env` and app restarted (archival filter is eager-registered — requires restart).
+- **Action:** Human operator navigates browser to storefront → adds product to cart → checks out with test card `4242 4242 4242 4242` (expiry any future date, CVC any 3 digits, ZIP any 5 digits).
+- **Observable outcomes:**
+  - Shopify order confirmation page reached, no error (spec §7.1 criterion 5).
+  - Stripe test dashboard shows the test charge.
+  - Stripe **live** dashboard shows zero activity for the window (spec §7.1 criterion 11).
+- **Abort criteria:** Card rejected → check Stripe test mode is actually active; if Bogus Gateway is in use, substitute `Bogus Gateway: 1` per Shopify docs.
+
+### 9.6 SC-RAT53-06: Webhook receipt + archival
+
+- **Preconditions:** SC-05 complete; ngrok tunneled and registered in Shopify webhook admin.
+- **Action:** Inspect ngrok log and database.
+- **Observable outcomes:**
+
+  | Check | Expected |
+  |---|---|
+  | ngrok inspector | `POST /webhooks/shopify/orders` returned 200 |
+  | Archival file path | `docs/fixtures/shopify-dev-store/YYYY-MM-DD/orders-<ts>.json` with exact ngrok bytes (BR-9) |
+  | `SELECT * FROM webhook_events WHERE channel='shopify'` | Row present for this delivery |
+  | `SELECT * FROM orders WHERE channel_order_id = '<shopify_order_id>'` | `status='CONFIRMED'` (spec §7.1 criterion 6) |
+
+- **Abort criteria:** No archival file — confirm `autoshipper.webhook-archival.enabled=true` and app was restarted after flipping. No `orders` row → FR-023 webhook pipeline is broken; triage before proceeding.
+
+### 9.7 SC-RAT53-07: NFR-1 response-time verification
+
+- **Action:** Read ngrok inspector timing for the `orders/create` POST observed in SC-06.
+- **Observable outcomes:** Total response duration < 5000 ms. Record the exact value in the run log. Confirms the PM-015 `@Async + AFTER_COMMIT + REQUIRES_NEW` stack on `ShopifyOrderProcessingService` is working against real traffic.
+- **Abort criteria:** Duration ≥ 5000 ms → Shopify will eventually disable the endpoint; file immediate PM-015-redux postmortem, pause the test.
+
+### 9.8 SC-RAT53-08: CJ order-placement attempt (log-only assertion)
+
+- **Preconditions:** SC-06 complete. `.env` configured per one of the two safe paths (BR-3a sandbox OR BR-6b dry-run).
+- **Action:** Watch application logs for `SupplierOrderPlacementService` / `CjSupplierOrderAdapter` activity.
+- **Observable outcomes (ANY of these three passes — operator records WHICH in run log):**
+  - **(a) Sandbox path:** `CJ order placed successfully` log line with CJ sandbox order id. Verify via CJ sandbox dashboard that the order landed AND that it is marked as a sandbox order (no real supplier dispatch).
+  - **(b) Dry-run path:** log line contains `[DEV-STORE DRY RUN] would have placed CJ order: skuCode=… qty=… orderNumber=…` AND stubbed supplier order id has prefix `dry-run-`. Verify via ngrok / WireMock / network tap that **zero outbound HTTP calls were made to `developers.cjdropshipping.cn`** during the window.
+  - **(c) Error path (sandbox only):** `CJ order placement failed: <reason>` log line with specific failure detail — AND `orders.failure_reason` column populated for this order.
+- **Abort criteria:** None of the three log lines appears within 2 minutes → the `OrderConfirmed` listener chain is broken, file bug, do not proceed. Spec §7.1 criterion 7 explicitly permits CJ **failure**, but does NOT permit **silence** (NFR-6).
+- **Safety assertion:** If dry-run path (b) was chosen, MUST also verify CJ dashboard (both sandbox and production) shows NO new order created in the test window. If sandbox path (a) was chosen, MUST verify the production CJ dashboard shows NO new order.
+
+### 9.9 SC-RAT53-09: Fulfillment sync (best-effort, optional)
+
+- **Preconditions:** SC-08 placed a real CJ order (success case).
+- **Action:** Wait for CJ tracking webhook OR manually trigger a simulated tracking webhook via `curl` to `/webhooks/cj/tracking` (HMAC-signed with `.env` secret).
+- **Observable outcomes (EITHER passes):**
+  - `OrderShipped` event published, `ShopifyFulfillmentSyncListener` logs a successful Shopify fulfillment creation; `orders.status='SHIPPED'` with `tracking_number` populated.
+  - OR: Operator records explicit reason in run log why fulfillment was not exercised (e.g. CJ order rejected at SC-08, preventing tracking).
+- **Abort criteria:** Fulfillment sync attempted but Shopify rejects → RAT-43 (refund) follow-up; does not block FR-030 completion if SC-08 passed.
+- **Note:** `DELIVERED` transition remains out of scope (documented known gap).
+
+### 9.10 SC-RAT53-10: Post-test cleanup + archival commit + key rotation
+
+- **Action:**
+  - Copy committed archival files from `docs/fixtures/shopify-dev-store/{date}/` into the feature branch; redact any PII (buyer email, shipping address) per BR-9 policy in the directory README.
+  - If CJ sandbox path (SC-08a) was used, verify the sandbox order via CJ dashboard and confirm no production-account order was dispatched (sandbox orders do not need cancellation). If dry-run path (SC-08b) was used, no CJ cleanup needed.
+  - Rotate `DEV_ADMIN_TOKEN` and Shopify webhook secret per operator-security hygiene.
+  - Delete the test dev store in Shopify Partners if it is single-use.
+- **Observable outcomes:**
+  - `git diff docs/fixtures/shopify-dev-store/` shows 1+ committed JSON files.
+  - CJ dashboard reflects the chosen path — sandbox order present (path a), or no CJ activity at all (path b).
+  - Audit log shows the dev-listing-enabled property returned to `false` and `DEV_ADMIN_TOKEN` cleared from `.env`.
+- **Abort criteria:** Archival files contain PII that cannot be redacted safely → do NOT commit; instead note in the run log that raw payloads are retained locally only.
+
+### 9.11 SC-RAT53-11: Dedup-then-crash (orchestrator-augmented)
+
+Stress test the archival filter's failure isolation: simulate a `WebhookArchivalFilter` I/O failure after the filter has already consumed the body (e.g. disk full, permissions changed mid-flight).
+
+- **Preconditions:** Archival enabled and app restarted per SC-05. Pick a strategy to induce write failure:
+  - `chmod a-w docs/fixtures/shopify-dev-store/` (revoke write permission), OR
+  - Point `autoshipper.webhook-archival.output-dir` at a tmpfs / path that becomes unwritable, OR
+  - On a test VM, fill the target disk to 100% before firing the webhook.
+- **Action:** Trigger another `orders/create` delivery (place a second test purchase OR replay a captured payload through the Shopify webhook admin "Send test notification").
+- **Observable outcomes:**
+
+  | Check | Expected |
+  |---|---|
+  | Archival file | Absent (expected — write failed) |
+  | App log | ERROR line from `WebhookArchivalFilter` referencing the I/O failure |
+  | HMAC filter | Still executes (log shows HMAC accept/reject decision) |
+  | `ShopifyWebhookController` | Still returns 200 within 5s SLO |
+  | `orders` row | Created and transitions to `CONFIRMED` (processing chain unaffected) |
+
+- **Abort criteria:** Any downstream consumer (HMAC filter, controller, processing listener) fails or the 5s SLO is breached → archival is incorrectly coupled to the critical path. File a P1 bug.
+
+### 9.12 SC-RAT53-12: Response-timing SLO — PM-015 regression guard
+
+Per-request response time assertion for every `orders/create` webhook observed during SC-RAT53-06. The `@Async + AFTER_COMMIT + REQUIRES_NEW` stack on `ShopifyOrderProcessingService` is first-exercised under real traffic here.
+
+- **Action:**
+  - Open ngrok inspector at `http://127.0.0.1:4040/inspect/http`.
+  - For each `POST /webhooks/shopify/orders` delivery captured during the SC-06 run, record the response duration.
+  - Export via `curl -s http://127.0.0.1:4040/api/requests/http | jq '.requests[] | select(.request.uri | contains("/webhooks/shopify")) | {uri: .request.uri, duration_ms: .duration}'` for a scripted capture.
+- **Observable outcomes:**
+
+  | Metric | Threshold |
+  |---|---|
+  | `max(duration_ms)` across all webhooks | < 5000 ms |
+  | p50 (sanity) | < 500 ms (if higher, flag for follow-up profiling even if SLO passes) |
+
+- **Abort criteria:** Any single delivery ≥ 5000 ms → PM-015 regression. The `@Async` annotation is not doing its job (check thread-pool config, `AFTER_COMMIT` ordering, synchronous blocking calls in the processing path). Escalate to PM-015-redux postmortem.
+
+### 9.13 SC-RAT53-13: Contract verification — archived payload vs WireMock fixture
+
+PM-013 red-flag check. After SC-06 captures a live `orders/create` body, diff its top-level keys against the committed WireMock fixture.
+
+- **Preconditions:** SC-06 produced at least one `docs/fixtures/shopify-dev-store/YYYY-MM-DD/orders-<ts>.json` file.
+- **Action:**
+  ```bash
+  LIVE=$(ls -t docs/fixtures/shopify-dev-store/*/orders-*.json | head -1)
+  FIXTURE=modules/fulfillment/src/test/resources/wiremock/shopify/orders-create.json
+  # If the fixture path above does not exist, substitute the closest committed equivalent.
+
+  diff \
+    <(jq -r 'keys[]' "$LIVE" | sort) \
+    <(jq -r 'keys[]' "$FIXTURE" | sort)
+  ```
+- **Observable outcomes:**
+  - Empty diff → fixture faithfully mirrors live Shopify wire shape. Proceed.
+  - Non-empty diff → file a follow-up ticket to update the fixture. Capture the diff in the run log. Include both missing keys (live has, fixture doesn't) and extra keys (fixture has, live doesn't).
+- **Abort criteria:** None (this is an advisory gate). Any drift is a PM-013 red-flag but does not block FR-030 completion — it opens follow-up work.
+
+### 9.14 SC-RAT53-14: Async thread-boundary verification
+
+After SC-06 returns 200 from the webhook, async processing continues on a separate thread. Verify the async path actually completes rather than silently dying after the 200 response.
+
+- **Preconditions:** SC-06 complete and a `shopify_order_id` captured.
+- **Action:** Within 30 seconds of the webhook response, poll:
+  ```bash
+  SHOPIFY_ORDER_ID="<id from ngrok inspector>"
+  for i in {1..15}; do
+    STATUS=$(PGPASSWORD=autoshipper psql -h localhost -U autoshipper -d autoshipper -tAc \
+      "SELECT status FROM orders WHERE channel_order_id = '$SHOPIFY_ORDER_ID';")
+    echo "poll $i: status=$STATUS"
+    [[ "$STATUS" == "CONFIRMED" ]] && break
+    sleep 2
+  done
+
+  # Check the CJ log line
+  grep -E "\[DEV-STORE DRY RUN\]|CJ order placed successfully|CJ order placement failed" \
+    app.log | tail -5
+  ```
+- **Observable outcomes (BOTH must hold within 30s):**
+  - (a) `orders` row for the Shopify order id has `status='CONFIRMED'`.
+  - (b) Application log contains ONE of: `[DEV-STORE DRY RUN]` marker (dry-run path), `CJ order placed successfully` (sandbox success), or `CJ order placement failed:` (sandbox error).
+- **Abort criteria:** Either (a) or (b) does not hold after 30s → the async path is broken. The webhook returned 200 but downstream processing never executed. This is the exact failure mode `@Async + AFTER_COMMIT + REQUIRES_NEW` is meant to prevent. Treat as P1 and tie to PM-015.
+
+---
+
 ## Quick Reference: All Endpoints Used
 
 | Method | Path | Purpose |
