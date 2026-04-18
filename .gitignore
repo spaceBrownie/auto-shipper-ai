@@ -60,6 +60,8 @@ app/build/reports/
 *.bak
 *.swp
 *~
+docs/unrelated
+
 
 # Docker / Colima
 .colima/
@@ -86,3 +88,4 @@ app/build/reports/
 .graphify_uncached.txt
 .graphify_ast.json
 graphify-out/
+graphify-workspace

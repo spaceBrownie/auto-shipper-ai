@@ -24,3 +24,6 @@ frontend/.vite/
 
 # OS junk
 .DS_Store
+
+# Documents
+docs/nathan-reports/assets/
