@@ -60,7 +60,8 @@ class PlatformListingResolver(
                WHERE sku_id = :skuId
                AND platform = :platform
                AND shopify_inventory_item_id IS NOT NULL
-               ORDER BY created_at DESC"""
+               ORDER BY created_at DESC
+               LIMIT 1"""
         ).setParameter("skuId", skuId)
             .setParameter("platform", "SHOPIFY")
             .resultList
