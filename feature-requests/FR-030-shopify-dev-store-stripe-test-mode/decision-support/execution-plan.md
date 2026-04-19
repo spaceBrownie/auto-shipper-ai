@@ -23,9 +23,9 @@ Embed these verbatim into every Round 1/2/3 agent prompt that touches the releva
 
 Trivial new files / SQL / directory scaffolding. Orchestrator does these directly.
 
-- [ ] S-1: `modules/app/src/main/resources/db/migration/V23__platform_listings_inventory_item_id.sql` — ADD COLUMN + index
-- [ ] S-2: `docs/fixtures/shopify-dev-store/.gitkeep` — empty
-- [ ] S-3: `docs/fixtures/shopify-dev-store/README.md` — purpose, naming convention, PII-redaction policy
+- [x] S-1: `modules/app/src/main/resources/db/migration/V23__platform_listings_inventory_item_id.sql` — ADD COLUMN + index
+- [x] S-2: `docs/fixtures/shopify-dev-store/.gitkeep` — empty
+- [x] S-3: `docs/fixtures/shopify-dev-store/README.md` — purpose, naming convention, PII-redaction policy
 
 ## Round 1 — New Kotlin + Gradle files (3 parallel agents)
 
@@ -96,11 +96,11 @@ Compile check after Round 3: `./gradlew compileTestKotlin`.
 
 ## After Round 3 (orchestrator)
 
-- [ ] Check off implementation-plan.md checkboxes as rounds complete.
-- [ ] Run full suite: `./gradlew test`. Triage any regressions.
-- [ ] E2E playbook subagent (**fresh session** per skill step 10) — update `docs/e2e-test-playbook.md` with SC-RAT53-01..10 scenarios from test-spec.md §4, then execute where automatable. Manual dev-store scenarios (SC-03..10) are documented-only for operator execution.
-- [ ] Write `summary.md`.
-- [ ] Validate: `validate-phase.py --phase 5 --check-deliverables`.
+- [x] Check off implementation-plan.md checkboxes as rounds complete.
+- [x] Run full suite: `./gradlew test`. Triage any regressions.
+- [x] E2E playbook subagent (**fresh session** per skill step 10) — update `docs/e2e-test-playbook.md` with SC-RAT53-01..10 scenarios from test-spec.md §4, then execute where automatable. Manual dev-store scenarios (SC-03..10) are documented-only for operator execution.
+- [x] Write `summary.md`.
+- [x] Validate: `validate-phase.py --phase 5 --check-deliverables`.
 
 ## No override
 
