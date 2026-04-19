@@ -296,4 +296,101 @@ class PlatformListingListenerTest {
         assertNotNull(transactional, "@Transactional should be present")
         assertEquals(Propagation.REQUIRES_NEW, transactional!!.propagation)
     }
+
+    // ---------------------------------------------------------------------
+    // FR-030 / RAT-53 — inventory_item_id persistence (T-15, T-16, T-17)
+    // ---------------------------------------------------------------------
+
+    /** T-15: non-null inventoryItemId from adapter persists onto the entity. */
+    @Test
+    fun `T-15 — persistsInventoryItemIdOnListingCreation`() {
+        val sku = Sku(id = skuId.value, name = "Test Product", category = "Electronics")
+        val stressResult = buildStressTestResult()
+        val envelopeEntity = buildCostEnvelopeEntity()
+
+        whenever(platformListingRepository.findBySkuIdAndPlatform(skuId.value, "SHOPIFY")).thenReturn(null)
+        whenever(skuRepository.findById(skuId.value)).thenReturn(Optional.of(sku))
+        whenever(stressTestResultRepository.findBySkuId(skuId.value)).thenReturn(listOf(stressResult))
+        whenever(costEnvelopeRepository.findBySkuId(skuId.value)).thenReturn(envelopeEntity)
+        whenever(platformAdapter.listSku(any(), any())).thenReturn(
+            PlatformListingResult(
+                externalListingId = "7890",
+                externalVariantId = "v1",
+                inventoryItemId = "inv_123"
+            )
+        )
+        whenever(platformListingRepository.save(any<PlatformListingEntity>())).thenAnswer { it.arguments[0] }
+
+        val event = SkuStateChanged(skuId = skuId, fromState = "STRESS_TESTING", toState = "LISTED")
+        listener.onSkuStateChanged(event)
+
+        val captor = argumentCaptor<PlatformListingEntity>()
+        verify(platformListingRepository).save(captor.capture())
+        assertEquals("inv_123", captor.firstValue.shopifyInventoryItemId)
+    }
+
+    /** T-16: null inventoryItemId from adapter persists as null (not "" and not "null"). */
+    @Test
+    fun `T-16 — persistsNullWhenAdapterReturnsNull`() {
+        val sku = Sku(id = skuId.value, name = "Test Product", category = "Electronics")
+        val stressResult = buildStressTestResult()
+        val envelopeEntity = buildCostEnvelopeEntity()
+
+        whenever(platformListingRepository.findBySkuIdAndPlatform(skuId.value, "SHOPIFY")).thenReturn(null)
+        whenever(skuRepository.findById(skuId.value)).thenReturn(Optional.of(sku))
+        whenever(stressTestResultRepository.findBySkuId(skuId.value)).thenReturn(listOf(stressResult))
+        whenever(costEnvelopeRepository.findBySkuId(skuId.value)).thenReturn(envelopeEntity)
+        whenever(platformAdapter.listSku(any(), any())).thenReturn(
+            PlatformListingResult(
+                externalListingId = "7890",
+                externalVariantId = "v1",
+                inventoryItemId = null
+            )
+        )
+        whenever(platformListingRepository.save(any<PlatformListingEntity>())).thenAnswer { it.arguments[0] }
+
+        val event = SkuStateChanged(skuId = skuId, fromState = "STRESS_TESTING", toState = "LISTED")
+        listener.onSkuStateChanged(event)
+
+        val captor = argumentCaptor<PlatformListingEntity>()
+        verify(platformListingRepository).save(captor.capture())
+        assertNull(captor.firstValue.shopifyInventoryItemId)
+        // Defense-in-depth: not the string "null", not empty string.
+        assertNotEquals("null", captor.firstValue.shopifyInventoryItemId)
+        assertNotEquals("", captor.firstValue.shopifyInventoryItemId)
+    }
+
+    /**
+     * T-17: Repeat invocation — the listener's existing idempotency guard
+     * short-circuits when a listing already exists, so a second LISTED event
+     * does NOT overwrite the already-persisted `shopifyInventoryItemId`.
+     *
+     * This covers the retry/at-least-once semantics Spring's
+     * `TransactionalEventListener` (AFTER_COMMIT) may trigger via event replay.
+     */
+    @Test
+    fun `T-17 — repeatInvocationDoesNotCorruptPersistedInventoryItemId`() {
+        val existingEntity = PlatformListingEntity(
+            skuId = skuId.value,
+            platform = "SHOPIFY",
+            externalListingId = "7890",
+            externalVariantId = "v1",
+            currentPriceAmount = BigDecimal("49.99"),
+            currency = "USD",
+            status = "ACTIVE",
+            shopifyInventoryItemId = "inv_123"
+        )
+
+        whenever(platformListingRepository.findBySkuIdAndPlatform(skuId.value, "SHOPIFY"))
+            .thenReturn(existingEntity)
+
+        val event = SkuStateChanged(skuId = skuId, fromState = "STRESS_TESTING", toState = "LISTED")
+        listener.onSkuStateChanged(event)
+
+        // Idempotency guard engages — no adapter call, no save, no corruption.
+        verify(platformAdapter, never()).listSku(any(), any())
+        verify(platformListingRepository, never()).save(any<PlatformListingEntity>())
+        // Existing row's inventory_item_id is preserved.
+        assertEquals("inv_123", existingEntity.shopifyInventoryItemId)
+    }
 }

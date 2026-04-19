@@ -1,0 +1,11 @@
+{
+  "_doc": "https://shopify.dev/docs/api/admin-rest/2024-01/resources/inventorylevel#get-inventory-levels",
+  "inventory_levels": [
+    {
+      "inventory_item_id": 42857134217,
+      "location_id": 12345678,
+      "available": 10,
+      "updated_at": "2026-04-18T10:00:00-04:00"
+    }
+  ]
+}

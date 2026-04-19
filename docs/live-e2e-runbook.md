@@ -1,6 +1,41 @@
 # Live E2E Test Runbook
 
+## 0. Pre-flight Key Audit
+
+**Goal:** Prevent live-mode keys (Stripe live secrets, production Shopify tokens, production CJ tokens) from leaking into a dev-store test run. PM-020 showed that a single mis-wired credential can produce a real charge, a real supplier order, or both. This section is a mandatory gate before any dev-store walkthrough (see Section 12).
+
+### Operator Checklist
+
+- [ ] `.env` contains a test-mode Stripe key — secret key starts with `sk_test_` (live keys start with `sk_live_`).
+- [ ] `SHOPIFY_API_BASE_URL` ends with `.myshopify.com` — confirms a Shopify dev-store subdomain (production custom domains will not carry this suffix).
+- [ ] `SHOPIFY_WEBHOOK_SECRETS` is set (non-empty); HMAC verification fails closed without it.
+- [ ] **Exactly one** of the CJ safe paths is selected:
+  - **(a)** `CJ_ACCESS_TOKEN` is a CJ **sandbox account** token — see Section 12 "CJ path selection". Double-verify via the CJ dashboard that the account is sandbox-flagged. CJ sandbox status is irreversible and cannot be inferred from the token string alone.
+  - **(b)** `AUTOSHIPPER_CJ_DEV_STORE_DRY_RUN=true` — `CjSupplierOrderAdapter.placeOrder()` short-circuits and makes zero HTTP calls.
+- [ ] Run `./gradlew devStoreAuditKeys`. Expected output: `PASS — Stripe ****xxxx, Shopify *.myshopify.com, CJ <path>`. Any `FAIL` line means abort.
+
+### Operator Sign-off
+
+Fill in before proceeding to Section 12. Keep this log with the test artifacts.
+
+```
+Stripe secret key last-4:  ____
+Shopify access token last-4: ____
+CJ access token last-4:    ____
+CJ path chosen:            [ ] sandbox   [ ] dry-run
+Date (UTC):                ____
+Operator initials:         ____
+```
+
+### Abort Rule
+
+If **any** checklist item fails or the `devStoreAuditKeys` task reports `FAIL`, **HALT the test run immediately** and file a bug. Do not "hack around" a failed audit by commenting out a check, overriding an env var inline, or proceeding while promising to fix it later. The whole point of this gate is to prevent a production credential from being used against a dev workflow; bypassing the gate defeats the purpose and reintroduces the PM-020 risk class.
+
+---
+
 ## 1. Overview
+
+> **FR-030 / RAT-53 note:** For the automated dev-store flow (operator runs a single `curl` to list a SKU; Shopify-triggered test purchase drives the rest), see **Section 0** (pre-flight key audit, mandatory gate) and **Section 12** (dev-store walkthrough). Sections 1-11 below document the manual webhook-simulation pipeline, which remains the reference for contract verification.
 
 ### What This Tests
 
@@ -823,7 +858,7 @@ curl -s http://localhost:8080/actuator/info
 | **CJ webhook auth unverified** | `CjWebhookTokenVerificationFilter` uses Bearer token auth, but CJ docs do not document any outgoing webhook authentication. Real CJ webhooks may lack an `Authorization` header and be rejected with 401. | If CJ webhooks are rejected, disable or modify the filter. Monitor ngrok inspector for rejected requests. |
 | **Replay protection disabled** | `shopify.webhook.replay-protection.enabled: false` by default. Replayed webhooks within the `max-age-seconds` window are accepted (deduplication still prevents duplicate processing). | Enable in production with `enabled: true` and set `max-age-seconds: 300`. |
 | **CJ tracking orderId format** | `CjTrackingProcessingService` expects `params.orderId` to be an internal Order UUID. If CJ sends its own order ID instead, the `UUID.fromString()` parse will fail. | Verify CJ's actual webhook payload structure. May need to add a lookup by `supplier_order_id` instead of direct UUID parse. |
-| **Inventory check against Shopify** | `ShopifyInventoryCheckAdapter` queries Shopify's inventory API using the SKU UUID as `inventory_item_id`, which is unlikely to match Shopify's actual inventory item IDs. | For E2E testing, this may block order creation with `"SKU <uuid> is not available in inventory"`. May need to add a mapping or use a different inventory strategy. |
+| **Inventory check against Shopify** | `ShopifyInventoryCheckAdapter` queries Shopify's inventory API using the SKU UUID as `inventory_item_id`, which is unlikely to match Shopify's actual inventory item IDs. **RESOLVED by FR-030** — `shopify_inventory_item_id` is now persisted on `platform_listings` at product-create time and read via `PlatformListingResolver.resolveInventoryItemId` before calling the Shopify inventory API. | For E2E testing, this may block order creation with `"SKU <uuid> is not available in inventory"`. May need to add a mapping or use a different inventory strategy. |
 
 ---
 
@@ -952,3 +987,149 @@ psql -h localhost -U autoshipper -d postgres -c "CREATE DATABASE autoshipper;"
 1. Temporarily add `local` to profiles just for the `InventoryChecker` bean (not recommended -- it also stubs other adapters)
 2. Create a temporary override that always returns `true`
 3. Ensure your Shopify dev store has inventory tracking disabled for the test product
+
+---
+
+## 12. Shopify Dev Store Walkthrough (FR-030 / RAT-53)
+
+This is the automated dev-store flow delivered by FR-030. The operator runs a single `curl` to kick off product listing; everything else is driven by Shopify webhooks hitting the local app through ngrok. Section 0 is a **mandatory prerequisite**.
+
+### Step 1 — Provision Shopify dev store
+
+1. Log in to [partners.shopify.com](https://partners.shopify.com).
+2. **Stores > Add store > Development store**.
+3. Choose a store name; confirm the store URL matches `*.myshopify.com`.
+4. Enable the **hosted storefront** (Themes > Online Store > publish the default theme) so buyers have a page to check out from.
+
+### Step 2 — Install a Custom App on the dev store
+
+1. In the dev store admin: **Settings > Apps and sales channels > Develop apps > Create an app**.
+2. Required scopes: `write_products`, `write_orders`, `read_orders`, `write_fulfillments`, `read_fulfillments`.
+3. Install the app. Capture the Admin API access token (format `shpat_...`) — this is your `SHOPIFY_ACCESS_TOKEN`. (If `ShopifyConfig` in the codebase expects a different variable name, use that name — verify via the config class before populating `.env`.)
+4. Register a webhook subscription for the `orders/create` topic pointing at your ngrok URL (Step 8). Copy the shared webhook signing secret from **Settings > Notifications > Webhooks** into `SHOPIFY_WEBHOOK_SECRETS`.
+
+### Step 3 — Configure Stripe test mode on the dev store
+
+1. **Shopify admin > Settings > Payments > Stripe (or Shopify Payments test mode)**.
+2. Enter your Stripe **test-mode** credentials (publishable key `pk_test_...`, secret key `sk_test_...`). Under NO circumstances paste a `sk_live_` key.
+3. Fallback: if test-mode Stripe is not configured, enable Shopify's **Bogus Gateway** and use card number `1` for checkout in Step 10.
+
+### Step 4 — CJ path selection (decision tree)
+
+Pick **one** path and record your choice in the run log.
+
+**(a) Sandbox path (preferred).** Contact your CJ agent and request a sandbox account. CJ's conditions:
+- Your CJ account must have **$0 balance** at the time of application.
+- Sandbox-mode conversion is **irreversible** — once flipped, that account cannot place real orders again.
+- Once approved, use the sandbox account's access token as `CJ_ACCESS_TOKEN`. Leave `AUTOSHIPPER_CJ_DEV_STORE_DRY_RUN=false`.
+
+**(b) Dry-run path (fallback).** Set `AUTOSHIPPER_CJ_DEV_STORE_DRY_RUN=true`. Any CJ token value is fine (even an empty string); `CjSupplierOrderAdapter.placeOrder()` short-circuits with a stub response and makes zero HTTP calls. No risk of an accidental real CJ order.
+
+> **Document which path you chose in the run log (Section 0 sign-off line "CJ path chosen").**
+
+### Step 5 — Populate `.env`
+
+Copy `.env.example` to `.env` if you have not already. Fill in every key from `.env.example`. For the FR-030 additions:
+
+```env
+DEV_ADMIN_TOKEN=<generate a 16+ char random string, e.g. `openssl rand -hex 24`>
+AUTOSHIPPER_ADMIN_DEV_LISTING_ENABLED=true
+AUTOSHIPPER_WEBHOOK_ARCHIVAL_ENABLED=true
+AUTOSHIPPER_CJ_DEV_STORE_DRY_RUN=<true if dry-run path, false if sandbox path>
+```
+
+Rotate `DEV_ADMIN_TOKEN` after every run (see Step 15).
+
+### Step 6 — Run the pre-flight key audit
+
+Go to **Section 0** and complete the checklist + sign-off. Do not proceed past this step until every box is checked and the Stripe/Shopify/CJ last-4 values are recorded. If `./gradlew devStoreAuditKeys` returns `FAIL`, abort per Section 0's abort rule.
+
+### Step 7 — Boot the application
+
+```bash
+./gradlew flywayMigrate
+./gradlew bootRun
+```
+
+Verify:
+
+```bash
+curl -s http://localhost:8080/actuator/health | python3 -m json.tool
+# Expect {"status": "UP", ...}
+```
+
+If health is `DOWN`, fix before proceeding — do not attempt to list products against a degraded app.
+
+### Step 8 — Start the ngrok tunnel
+
+```bash
+ngrok http 8080
+```
+
+Note the forwarding URL (e.g. `https://a1b2c3d4.ngrok-free.app`). In the Shopify admin, update the `orders/create` webhook URL to `<ngrok-url>/webhooks/shopify/orders-create`. If you already registered a webhook in Step 2 with a prior URL, edit that subscription rather than creating a duplicate.
+
+### Step 9 — Trigger automated listing
+
+From your workstation:
+
+```bash
+curl -u admin:$DEV_ADMIN_TOKEN \
+  -X POST http://localhost:8080/admin/dev/sku/{sku-uuid}/list
+```
+
+Replace `{sku-uuid}` with a SKU already in `Listed` state (see Section 8 "Pre-Requisites Checklist" for how to confirm).
+
+Expected response: HTTP 202 Accepted. Within a few seconds, the product should appear in the dev store's hosted storefront. If the response is 401, `DEV_ADMIN_TOKEN` does not match; if 404, `AUTOSHIPPER_ADMIN_DEV_LISTING_ENABLED` is false or the bean is not wired.
+
+### Step 10 — Buyer purchase
+
+In a browser, navigate to the dev store's public storefront. Add the listed product to the cart and check out:
+- Stripe test mode: card number `4242 4242 4242 4242`, any future expiry, any CVC, any ZIP.
+- Bogus Gateway fallback: card number `1`.
+
+Complete checkout. You should land on the Shopify order confirmation page with an order number.
+
+### Step 11 — Verify the pipeline
+
+```sql
+-- Webhook landed, HMAC verified, deduped exactly once
+SELECT event_id, topic, channel, processed_at FROM webhook_events
+WHERE channel = 'shopify' ORDER BY processed_at DESC LIMIT 1;
+
+-- Internal order created and CONFIRMED
+SELECT id, status, channel_order_id, supplier_order_id, total_amount, total_currency
+FROM orders WHERE channel = 'shopify' ORDER BY created_at DESC LIMIT 1;
+```
+
+Logs should show exactly one of three CJ outcomes depending on the path chosen in Step 4:
+- **Sandbox path, success:** `CJ order placed successfully: orderId=<cj-order-id>` — `supplier_order_id` populated.
+- **Dry-run path:** `CJ dry-run enabled — skipping HTTP call for order <order-uuid>` (or equivalent from the adapter) — `supplier_order_id` may be a stub value or NULL per the dry-run contract; zero outbound HTTP traffic.
+- **Sandbox path, error:** `CJ order placement failed: <message>` — order marked `FAILED`, no real production-side impact.
+
+### Step 12 — Verify webhook archival
+
+If `AUTOSHIPPER_WEBHOOK_ARCHIVAL_ENABLED=true`, inspect:
+
+```bash
+ls docs/fixtures/shopify-dev-store/$(date -u +%Y-%m-%d)/
+# Expect: orders-create-<timestamp>-<event-id>.json (or similar naming)
+```
+
+The file must contain the raw JSON payload Shopify sent. This is your PM-013 fixture-drift defense — future adapter refactors should diff against these real captures, not reverse-engineered mocks.
+
+### Step 13 — Post-test cleanup (CJ path-dependent)
+
+- **Sandbox path:** log in to the CJ sandbox dashboard; confirm the sandbox-account order appears there. Then log in to the production CJ account and confirm **no new order** was created there. Sandbox orders do not need cancellation (no fulfillment, no billing).
+- **Dry-run path:** no CJ cleanup required — nothing left the app.
+
+### Step 14 — Archive and commit the webhook payloads
+
+Follow `docs/fixtures/shopify-dev-store/README.md` for the PII-redaction policy before committing any captured payload. Buyer name, email, address, and phone must be scrubbed or replaced with synthetic values; redact any Stripe payment metadata that leaked into the webhook body.
+
+### Step 15 — Rotate credentials and disable gates
+
+After the run:
+- Rotate `DEV_ADMIN_TOKEN` in `.env` (new random value) so the previous token cannot be replayed.
+- Rotate `SHOPIFY_WEBHOOK_SECRETS` by generating a fresh secret in the Shopify admin and updating `.env`; restart the app to pick up the new secret.
+- Set `AUTOSHIPPER_ADMIN_DEV_LISTING_ENABLED=false` and `AUTOSHIPPER_WEBHOOK_ARCHIVAL_ENABLED=false` so the gated endpoints are inert by default until the next scheduled run.
+- Archive the Section 0 sign-off sheet alongside the test artifacts.

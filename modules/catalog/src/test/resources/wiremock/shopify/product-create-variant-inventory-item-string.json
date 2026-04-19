@@ -1,0 +1,18 @@
+{
+  "_comment": "Shopify Admin REST API — product-create with inventory_item_id as string instead of number (T-13 type coercion via asText()).",
+  "_comment_source": "https://shopify.dev/docs/api/admin-rest/2024-01/resources/product#post-products",
+  "_comment_verified": "2026-04-18 (FR-030 / RAT-53 — Jackson asText() coerces both numbers and strings to String consistently)",
+  "product": {
+    "id": 7890123456789,
+    "title": "Test Product",
+    "status": "active",
+    "variants": [
+      {
+        "id": 42857134218,
+        "price": "29.9900",
+        "sku": "TEST-SKU-001",
+        "inventory_item_id": 12345
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "_comment": "Shopify Admin REST API — product-create response where variants[0] omits the inventory_item_id key entirely (T-09 absence case).",
+  "_comment_source": "https://shopify.dev/docs/api/admin-rest/2024-01/resources/product#post-products",
+  "_comment_verified": "2026-04-18 (FR-030 / RAT-53 — synthetic negative case; real Shopify always emits the key, but defense-in-depth)",
+  "product": {
+    "id": 7890123456789,
+    "title": "Test Product",
+    "status": "active",
+    "variants": [
+      {
+        "id": 42857134218,
+        "price": "29.9900",
+        "sku": "TEST-SKU-001"
+      }
+    ]
+  }
+}

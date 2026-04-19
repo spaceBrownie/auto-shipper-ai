@@ -13,5 +13,6 @@ interface PlatformAdapter {
 
 data class PlatformListingResult(
     val externalListingId: String,
-    val externalVariantId: String?
+    val externalVariantId: String?,
+    val inventoryItemId: String? = null
 )

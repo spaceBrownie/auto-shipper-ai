@@ -38,6 +38,12 @@ logs/
 !gradle/wrapper/gradle-wrapper.jar
 /modules/*/bin/
 
+# Ephemeral webhook archival captures written when tests boot the app
+# with the default (non-test-overridden) autoshipper.webhook-archival.output-dir.
+# The canonical directory committed to the repo is /docs/fixtures/shopify-dev-store/.
+/modules/*/docs/
+
+
 # Node / Frontend
 node_modules/
 dist/
@@ -89,3 +95,11 @@ docs/unrelated
 .graphify_ast.json
 graphify-out/
 graphify-workspace
+
+# Claude Code scheduled tasks lock
+.claude/scheduled_tasks.lock
+
+# Shopify CLI scaffold — this is a separate deployable, lives outside the monorepo
+# Safety net in case the CLI is accidentally run from repo root again
+/auto-shipper-ai/
+/shopify-app*/

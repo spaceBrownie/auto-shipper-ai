@@ -1,0 +1,256 @@
+docs/engineering-posts/deterministic-pipelines-and-emergent-loops-ai-workflow-architecture.md
+  ShipmentTracker (unbounded query, carrier API calls per active order — top scalability risk) (### Graphify: persistent knowledge graph)
+
+docs/nathan-reports/NR-004-shopify-webhook-go-live-entry-point.md
+  RAT-26: Shopify Order Webhook Listener (L3)
+
+docs/nathan-reports/NR-007-cj-order-placement-third-time.md
+  NR-007: CJ Order Placement (Third Attempt) (L1)
+  RAT-27: CJ Supplier Order Placement Ticket (L3)
+  Three Implementation Attempts for CJ Order Placement (L19)
+
+docs/nathan-reports/NR-008-tracking-webhook-order-lifecycle-complete.md
+  Autonomous Order Pipeline (Complete) (L25)
+
+docs/nathan-reports/assets/nr-010-path-to-order.png
+  First Real Order (None)
+  NR-010 Path to Order Flow Diagram (None)
+
+docs/nathan-reports/assets/order-flow.png
+  Order Flow Diagram (None)
+
+docs/postmortems/PM-003-phantom-refunds-inflated-violations.md
+  Order.VALID_TRANSITIONS State Machine Pattern (L162)
+  Unguarded Order State Transitions Bug (L66)
+
+docs/postmortems/PM-006-capital-test-false-positives-and-order-listener.md
+  OrderEventListener Synchronous @EventListener Bug (L33)
+  PM-006: Capital Integration Test False Positives and Order Listener (L1)
+  ReserveCalcJob totalRevenue Includes Refunded Orders Bug (L44)
+
+docs/postmortems/PM-013-stub-adapter-false-confidence-contract-gap.md
+  ShopifyListingAdapter (None)
+
+docs/postmortems/PM-015-shopify-webhook-transaction-cascade.md
+  FR-023: Shopify Order Webhook Listener (RAT-26) (None)
+  LineItemOrderCreator Component (None)
+
+docs/postmortems/PM-017-feature-request-v2-test-theater-regression.md
+  ShopifyOrderAdapter (None)
+
+docs/postmortems/PM-018-fr025-v2-workflow-process-gaps.md
+  FR-025: CJ Supplier Order Placement (RAT-27) (None)
+  OrderConfirmed Event (None)
+  SupplierOrderPlacementService (None)
+
+docs/postmortems/PM-020-fr027-api-assumption-rework.md
+  CjDropshippingAdapter (None)
+
+feature-requests/FR-003-catalog-sku-lifecycle/implementation-plan.md
+  Rationale: SkuStateMachine holds transition map (centralized logic) (None)
+
+feature-requests/FR-003-catalog-sku-lifecycle/spec.md
+  SkuStateMachine (None)
+
+feature-requests/FR-003-catalog-sku-lifecycle/summary.md
+  SkuController (None)
+
+feature-requests/FR-004-catalog-cost-gate/spec.md
+  CostGateService (None)
+
+feature-requests/FR-009-capital-protection/impl_plan
+  OrderFulfilled Event (None)
+
+feature-requests/FR-009-capital-protection/summary.md
+  CapitalOrderRecord Entity (None)
+  OrderEventListener (capital) (None)
+
+feature-requests/FR-016-demand-scan-job/summary.md
+  CjDropshippingAdapter (None)
+
+feature-requests/FR-017-demand-scan-wiremock-tests/summary.md
+  CjDropshippingAdapterWireMockTest (None)
+
+feature-requests/FR-020-platform-listing-adapter/summary.md
+  PlatformListingEntity (JPA) (None)
+  ShopifyListingAdapter (@Profile !local) (None)
+
+feature-requests/FR-021-shopify-admin-api-contract-tests/spec.md
+  ShopifyListingAdapter (None)
+
+feature-requests/FR-021-shopify-admin-api-contract-tests/summary.md
+  ShopifyListingAdapterWireMockTest (None)
+
+feature-requests/FR-022-integration-test-coverage-gaps/implementation-plan.md
+  Rationale: REST endpoints for order transitions (None)
+
+feature-requests/FR-022-integration-test-coverage-gaps/summary.md
+  OrderController State Transition Endpoints (None)
+  OrderTransitionIntegrationTest (None)
+
+feature-requests/FR-023-shopify-order-webhook/implementation-plan.md
+  PlatformListingResolver (None)
+  ShopifyHmacVerificationFilter (None)
+  ShopifyOrderProcessingService (None)
+  ShopifyWebhookController (None)
+  ChannelOrderAdapter Interface (None)
+  Rationale: One Internal Order Per Shopify Line Item (None)
+
+feature-requests/FR-023-shopify-order-webhook/spec.md
+  FR-023: Shopify Order Webhook (None)
+
+feature-requests/FR-026-cj-tracking-webhook/implementation-plan.md
+  Rationale: OrderShipped Published from OrderService.markShipped() (None)
+  Rationale: Shopify Fulfillment Failure is Non-Fatal to Order Status (None)
+
+feature-requests/FR-026-cj-tracking-webhook/spec.md
+  OrderService (None)
+  OrderShipped Domain Event (None)
+
+feature-requests/FR-029-live-e2e-test-infrastructure/filemap.txt
+  CjSupplierOrderAdapter (None)
+  ShopifyWebhookController (None)
+  ShopifyOrderAdapter (None)
+
+frontend/src/api/orders.ts
+  useOrder() (L5)
+  useOrderTracking() (L13)
+
+modules/capital/src/main/kotlin/com/autoshipper/capital/domain/CapitalOrderRecord.kt
+  CapitalOrderRecord (L21)
+
+modules/capital/src/main/kotlin/com/autoshipper/capital/domain/service/JpaOrderAmountProvider.kt
+  JpaOrderAmountProvider (L11)
+
+modules/capital/src/main/kotlin/com/autoshipper/capital/domain/service/OrderAmountProvider.kt
+  OrderAmountProvider (L6)
+
+modules/capital/src/main/kotlin/com/autoshipper/capital/listener/OrderEventListener.kt
+  OrderEventListener (L15)
+
+modules/capital/src/main/kotlin/com/autoshipper/capital/persistence/CapitalOrderRecordRepository.kt
+  CapitalOrderRecordRepository (L9)
+
+modules/catalog/src/main/kotlin/com/autoshipper/catalog/domain/SkuStateMachine.kt
+  SkuStateMachine (L3)
+
+modules/catalog/src/main/kotlin/com/autoshipper/catalog/domain/service/CostGateService.kt
+  CostGateService (L22)
+
+modules/catalog/src/main/kotlin/com/autoshipper/catalog/handler/SkuController.kt
+  SkuController (L17)
+
+modules/catalog/src/main/kotlin/com/autoshipper/catalog/persistence/PlatformListingEntity.kt
+  PlatformListingEntity (L9)
+
+modules/catalog/src/main/kotlin/com/autoshipper/catalog/proxy/platform/ShopifyListingAdapter.kt
+  ShopifyListingAdapter (L16)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/config/ShopifyWebhookFilterConfig.kt
+  ShopifyWebhookFilterConfig (L9)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/Order.kt
+  Order (L14)
+  Order Aggregate (None)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/OrderStatus.kt
+  OrderStatus (L3)
+  OrderStatus Enum (None)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/channel/ChannelOrder.kt
+  ChannelOrder (L23)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/channel/ChannelOrderAdapter.kt
+  ChannelOrderAdapter (L7)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/channel/ShopifyOrderAdapter.kt
+  ShopifyOrderAdapter (L14)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/service/CreateOrderCommand.kt
+  CreateOrderCommand (L7)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/service/LineItemOrderCreator.kt
+  LineItemOrderCreator (L24)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/service/OrderService.kt
+  OrderService (L18)
+  OrderService (None)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/service/ShopifyOrderProcessingService.kt
+  ShopifyOrderProcessingService (L28)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/domain/service/SupplierOrderPlacementService.kt
+  SupplierOrderPlacementService (L13)
+  SupplierOrderPlacementService (L13)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/handler/OrderController.kt
+  OrderController (L18)
+  OrderController (None)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/handler/SupplierOrderPlacementListener.kt
+  SupplierOrderPlacementListener (L12)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/handler/dto/CreateOrderRequest.kt
+  CreateOrderRequest (L3)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/handler/dto/OrderResponse.kt
+  OrderResponse (L3)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/handler/dto/ShipOrderRequest.kt
+  ShipOrderRequest (L3)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/handler/webhook/ShopifyHmacVerificationFilter.kt
+  ShopifyHmacVerificationFilter (L26)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/handler/webhook/ShopifyOrderReceivedEvent.kt
+  ShopifyOrderReceivedEvent (L3)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/handler/webhook/ShopifyWebhookController.kt
+  ShopifyWebhookController (L16)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/persistence/OrderRepository.kt
+  OrderRepository (L12)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/proxy/inventory/InventoryCheckAdapter.kt
+  ShopifyInventoryCheckAdapter (L19)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/proxy/payment/StripeRefundAdapter.kt
+  StripeRefundAdapter (L24)
+  StripeRefundAdapter (None)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/proxy/platform/PlatformListingResolver.kt
+  PlatformListingResolver (L16)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/proxy/supplier/CjSupplierOrderAdapter.kt
+  CjSupplierOrderAdapter (L13)
+  CjSupplierOrderAdapter (Fulfillment) (L12)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/proxy/supplier/StubSupplierOrderConfiguration.kt
+  StubSupplierOrderConfiguration (L8)
+
+modules/fulfillment/src/main/kotlin/com/autoshipper/fulfillment/proxy/supplier/SupplierOrderAdapter.kt
+  SupplierOrderAdapter (L5)
+  SupplierOrderAdapter (Interface) (None)
+  SupplierOrderRequest (L9)
+  SupplierOrderRequest (None)
+  SupplierOrderResult (L18)
+
+modules/portfolio/src/main/kotlin/com/autoshipper/portfolio/proxy/CjDropshippingAdapter.kt
+  CjDropshippingAdapter (L15)
+  CjDropshippingAdapter (Portfolio) (L15)
+  CjDropshippingAdapter (Portfolio) (None)
+
+modules/shared/src/main/kotlin/com/autoshipper/shared/events/OrderConfirmed.kt
+  OrderConfirmed (L7)
+
+modules/shared/src/main/kotlin/com/autoshipper/shared/events/OrderFulfilled.kt
+  OrderFulfilled (L7)
+
+modules/shared/src/main/kotlin/com/autoshipper/shared/events/OrderShipped.kt
+  OrderShipped (L7)
+
+modules/shared/src/main/kotlin/com/autoshipper/shared/identity/OrderId.kt
+  OrderId (L5)
+
+---
+108 classes across 73 files (~2715 tokens)

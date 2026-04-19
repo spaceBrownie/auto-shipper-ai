@@ -1,0 +1,49 @@
+package com.autoshipper.fulfillment.handler.webhook
+
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.boot.web.servlet.FilterRegistrationBean
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+
+/**
+ * Registers {@link WebhookArchivalFilter} on the webhook URL patterns.
+ *
+ * Gated by {@code autoshipper.webhook-archival.enabled} — defaults to
+ * disabled so production never archives webhook payloads to disk.
+ *
+ * The filter itself is intentionally NOT a Spring component — it is
+ * instantiated here so that when this configuration is inactive (the
+ * production default) Spring Boot's auto-registration of `Filter` beans
+ * does not accidentally leak it onto every HTTP request.
+ *
+ * Order is numerically less than {@link com.autoshipper.fulfillment.config.ShopifyWebhookFilterConfig}
+ * (which registers the HMAC filter at order 1), so archival runs FIRST
+ * and captures payloads even when HMAC verification later rejects them.
+ */
+@Configuration
+@ConditionalOnProperty(
+    name = ["autoshipper.webhook-archival.enabled"],
+    havingValue = "true",
+)
+class WebhookArchivalFilterConfig(
+    @Value("\${autoshipper.webhook-archival.output-dir:docs/fixtures/shopify-dev-store}")
+    private val outputDir: String,
+) {
+
+    @Bean
+    fun webhookArchivalFilterRegistration(): FilterRegistrationBean<WebhookArchivalFilter> {
+        val registration = FilterRegistrationBean<WebhookArchivalFilter>()
+        registration.setFilter(WebhookArchivalFilter(outputDir))
+        registration.setUrlPatterns(listOf("/webhooks/shopify/*", "/webhooks/cj/*"))
+        // ShopifyHmacVerificationFilter is registered at order = 1.
+        // Archival must run BEFORE HMAC verification so we capture
+        // payloads that fail HMAC, hence: 1 - 10 = -9.
+        registration.order = ARCHIVAL_FILTER_ORDER
+        return registration
+    }
+
+    companion object {
+        private const val ARCHIVAL_FILTER_ORDER = -9
+    }
+}
