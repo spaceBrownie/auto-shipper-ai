@@ -95,3 +95,6 @@ docs/unrelated
 .graphify_ast.json
 graphify-out/
 graphify-workspace
+
+# Claude Code scheduled tasks lock
+.claude/scheduled_tasks.lock
