@@ -291,7 +291,9 @@ class WebhookArchivalFilterTest {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // T-48 — back-to-back deliveries get distinct filenames (epoch-ms suffix)
+    // T-48 — back-to-back deliveries get distinct filenames (epoch-ms + random suffix)
+    // T-48b — same-millisecond deliveries still get distinct filenames
+    //         (regression guard for review #3106087982 — epoch-ms alone collided)
     // ─────────────────────────────────────────────────────────────────────────
     @Test
     fun `T-48 back-to-back deliveries produce distinct filenames`(@TempDir tmp: Path) {
@@ -302,7 +304,6 @@ class WebhookArchivalFilterTest {
                 setContent("""{"i":$i}""".toByteArray(Charsets.UTF_8))
             }
             filter.doFilter(request, MockHttpServletResponse(), MockFilterChain())
-            // Force a clock tick so System.currentTimeMillis() differs between iterations.
             Thread.sleep(5)
         }
 
@@ -315,9 +316,34 @@ class WebhookArchivalFilterTest {
             "Filenames must be unique across back-to-back deliveries: $filenames"
         }
         filenames.forEach { name ->
-            assert(Regex(""".*-\d{10,}\.json""").matches(name)) {
-                "Filename must contain an epoch-ms timestamp: $name"
+            // Format: {slug}-{epoch-ms}-{8-hex-chars}.json
+            assert(Regex(""".*-\d{10,}-[0-9a-f]{8}\.json""").matches(name)) {
+                "Filename must contain an epoch-ms timestamp and random suffix: $name"
             }
+        }
+    }
+
+    @Test
+    fun `T-48b same-millisecond deliveries still produce distinct filenames`(@TempDir tmp: Path) {
+        // Regression guard for review comment #3106087982: two webhooks arriving
+        // in the same millisecond with the same path (e.g. orders/create and
+        // orders/paid firing near-simultaneously from Shopify) must not collide.
+        val filter = WebhookArchivalFilter(tmp.toString())
+        val body = """{"test": "same-ms"}""".toByteArray(Charsets.UTF_8)
+
+        // Fire 20 deliveries as fast as possible — many will share a millisecond.
+        repeat(20) {
+            val request = MockHttpServletRequest("POST", "/webhooks/shopify/orders-create").apply {
+                servletPath = "/webhooks/shopify/orders-create"
+                setContent(body)
+            }
+            filter.doFilter(request, MockHttpServletResponse(), MockFilterChain())
+        }
+
+        val files = Files.list(tmp.resolve(today)).use { it.toList() }
+        assert(files.size == 20) {
+            "All 20 deliveries must produce distinct files (no silent overwrite). " +
+                "Got ${files.size}: ${files.map { it.fileName }}"
         }
     }
 

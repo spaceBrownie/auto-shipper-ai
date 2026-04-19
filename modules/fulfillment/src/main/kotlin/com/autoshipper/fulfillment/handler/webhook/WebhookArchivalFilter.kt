@@ -84,7 +84,12 @@ class WebhookArchivalFilter(
             .lowercase()
             .let { if (it.length > SLUG_MAX_LENGTH) it.substring(0, SLUG_MAX_LENGTH) else it }
             .ifBlank { "webhook" }
-        val filename = "$slug-${System.currentTimeMillis()}.json"
+        // Epoch-ms alone is not unique — two webhooks in the same millisecond
+        // (e.g. Shopify fires `orders/create` + `orders/paid` near-simultaneously)
+        // would collide on filename and `Files.write` would silently overwrite.
+        // Append a short random suffix so same-ms deliveries land in distinct files.
+        val randomSuffix = java.util.UUID.randomUUID().toString().take(8)
+        val filename = "$slug-${System.currentTimeMillis()}-$randomSuffix.json"
         return Paths.get(outputDir, date, filename)
     }
 
