@@ -60,7 +60,9 @@ class WebhookArchivalFilterTest {
             ComponentScan.Filter(
                 type = FilterType.ASSIGNABLE_TYPE,
                 classes = [
-                    WebhookArchivalFilter::class,
+                    // Filter is NOT included directly — the config owns its lifecycle
+                    // and instantiates it as a plain Kotlin object (see the comment on
+                    // WebhookArchivalFilter explaining why @Component was removed).
                     WebhookArchivalFilterConfig::class,
                     ShopifyWebhookFilterConfig::class,
                 ],
@@ -125,6 +127,20 @@ class WebhookArchivalFilterTest {
             val beans = context.getBeanNamesForType(WebhookArchivalFilterConfig::class.java)
             assert(beans.isEmpty()) {
                 "WebhookArchivalFilterConfig must NOT be registered by default (found: ${beans.toList()})"
+            }
+        }
+
+        @Test
+        fun `T-43b archival filter bean is absent when property unset`() {
+            // Regression guard for the unblocked[bot] review on PR #52:
+            // `@Component` on a Filter class causes Spring Boot to auto-register
+            // it at `/*` with default order REGARDLESS of the config's
+            // `@ConditionalOnProperty`. Removing `@Component` means the filter
+            // bean itself must only exist when the config is active.
+            val filterBeans = context.getBeanNamesForType(WebhookArchivalFilter::class.java)
+            assert(filterBeans.isEmpty()) {
+                "WebhookArchivalFilter must NOT be a bean when archival is disabled " +
+                    "(found: ${filterBeans.toList()}) — otherwise Spring Boot auto-registers it at /*"
             }
         }
     }

@@ -4,8 +4,6 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 import java.io.IOException
 import java.nio.file.Files
@@ -19,7 +17,16 @@ import java.time.format.DateTimeFormatter
  * Servlet filter that archives raw webhook request bodies to disk for
  * PM-013 fixture-drift prevention.
  *
- * Registration is owned by {@link WebhookArchivalFilterConfig}, which:
+ * This class is NOT a Spring component. Spring Boot auto-registers any
+ * `Filter` bean it finds (at every URL pattern with default order) when
+ * no explicit `FilterRegistrationBean` constrains it. Annotating this
+ * class with `@Component` would therefore leak the filter onto every
+ * HTTP request even when `autoshipper.webhook-archival.enabled=false`
+ * (the production default), because the config's `@ConditionalOnProperty`
+ * only skips the registration bean, not the filter bean itself.
+ *
+ * Instead, the filter is instantiated directly inside
+ * {@link WebhookArchivalFilterConfig}, which:
  * - restricts this filter to webhook URL patterns
  * - sets the filter order to run BEFORE ShopifyHmacVerificationFilter,
  *   so we capture payloads even when HMAC verification fails
@@ -31,9 +38,7 @@ import java.time.format.DateTimeFormatter
  * and the controller. I/O errors during archival never break the
  * filter chain; they are logged at WARN and the request forwards normally.
  */
-@Component("webhookArchivalFilter")
 class WebhookArchivalFilter(
-    @Value("\${autoshipper.webhook-archival.output-dir:docs/fixtures/shopify-dev-store}")
     private val outputDir: String,
 ) : OncePerRequestFilter() {
 
