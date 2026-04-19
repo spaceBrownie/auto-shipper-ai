@@ -348,6 +348,32 @@ class WebhookArchivalFilterTest {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // T-49b — slug whitelist strips filesystem-hostile characters
+    //          (regression guard for review #3106093909)
+    // ─────────────────────────────────────────────────────────────────────────
+    @Test
+    fun `T-49b hostile slug characters are stripped from filename`(@TempDir tmp: Path) {
+        val filter = WebhookArchivalFilter(tmp.toString())
+        // A crafted path exercising Windows-reserved chars, null byte, and non-ASCII.
+        // Even though Spring normalizes servletPath, a misbehaving proxy or future
+        // code change could leak raw request values — this is the last defense.
+        val hostile = "/webhooks/shopify/\u0000evil:name*with?bad<chars>|pipe\\back\u00e9"
+        val request = MockHttpServletRequest("POST", hostile).apply {
+            servletPath = hostile
+            setContent("""{"x":1}""".toByteArray(Charsets.UTF_8))
+        }
+        filter.doFilter(request, MockHttpServletResponse(), MockFilterChain())
+
+        val files = Files.list(tmp.resolve(today)).use { it.toList() }
+        assert(files.size == 1) { "Expected exactly one archived file, got ${files.map { it.fileName }}" }
+        val name = files[0].fileName.toString()
+        // Filename as a whole must match the safe-chars regex; no null bytes, no `:*?<>|\`, no non-ASCII.
+        assert(Regex("^[a-z0-9._-]+\\.json$").matches(name)) {
+            "Filename must contain only [a-z0-9._-] before .json extension, got: $name"
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // T-50 — CJ webhook path uses cj-* filename slug
     // ─────────────────────────────────────────────────────────────────────────
     @Test

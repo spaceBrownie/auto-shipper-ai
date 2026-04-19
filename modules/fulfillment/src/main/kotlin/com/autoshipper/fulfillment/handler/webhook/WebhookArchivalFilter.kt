@@ -82,6 +82,12 @@ class WebhookArchivalFilter(
             .trimStart('/')
             .replace('/', '-')
             .lowercase()
+            // Whitelist filename-safe chars. Strips Windows-reserved (`\ : * ? < > |`),
+            // null bytes, URL-encoded sequences, and any non-ASCII — anything a
+            // crafted webhook path could inject through `request.servletPath`.
+            // CLAUDE.md #11-style defense in depth; catch in doFilterInternal is
+            // the last line of defence, this is the first.
+            .replace(Regex("[^a-z0-9._-]"), "")
             .let { if (it.length > SLUG_MAX_LENGTH) it.substring(0, SLUG_MAX_LENGTH) else it }
             .ifBlank { "webhook" }
         // Epoch-ms alone is not unique — two webhooks in the same millisecond
